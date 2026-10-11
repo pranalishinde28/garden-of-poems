@@ -1,10 +1,10 @@
 import { $, V3, clamp, monthYear } from '../core/util.js';
-import { WATER_Y } from '../world/terrain.js';
+import { POND_R, WATER_Y } from '../world/terrain.js';
 import { poems, savePoems, setPoems } from '../settings/storage.js';
 import { T, setTween, state } from '../core/state.js';
 import { REGIONS, TYPE_REGION } from '../plants/mapping.js';
 import { camera } from '../world/renderer.js';
-import { stoneNear } from '../world/paths.js';
+import { decor, stoneNear } from '../world/paths.js';
 import { plants } from '../plants/registry.js';
 import { waterU } from '../water/water.js';
 import { rebuildConnections, rebuildPetals } from '../world/particles.js';
@@ -96,7 +96,17 @@ function reflect(point) {
   if (p.id === state.lastReflect && pool.length > 1) p = pool[(pool.indexOf(p) + 1) % pool.length];
   if (p.id === state.lastReflect && sorted.length > 1) p = sorted.find(q => q.id !== p.id);
   state.lastReflect = p.id;
-  if (state.mode !== 'focus' || !state.reflection) {
+  if ((state.mode !== 'focus' || !state.reflection) && state.thirdPerson) {
+    // third person: choose a clear spot on the shore for your figure, then frame it from behind and to the right
+    const base = Math.atan2(camera.position.z, camera.position.x), R0 = POND_R + 0.55;
+    let a = base;
+    for (const da of [0, 0.14, -0.14, 0.28, -0.28, 0.42, -0.42, 0.6, -0.6, 0.8, -0.8]) { const x = Math.cos(base + da) * R0, z = Math.sin(base + da) * R0; if (!decor.some(o => o.collide > 0 && Math.hypot(o.x - x, o.z - z) < o.collide + 0.5)) { a = base + da; break; } }
+    const out = new V3(Math.cos(a), 0, Math.sin(a)), side = new V3(out.z, 0, -out.x);
+    state.pondSpot = { x: out.x * R0, z: out.z * R0 };
+    const pos = out.clone().multiplyScalar(R0 + 2.9).addScaledVector(side, 1.0); pos.y = floorH(pos.x, pos.z) + 1.75;
+    const look = out.clone().multiplyScalar(R0 - 4).addScaledVector(side, innerWidth > 760 ? 2.2 : 0.6); look.y = WATER_Y + 0.4;
+    camTween(pos, look, clamp(1.2 + camera.position.distanceTo(pos) * 0.05, 1.4, 3));
+  } else if (state.mode !== 'focus' || !state.reflection) {
     const dir = new V3(camera.position.x, 0, camera.position.z); if (dir.lengthSq() < 0.01) dir.set(0, 0, 1); dir.normalize();
     const pos = dir.clone().multiplyScalar(11); pos.y = floorH(pos.x, pos.z) + 1.55;
     const look = dir.clone().multiplyScalar(2.5); look.y = WATER_Y;

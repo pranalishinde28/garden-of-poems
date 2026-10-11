@@ -5,6 +5,7 @@
 //   node dev/screenshot.mjs --legacy old.html  screenshots of the old single-file app
 //   node dev/screenshot.mjs --check --url http://localhost:8080/   test a running server (npm run dev)
 //   node dev/screenshot.mjs --flow swing        sit, swing, read five poems, stand up (desktop and phone)
+//   node dev/screenshot.mjs --flow avatar       third person: walk, bench, swing, kneel to read, pond
 //   options: --views intro,tunnel  --out dev/shots/after  --base /garden-of-poems/
 //
 // The page exposes window.__garden when the URL has ?debug (src/debug.js).
@@ -36,6 +37,7 @@ const VIEWS = {
   overview: { pos: [6, 34, 48], look: [-12, 0, 14] },
   'autumn-tunnel': { pos: [0, 1.7, 35.5], look: [0, 1.5, 17], season: 'autumn' },
   'autumn-swings': { pos: [-13.5, 1.7, 15.5], look: [-21, 1.5, 24.5], season: 'autumn' },
+  'lineup': { lineup: true, pos: [3.1, 1.25, 25.2], look: [3.1, 0.95, 21.6] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
 };
 const views = String(opt('views', Object.keys(VIEWS).join(','))).split(',');
@@ -94,7 +96,8 @@ async function main() {
     await page.waitForFunction(() => window.__garden && document.querySelector('#loading')?.classList.contains('done'), { timeout: 120000, polling: 500 });
     await page.evaluate(() => window.__garden.setSetting('light', 'day'));
 
-    if (FLOW === 'swing') { await swingFlow(page, 'desktop'); await swingFlowPhone(browser, url, errors); }
+    if (FLOW === 'avatar') await avatarFlow(page);
+    else if (FLOW === 'swing') { await swingFlow(page, 'desktop'); await swingFlowPhone(browser, url, errors); }
     else if (CHECK) await smoke(page);
     else await shoot(page);
   } catch (e) {
@@ -110,6 +113,11 @@ async function shoot(page) {
   await mkdir(dirname(out + '-x.png'), { recursive: true });
   for (const name of views) {
     const v = VIEWS[name]; if (!v) throw new Error('Unknown view: ' + name);
+    if (v.lineup) await page.evaluate(() => {
+      const O = [['casual', '#3d4a6b', 'short', '#1d1a19', '#d9a77f', 'none'], ['yukata', '#efe6d4', 'bun', '#3a2a20', '#f6dcc6', 'parasol'], ['kimono', '#e7b7c4', 'long', '#1d1a19', '#ecc4a2', 'none'],
+        ['coat', '#b5603d', 'bob', '#8a4f2e', '#7f5236', 'scarf'], ['yukata', '#3d4a6b', 'tail', '#c49a62', '#a26c47', 'hat'], ['casual', '#6f8a5a', 'short', '#9c9893', '#3f2a1f', 'scarf']];
+      window.__garden.lineup(O.map(([outfit, cloth, hairStyle, hairColor, skin, extra], i) => ({ outfit, cloth, hairStyle, hairColor, skin, extra, accent: ['#c9474a', '#e9c46a', '#d98fa6', '#f3efe6', '#c9474a', '#2f3f5c'][i], height: [1, 0.94, 0.97, 1.05, 1.02, 0.92][i] })), 0.85, 21.6);
+    });
     if (v.sit) {
       await page.click('#enter-sample');
       await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
@@ -239,4 +247,50 @@ async function swingFlowPhone(browser, url, errors) {
   await sleep(2500); // let the lines finish fading in
   await page.screenshot({ path: join(root, 'dev/shots/swing-reader-phone.png') });
   await step('tap Stand up; the reader closes', async () => { await page.tap('#sw-off'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 30000, polling: 200 }); await sleep(1200); if ((await swingState(page)).open) throw new Error('reader still open'); });
+}
+
+// ---- your figure, in third person ----
+async function avatarFlow(page) {
+  const shot = async n => { await page.screenshot({ path: join(root, `dev/shots/avatar-${n}.png`) }); };
+  const mode = () => page.evaluate(() => window.__garden.state.mode);
+  await page.evaluate(() => { const g = window.__garden; g.setAvatar({ outfit: 'yukata', cloth: '#3d4a6b', accent: '#e9c46a', hairStyle: 'bun', hairColor: '#3a2a20', skin: '#d9a77f', extra: 'none', height: 1 }); });
+  await step('enter, switch to third person (V)', async () => {
+    await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+    await page.keyboard.press('KeyV'); await sleep(1500);
+    if (!(await page.evaluate(() => window.__garden.state.thirdPerson))) throw new Error('not in third person');
+  });
+  await step('change your figure in Customize (live preview)', async () => {
+    await page.click('#h-custom'); await sleep(1200);
+    await page.click('[data-av="outfit"] [data-v="kimono"]'); await page.click('[data-av="extra"] [data-v="parasol"]'); await page.click('[data-av="hairStyle"] [data-v="long"]');
+    await page.click('[data-av="cloth"] button:nth-child(2)'); await sleep(1500);
+    await page.$eval('#custom', e => { e.scrollTop = 0; }); await shot('editor');
+    const a = await page.evaluate(() => JSON.parse(localStorage.getItem('garden-of-poems:avatar')));
+    if (a.outfit !== 'kimono' || a.extra !== 'parasol') throw new Error('not saved: ' + JSON.stringify(a));
+    await page.keyboard.press('Escape'); await sleep(900); await page.click('#c-close').catch(() => {}); await sleep(900);
+    return 'saved on this device';
+  });
+  await step('walk up the path, then run', async () => {
+    await page.keyboard.down('KeyW'); await sleep(1600); await shot('walk'); await page.keyboard.down('ShiftLeft'); await sleep(1200); await shot('run'); await page.keyboard.up('ShiftLeft'); await page.keyboard.up('KeyW'); await sleep(1200); await shot('idle');
+  });
+  await step('camera pulls in near the tunnel posts (no clipping)', async () => {
+    await page.evaluate(() => { const p = window.__garden.player; p.pos.set(1.45, 0, 27); p.yaw = 0; p.pitch = -0.1; }); await sleep(2000); await shot('tunnel');
+  });
+  await step('sit at the bench to write', async () => {
+    await page.evaluate(() => { const p = window.__garden.player; p.pos.set(-7.2, 0, 11.6); }); await sleep(600);
+    await page.keyboard.press('KeyE'); await page.waitForFunction(() => window.__garden.state.mode === 'writing', { timeout: 30000, polling: 200 }); await sleep(2500); await shot('bench');
+    await page.keyboard.press('Escape'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 30000, polling: 200 });
+  });
+  await step('kneel to read a poem', async () => {
+    await page.evaluate(() => { const g = window.__garden, pl = [...g.plants.values()].find(p => p.h < 2.5) || [...g.plants.values()][0]; g.player.pos.set(pl.root.position.x + 2.5, 0, pl.root.position.z + 2.5); g.openPoem(pl); });
+    await sleep(4000); await shot('kneel'); await page.keyboard.press('Escape'); await sleep(1500); return 'mode ' + await mode();
+  });
+  await step('look into the pond for an older poem', async () => {
+    await page.evaluate(() => { const p = window.__garden.player; p.pos.set(0, 0, 10.6); p.yaw = 0; p.pitch = -0.3; }); await sleep(1500);
+    await page.keyboard.press('KeyE'); await sleep(4000); await shot('pond'); await page.keyboard.press('Escape'); await sleep(1500); return 'mode ' + await mode();
+  });
+  await step('swing in third person', async () => {
+    await page.evaluate(() => window.__garden.sit(1)); await page.waitForFunction(() => window.__garden.state.mode === 'swing', { timeout: 30000, polling: 200 });
+    await page.keyboard.down('KeyW'); await sleep(2500); await shot('swing'); await page.keyboard.up('KeyW');
+    await page.keyboard.press('KeyE'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 30000, polling: 200 });
+  });
 }

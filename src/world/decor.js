@@ -6,6 +6,7 @@ import { glowTex } from './textures.js';
 import { GEO, M, Merge, VC, part, rockGeo } from './geometry.js';
 import { BENCH, decor, stoneNear } from './paths.js';
 import { nightGlow, nightSprites } from '../plants/registry.js';
+import { state } from '../core/state.js';
 
 /* ================= decor: bench & pergola, gate, lanterns, rocks, bridge, hedges ================= */
 export const bench = new THREE.Group();
@@ -31,6 +32,8 @@ export const bench = new THREE.Group();
   scene.add(bench);
 })();
 export const benchSeat = () => {
+  // third person: over your figure's shoulder from behind the bench, toward the pond
+  if (state.thirdPerson) return { pos: bench.localToWorld(new V3(0.75, 1.55, -1.7)), look: bench.localToWorld(new V3(-0.15, 0.75, 3)) };
   const f = new V3(-BENCH.x, 0, -BENCH.z).normalize();
   return { pos: new V3(BENCH.x + f.x * 0.15, groundH(BENCH.x, BENCH.z) + 1.18, BENCH.z + f.z * 0.15), look: new V3(0, WATER_Y + 0.9, 0) };
 };

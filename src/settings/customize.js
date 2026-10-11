@@ -165,7 +165,7 @@ const customPanel = $('#custom');
 (function buildCustomChecks() {
   const mk = (wrap, list, prefix) => list.forEach(([k, label]) => { const l = document.createElement('label'); l.className = 'matters'; const i = document.createElement('input'); i.type = 'checkbox'; i.dataset.k = prefix + k; i.onchange = () => setSetting(i.dataset.k, i.checked); l.append(i, document.createTextNode(' ' + label)); wrap.appendChild(l); });
   mk($('#c-scene'), SCENE_LABELS, ''); mk($('#c-show'), SHOW_LABELS, 'show.');
-  customPanel.querySelectorAll('.seg button').forEach(b => { b.onclick = () => setSetting(b.parentElement.dataset.k, b.dataset.v); });
+  customPanel.querySelectorAll('.seg[data-k] button').forEach(b => { b.onclick = () => setSetting(b.parentElement.dataset.k, b.dataset.v); });
 })();
 function linkRows() { return [...$('#c-links').querySelectorAll('.c-link')].map(r => ({ label: r.querySelector('.c-l').value.trim().slice(0, 40), url: r.querySelector('.c-u').value.trim().slice(0, 200) })); }
 function saveLinks() {
@@ -185,12 +185,13 @@ function addLinkRow(l) {
 function renderCustom() {
   const vis = !!state.visiting;
   $('#c-note').textContent = vis ? 'You are visiting someone else\u2019s garden. Return home to customize your own.' : (Cloud.user ? 'Changes save to your account, and visitors see them too.' : 'Changes save on this device. Sign in to keep them with your garden everywhere.');
-  customPanel.querySelectorAll('input, .seg button, #c-addlink').forEach(i => { if (i.id !== 'c-close') i.disabled = vis; });
+  // your own figure (#c-you) stays editable while visiting; the garden's settings don't
+  customPanel.querySelectorAll('input, .seg button, #c-addlink').forEach(i => { if (i.id !== 'c-close' && !i.closest('#c-you')) i.disabled = vis; });
   const own = Cloud.user && Cloud.garden;
   $('#c-name').value = (own ? Cloud.garden.name : SETTINGS.name) || ''; $('#c-desc').value = (own ? Cloud.garden.description : SETTINGS.desc) || '';
-  customPanel.querySelectorAll('.seg').forEach(s => s.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', SETTINGS[s.dataset.k] === b.dataset.v ? 'true' : 'false')));
+  customPanel.querySelectorAll('.seg[data-k]').forEach(s => s.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', SETTINGS[s.dataset.k] === b.dataset.v ? 'true' : 'false')));
   $('#c-blossom').hidden = SETTINGS.tree !== 'sakura';
-  customPanel.querySelectorAll('input[type=checkbox]').forEach(i => { const k = i.dataset.k; i.checked = k.startsWith('show.') ? SETTINGS.show[k.slice(5)] !== false : !!SETTINGS[k]; });
+  customPanel.querySelectorAll('input[type=checkbox][data-k]').forEach(i => { const k = i.dataset.k; i.checked = k.startsWith('show.') ? SETTINGS.show[k.slice(5)] !== false : !!SETTINGS[k]; });
   $('#c-links').innerHTML = ''; (SETTINGS.links || []).forEach(addLinkRow); $('#c-linkerr').textContent = '';
 }
 function openCustomize() { late.closePops(); renderCustom(); openPanel(customPanel); }

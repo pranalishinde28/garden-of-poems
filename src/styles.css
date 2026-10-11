@@ -266,3 +266,16 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 @media (pointer:coarse){#swingui button{min-height:44px;padding-top:.5rem;padding-bottom:.55rem}}
 /* the walking joystick has nothing to do on a swing */
 body.on-swing #joy{opacity:0;pointer-events:none}
+
+/* ---------- your figure (Customize) ---------- */
+.av-wrap{display:flex;gap:1rem;align-items:flex-start}
+#av-preview{width:150px;height:206px;flex:none;border-radius:6px;background:linear-gradient(180deg,rgba(150,178,160,.18),rgba(110,140,100,.28))}
+.av-ctl{flex:1;min-width:0}
+.av-row{display:grid;grid-template-columns:5.6rem 1fr;align-items:center;gap:.5rem;margin:.32rem 0;font-size:1.02rem}
+.av-row .seg button{font-size:.96rem;padding:.16rem .6rem .22rem}
+.sw{display:flex;flex-wrap:wrap;gap:.3rem}
+.sw button{width:24px;height:24px;border-radius:50%;border:1px solid var(--line);box-shadow:inset 0 0 0 2px rgba(255,255,255,.18)}
+.sw button[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:2px}
+#av-height{width:100%;accent-color:var(--accent)}
+@media (max-width:560px){.av-wrap{flex-direction:column;align-items:center}.av-ctl{width:100%}.av-row{grid-template-columns:5rem 1fr}}
+@media (pointer:coarse){.sw button{width:34px;height:34px}.av-row .seg button{min-height:40px}}
