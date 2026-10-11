@@ -38,9 +38,21 @@ jobs:
         with:
           path: dist
 
+  database:
+    # the migrations from scratch, then the row-level security and validation tests (pgTAP)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.120.0
+      - run: supabase db start
+      - run: supabase test db
+
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: build
+    needs: [build, database]
     runs-on: ubuntu-latest
     permissions:
       pages: write

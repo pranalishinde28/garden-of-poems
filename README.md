@@ -4,14 +4,20 @@ A walkable 3D garden where every poem grows into a plant. Each person signs in t
 
 The app is a static site built with Vite and Three.js, with a Supabase database for accounts and storage. Without Supabase keys it still runs, saving one garden on the device.
 
-## 1. Create the database (about 5 minutes)
+## 1. Create the database (about 10 minutes)
 
 1. Create a free project at supabase.com.
-2. Open **SQL Editor → New query**, paste all of `supabase/schema.sql`, and press **Run**.
-3. In **Authentication → URL Configuration**, set **Site URL** to the address where you will host the app (for example `https://garden-of-poems.vercel.app`) and add the same address under **Redirect URLs**. Confirmation and password-reset emails link back here.
-4. Optional: in **Authentication → Providers → Email**, turn off "Confirm email" if you want people to start writing straight after signing up.
+2. From this folder, apply the migrations (each command opens a browser or asks for your database password):
+   ```sh
+   npx supabase login
+   npx supabase link --project-ref <your project ref>
+   npx supabase db push
+   ```
+   They create the tables, the row-level security rules, the validation, and the daily clean-up of removed poems (pg_cron; enable it under Database → Extensions if the push asks for it).
+3. In **Authentication → URL Configuration**, set **Site URL** to the address where you will host the app and add `<that address>/**` under **Redirect URLs**. Confirmation and password-reset emails link back here.
+4. Optional: in **Authentication → Providers → Email**, turn off "Confirm email" if you want people to start writing straight after signing up. Supabase's built-in email sends only a few messages an hour; for real use, set up custom SMTP.
 
-Already set up the database with an earlier version? Run `supabase/upgrade-1-customize.sql` once to add customization.
+Already running the earlier single-file version with `schema.sql` pasted by hand? Follow **docs/database.md → Moving your live database onto migrations** instead of step 2. Local development, tests and schema changes are in the same file.
 
 ## 2. Connect the app
 
@@ -40,6 +46,9 @@ That key is meant to be public; the row-level security rules in the schema decid
 | `npm run preview` | serves `dist/` at http://localhost:8080 |
 | `npm run check` | builds, then walks the garden in headless Chrome and fails on any page error |
 | `npm run shots` | screenshots of fixed viewpoints into `dev/shots/` (after `npm run build`) |
+| `npm run typecheck` | type-checks the TypeScript cloud module against the database types |
+| `npm run db:test` | row-level security and validation tests against local Supabase (see docs/database.md) |
+| `npm run e2e:local` | the whole app against local Supabase: accounts, sync, conflicts, notes |
 
 Compare two sets of screenshots with `node dev/compare.mjs dev/shots intro pond`, which expects `before-*.png` and `after-*.png` pairs.
 
@@ -90,10 +99,11 @@ In autumn, wisteria gives way to hanging veils of red and yellow leaves, includi
 
 | Table | Holds |
 |---|---|
-| `profiles` | display name and username, created automatically at sign-up |
-| `gardens` | one per person: name, welcome line, season, public or private |
-| `poems` | each poem, its mood, plant type and fixed position in the garden |
-| `notes` | kind notes left beside a poem |
-| `public_gardens` (view) | the list visitors browse, with poem counts |
+| `profiles` | display name, username and your figure (`avatar`), created automatically at sign-up |
+| `gardens` | one per person: name, welcome line, season, settings, public or private |
+| `poems` | each poem, its mood, plant type and fixed position; `deleted_at` keeps a removed poem for 30 days |
+| `notes` | kind notes left beside a poem; the poet can hide one |
+| `note_reports` | reports of unkind notes |
+| `public_gardens` (view) | the list visitors browse, with poem counts (searched and paged by `list_public_gardens()`) |
 
-Poems written before signing in are moved into the account the first time that person signs in on the same device.
+Poems written before signing in are moved into the account the first time that person signs in on the same device. Saving goes through `save_poem()`, which notices when a poem changed somewhere else and asks which version to keep. See docs/database.md.

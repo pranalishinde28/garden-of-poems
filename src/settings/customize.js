@@ -18,7 +18,7 @@ import { Music } from '../audio/music.js';
 import { toast } from '../ui/helpers.js';
 import { closePanel, openPanel } from '../ui/reading.js';
 import { applyThemeMaterials, setTheme } from '../ui/themes.js';
-import { Cloud, saveGardenSettings } from '../cloud/cloud.js';
+import { Cloud, saveGardenSettings } from '../cloud/cloud.ts';
 import { late, provide } from '../core/late.js';
 
 // names other modules reach through late (see core/late.js)

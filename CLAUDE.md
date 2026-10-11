@@ -34,13 +34,23 @@ src/animals/          animals.js (and SFX)
 src/audio/            music.js (piano, own files, rain sound)
 src/player/           camera.js (player, tweens, collision), walk.js
 src/ui/               input, helpers, filter, reading, writing, swinging, themes, hud, intro
-src/cloud/            cloud.js (Supabase client, sync), gardensPanel, visiting, notes
-src/settings/         storage.js (poems, SETTINGS, THEME, localStorage/IDB), customize.js
+src/cloud/            cloud.ts (typed Supabase client, the sync queue, conflicts, account tools), database.types.ts
+                      (generated: npm run db:types), gardensPanel, visiting, notes
+src/settings/         storage.js (poems, SETTINGS, THEME, localStorage/IDB), customize.js, avatarEditor.js, quality.js
+src/player/           also avatar.js (the figure) and figure.js (placing it, the third-person camera)
+src/ui/               also swingReader, map, guide (first steps, help)
 src/debug.js          window.__garden for the test harness, only with ?debug in the URL
 dev/screenshot.mjs    headless Chrome (Puppeteer): --check smoke test, or screenshots of fixed views
 dev/compare.mjs       mean pixel difference between before-*/after-* screenshot pairs
 .env.example          VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (copy to .env, which is git-ignored)
-supabase/schema.sql   full database schema with row-level security
+supabase/migrations/  the database, one change per file (baseline = the original schema)
+supabase/tests/       pgTAP tests for RLS and validation (npm run db:test)
+supabase/schema.sql   generated snapshot of the result (npm run db:snapshot); never edit
+supabase/config.toml  local Supabase (ports 55320–55329)
+dev/cloud-e2e.mjs     end-to-end against local Supabase (npm run e2e:local)
+docs/                 ux-audit.md (Phase 5), database.md (local work, migrations, moving the live database)
+tsconfig.json         type-checks src/cloud/*.ts (npm run typecheck)
+.github/workflows/    deploy.yml: check + database tests on every push and PR; deploys main to GitHub Pages
 ```
 Built with Vite. Three.js stays at **r128** (pinned `three@0.128.0`) and supabase-js at 2.45.4, both from npm. The single-file app this was split from is the baseline commit on `main`.
 
@@ -49,6 +59,8 @@ Built with Vite. Three.js stays at **r128** (pinned `three@0.128.0`) and supabas
 - `npm run check` builds and runs the smoke test: it enters with the sample poems, opens one, switches to autumn and rain, checks the canvas drew, and fails on any page error. It also prints whether accounts are connected.
 - Screenshots: `npm run build && npm run shots -- --out dev/shots/after`; for the old single file, `node dev/screenshot.mjs --legacy old.html --out dev/shots/before`. Then `node dev/compare.mjs dev/shots <views…>`. Run-to-run noise (wind, clouds, animals) is a mean difference of about 3–12/255 depending on the view, so compare against a noise run before calling something changed.
 - `node dev/screenshot.mjs --check --url http://localhost:8080/` tests a running dev server.
+- Database: Docker Desktop, then `npx supabase start`, `npm run db:test`, `npm run e2e:local` (see docs/database.md).
+- Deploy: push or merge to `main`. The workflow runs `npm run check` and the database tests, builds with the repository secrets `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` and `GARDEN_BASE=/<repo>/`, and publishes to GitHub Pages. Auth redirects use `siteURL()` (Vite's base path).
 - If a local Python lacks CA certificates, run HTTPS scripts with `SSL_CERT_FILE=/etc/ssl/cert.pem`.
 
 ### Supabase (live)
@@ -56,6 +68,7 @@ Built with Vite. Three.js stays at **r128** (pinned `three@0.128.0`) and supabas
 - Check **Authentication → Sign In / Providers** and **URL Configuration** before launch; the current values are in `CLAUDE.local.md`.
 - The client uses the new-style **publishable key** (`sb_publishable_...`) from `.env`; it works with supabase-js 2.45.4. Never put the secret / service_role key in the client.
 - When the app is hosted somewhere, update Site URL and Redirect URLs in Authentication → URL Configuration.
+- **Until the owner runs the steps in docs/database.md, the live database is still on the baseline.** The new page needs `save_poem()` and the other functions, so migrate the database before merging the Phase 6 app changes.
 
 ### Stack and data
 - **Rendering:** Three.js r128, procedural geometry and canvas-drawn textures only (no image or model assets).
@@ -71,7 +84,8 @@ Built with Vite. Three.js stays at **r128** (pinned `three@0.128.0`) and supabas
   - Poems flagged `private` stay hidden even in a public garden.
   - Notes can only be left on poems the author can read, and never on one's own.
 - **Guests:** with no account the garden lives in `localStorage` (`garden-of-poems:v1`). The first sign-in on a device imports those poems into the account.
-- **Sync:** `savePoems()` writes localStorage then calls `queueSync()`. That diffs against `Cloud.last` and upserts or deletes only the changed rows.
+- **Sync (cloud.ts):** `savePoems()` writes localStorage then calls `queueSync()`, which compares each poem with the signature last sent (`sync.sigs`) and queues `save`, `remove` or `restore` operations. The queue is kept per person in localStorage, so it survives reloads and being offline. `syncNow()` sends them through `save_poem(p, base)`, `remove_poem()` and `restore_poem()`, where `base` is the server `updated_at` this device last saw. A `conflict` opens the keep-which dialog (`#conflict`); `deleted` means removed elsewhere, so the poem is dropped here too. Failures retry with exponential backoff. Removing is soft (30 days, then pg_cron purges). Visitors never see removed or private poems; RLS enforces it.
+- **Other server functions:** `username_available`, `change_username`, `delete_my_account` (security definer, cascades), `list_public_gardens(q, after…, lim)` for the searchable, paged garden list. Notes have `hidden` (the poet may update only that column) and `note_reports`; a trigger rate-limits notes and the page shows its message.
 
 ### Module order
 The modules are the old script's sections, and `src/main.js` imports them in the same top-to-bottom order, so they run exactly as before. The numbered list below is that order. Two rules keep it working:
@@ -149,16 +163,23 @@ The modules are the old script's sections, and `src/main.js` imports them in the
 8. **Live Supabase verified at the API level (2026-10-07):** sign-up and the profile and garden triggers, poem upsert and read, private-garden isolation, the public garden listing with its poem count, private poems hidden from visitors, and every note rule all passed against the live project. Sign-up through the page UI and the password-reset email flow have not been checked yet. PostgREST rejects a bulk upsert whose rows have different keys (`PGRST102`); the app's `toRow` always emits every column, so keep it that way.
 9. **Supabase keys are baked in at build time.** Vite inlines `VITE_*` values when it builds, so changing `.env` needs a rebuild (or a restart of `npm run dev`). If the Gardens panel says accounts aren't connected, check `.env` and rebuild before debugging code.
 
+10. **Docker Desktop on this kind of Mac:** image pulls failed until `/Applications/Docker.app/Contents/Resources/bin` was on PATH (`docker-credential-desktop`). A stuck `supabase start` once left a stale port binding and hung Docker until it was force-restarted; local Supabase now uses ports 553xx. Never run two `supabase start` at once.
+11. **Types are generated:** after any migration, `npm run db:types` and `npm run typecheck`. `cloud.ts` types `late` and `state` explicitly because they come from JavaScript modules.
+12. **`NOT VALID` constraints:** some validation checks only new writes on the live database until the owner validates them (docs/database.md, step 7). Local and CI databases start empty, so there they are fully enforced.
+13. **`npm run e2e:local` builds `dist/` with the local Supabase keys.** Run `npm run build` (or `npm run check`) afterwards before using `dist/` for anything else. CI always builds its own.
+14. **Sync signatures:** `sig()` covers the poem's content fields only, never the server's timestamps; including `updatedAt` would make every save look like a new change.
+
 ## What the owner wants next (open threads)
 
-They said they want to "edit a lot of things in the garden". Expect many visual and layout tweaks; ask them to describe or screenshot what feels wrong. Likely directions:
+They said they want to "edit a lot of things in the garden". Expect many visual and layout tweaks; ask them to describe or screenshot what feels wrong. Open items after the October 2026 round (phases 1–6):
 
-- **Realism:** better trees, grass, water and sky. Consider glTF models and PBR textures, or a move to a modern Three.js (r160+), whose physically based lighting and tone mapping are much better than r128's.
-- **Three.js upgrade:** r128 → current, as its own step: colour management (`outputColorSpace`, hex colours treated as sRGB), physically based light units, `WebGLMultisampleRenderTarget` → `samples`, and the shader-chunk names that `windify` and the water shader patch.
-- **Performance:** quality presets, chunked culling, fewer reflection objects, and a mobile path.
-- **Community:** moderation for notes (report or hide), rate limits (a Supabase edge function or a check constraint per author per day), and a nicer public garden directory.
-- **Customization:** more options, such as poem tree species per mood, more flower types, path layouts, placing features by hand, and snow (rain is done).
-- **Hosting:** not deployed yet. Any static host works (`npx vercel`, Netlify Drop, GitHub Pages); remember the Supabase URL settings afterwards.
+- **Migrate the live database** (docs/database.md), then merge and deploy the Phase 6 app.
+- **Custom SMTP** for confirmation and reset emails before inviting real people (Supabase's built-in mail sends only a few an hour).
+- **Three.js upgrade:** r128 → current, as its own step: colour management (`outputColorSpace`, hex colours treated as sRGB), physically based light units, `WebGLMultisampleRenderTarget` → `samples`, and the shader chunks that `windify` and the water shader patch. Compare with `npm run shots` and `dev/compare.mjs`.
+- **Draw calls:** about 1,300 a frame at High (`--flow quality`). Merging more of the static scenery would help weaker devices more than any setting.
+- **Realtime presence** (the Phase 4 stretch goal, not built): other signed-in visitors as figures, movement only.
+- **Proposals in docs/ux-audit.md**, waiting for the owner's OK.
+- **Realism:** better trees, grass, water and sky; glTF models and PBR textures if procedural shapes stop being enough.
 
 ## Working style that has worked well
 

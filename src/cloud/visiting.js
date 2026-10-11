@@ -8,7 +8,7 @@ import { applyFilter, computeSeason } from '../ui/filter.js';
 import { closeReader } from '../ui/reading.js';
 import { leaveSwing } from '../ui/swinging.js';
 import { applyThemeMaterials, setThemeUI } from '../ui/themes.js';
-import { Cloud, fromRow } from './cloud.js';
+import { Cloud, fromRow } from './cloud.ts';
 import { closeGardens } from './gardensPanel.js';
 import { late, provide } from '../core/late.js';
 
