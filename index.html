@@ -207,6 +207,13 @@
 </section>
 
 <input type="file" id="file-music" accept="audio/*" multiple hidden>
+<section id="mapview" role="dialog" aria-modal="true" aria-labelledby="map-title" hidden>
+  <div class="map-head"><h2 id="map-title">The garden</h2><p>Choose a place or a poem, and the garden will carry you there.</p><button id="map-close" class="x" aria-label="Close the map">×</button></div>
+  <div id="map-stage"><canvas id="map-canvas"></canvas><div id="map-marks"></div><div id="map-me" aria-hidden="true"></div></div>
+  <div id="map-places" role="list" aria-label="Places"></div>
+  <div id="map-legend" aria-hidden="true"></div>
+</section>
+<button id="minimap-btn" aria-label="Open the map" hidden><canvas id="minimap" width="264" height="264"></canvas></button>
 <div id="loading"></div>
 <script type="module" src="/src/main.js"></script>
 </body>

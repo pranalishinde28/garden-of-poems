@@ -49,6 +49,7 @@ import './cloud/notes.js';
 import './settings/customize.js';
 import './ui/hud.js';
 import './settings/avatarEditor.js';
+import './ui/map.js';
 import './plants/samples.js';
 import './ui/intro.js';
 import './world/atmosphere.js';

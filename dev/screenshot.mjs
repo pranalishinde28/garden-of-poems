@@ -6,6 +6,7 @@
 //   node dev/screenshot.mjs --check --url http://localhost:8080/   test a running server (npm run dev)
 //   node dev/screenshot.mjs --flow swing        sit, swing, read five poems, stand up (desktop and phone)
 //   node dev/screenshot.mjs --flow avatar       third person: walk, bench, swing, kneel to read, pond
+//   node dev/screenshot.mjs --flow map          map: open, hover, two clicks to a poem, glide to a place, hidden features, phone
 //   options: --views intro,tunnel  --out dev/shots/after  --base /garden-of-poems/
 //
 // The page exposes window.__garden when the URL has ?debug (src/debug.js).
@@ -97,6 +98,7 @@ async function main() {
     await page.evaluate(() => window.__garden.setSetting('light', 'day'));
 
     if (FLOW === 'avatar') await avatarFlow(page);
+    else if (FLOW === 'map') await mapFlow(page, browser, url, errors);
     else if (FLOW === 'swing') { await swingFlow(page, 'desktop'); await swingFlowPhone(browser, url, errors); }
     else if (CHECK) await smoke(page);
     else await shoot(page);
@@ -162,6 +164,12 @@ async function smoke(page) {
     const t0 = await page.$eval('#sr-title', e => e.textContent); await page.keyboard.press('ArrowLeft'); await sleep(300);
     if (t0 === await page.$eval('#sr-title', e => e.textContent)) throw new Error('the swing reader did not turn the page');
     await page.keyboard.press('KeyE'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 120000, polling: 300 });
+  });
+  await step('open the map, glide to the bench', async () => {
+    await page.keyboard.press('KeyM'); await page.waitForSelector('#mapview.open', { timeout: 10000 });
+    const ok = await page.evaluate(() => { const b = [...document.querySelectorAll('.map-place')].find(x => x.getAttribute('aria-label').startsWith('Writing bench')); if (b) b.click(); return !!b; });
+    if (!ok) throw new Error('no Writing bench on the map');
+    await page.waitForFunction(() => window.__garden.state.mode === 'walk' && !window.__garden.state.gliding, { timeout: 180000, polling: 300 });
   });
   await step('switch to autumn and rain', async () => {
     await page.evaluate(() => { const g = window.__garden; g.setSetting('season', 'autumn'); g.setSetting('weather', 'rain'); });
@@ -292,5 +300,46 @@ async function avatarFlow(page) {
     await page.evaluate(() => window.__garden.sit(1)); await page.waitForFunction(() => window.__garden.state.mode === 'swing', { timeout: 30000, polling: 200 });
     await page.keyboard.down('KeyW'); await sleep(2500); await shot('swing'); await page.keyboard.up('KeyW');
     await page.keyboard.press('KeyE'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 30000, polling: 200 });
+  });
+}
+
+// ---- the map ----
+async function mapFlow(page, browser, url, errors) {
+  const shot = async n => { await page.screenshot({ path: join(root, `dev/shots/map-${n}.png`) }); };
+  await step('enter as a first-time visitor (sample garden)', async () => {
+    await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+    await sleep(1500); await shot('minimap'); return (await page.$eval('#minimap-btn', b => !b.hidden)) ? 'corner map showing' : 'corner map hidden';
+  });
+  let target;
+  await step('click 1: open the map', async () => { await page.click('#h-map'); await sleep(900); if (!(await page.$('#mapview.open'))) throw new Error('map did not open'); const n = await page.$$eval('.map-poem', b => b.length), p = await page.$$eval('.map-place', b => b.map(x => x.getAttribute('aria-label'))); await shot('full'); return `${n} poems, places: ${p.join(' | ')}`; });
+  await step('hover a poem shows its title', async () => { const b = (await page.$$('.map-poem'))[3]; await b.hover(); await sleep(400); target = await b.evaluate(e => e.dataset.title); await shot('hover'); return target; });
+  await step('click 2: choose it; glide there and read it', async () => {
+    const b = (await page.$$('.map-poem'))[3]; await b.click();
+    await page.waitForFunction(() => window.__garden.state.gliding, { timeout: 5000, polling: 50 }).catch(() => {});
+    await sleep(1400); await shot('glide');
+    await page.waitForFunction(() => window.__garden.state.mode === 'focus', { timeout: 30000, polling: 200 }); await sleep(2500); await shot('arrive');
+    const t = await page.$eval('#r-title', e => e.textContent); if (t !== target) throw new Error('opened "' + t + '" instead of "' + target + '"'); return 'reading "' + t + '"';
+  });
+  await step('glide to the Swing Garden', async () => {
+    await page.keyboard.press('Escape'); await sleep(1500); await page.keyboard.press('KeyM'); await sleep(900);
+    const btn = await page.$$('.map-place'); let sw = null; for (const b of btn) if ((await b.evaluate(e => e.getAttribute('aria-label'))).startsWith('Swing')) sw = b;
+    await sw.click(); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && !window.__garden.state.gliding, { timeout: 30000, polling: 200 }); await sleep(1500); await shot('swing-garden');
+    const d = await page.evaluate(() => Math.hypot(window.__garden.player.pos.x + 19, window.__garden.player.pos.z - 21)); return d.toFixed(1) + ' m from the swings, cue: ' + await page.$eval('#cue', e => e.textContent.trim() || '(none)');
+  });
+  await step('hidden features stay hidden on the map', async () => {
+    await page.evaluate(() => { window.__garden.setSetting('show.swings', false); window.__garden.setSetting('show.roses', false); });
+    await page.keyboard.press('KeyM'); await sleep(900); const p = await page.$$eval('.map-place', b => b.map(x => x.getAttribute('aria-label').split(':')[0]));
+    await page.keyboard.press('Escape'); await page.evaluate(() => { window.__garden.setSetting('show.swings', true); window.__garden.setSetting('show.roses', true); });
+    if (p.includes('Swing Garden') || p.includes('Rose garden')) throw new Error('still shows ' + p.join(', ')); return p.join(', ');
+  });
+  // phone
+  const ctx = await browser.createBrowserContext(), ph = await ctx.newPage(); ph.on('pageerror', e => errors.push('page error (phone): ' + e.message));
+  await ph.emulate({ viewport: { width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true }, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1' });
+  await ph.goto(url, { waitUntil: 'load' }); await ph.waitForFunction(() => window.__garden && document.querySelector('#loading')?.classList.contains('done'), { timeout: 120000, polling: 500 });
+  await ph.evaluate(() => window.__garden.setSetting('light', 'day'));
+  await step('phone: open the map and tap a poem', async () => {
+    await ph.tap('#enter-sample'); await ph.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+    await ph.tap('#minimap-btn'); await sleep(900); await ph.screenshot({ path: join(root, 'dev/shots/map-phone.png') });
+    await ph.tap('.map-poem'); await ph.waitForFunction(() => window.__garden.state.mode === 'focus', { timeout: 30000, polling: 200 }); return 'reading on the phone';
   });
 }

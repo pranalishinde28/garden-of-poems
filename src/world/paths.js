@@ -7,7 +7,7 @@ import { VC, rockGeo } from './geometry.js';
 import { groundMesh } from './ground.js';
 
 /* ================= paths ================= */
-const stones = [];
+export const stones = [];
 export const BENCH = { x: -9.4, z: 12.6 };
 export const TULIPS = [{ x0: 2.7, x1: 8.2, z0: 16.5, z1: 31.5 }, { x0: -8.2, x1: -2.7, z0: 16.5, z1: 31.5 }, { x0: 24, x1: 38, z0: 40, z1: 52, field: true }, { x0: -38, x1: -24, z0: 40, z1: 52, field: true }];
 export const inTulip = (x, z, m) => TULIPS.some(t => x > t.x0 - m && x < t.x1 + m && z > t.z0 - m && z < t.z1 + m);
