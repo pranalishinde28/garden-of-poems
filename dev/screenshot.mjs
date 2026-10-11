@@ -4,6 +4,7 @@
 //   node dev/screenshot.mjs --check            smoke test: fails on any page error
 //   node dev/screenshot.mjs --legacy old.html  screenshots of the old single-file app
 //   node dev/screenshot.mjs --check --url http://localhost:8080/   test a running server (npm run dev)
+//   node dev/screenshot.mjs --flow swing        sit, swing, read five poems, stand up (desktop and phone)
 //   options: --views intro,tunnel  --out dev/shots/after  --base /garden-of-poems/
 //
 // The page exposes window.__garden when the URL has ?debug (src/debug.js).
@@ -20,6 +21,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf('--' + name); return i < 0 ? def : (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true); };
 const CHECK = opt('check', false) === true;
+const FLOW = opt('flow', null);
 const LEGACY = opt('legacy', null);
 const URL_ = opt('url', null);
 const BASE = String(opt('base', process.env.GARDEN_BASE || '/')).replace(/\/?$/, '/');
@@ -34,6 +36,7 @@ const VIEWS = {
   overview: { pos: [6, 34, 48], look: [-12, 0, 14] },
   'autumn-tunnel': { pos: [0, 1.7, 35.5], look: [0, 1.5, 17], season: 'autumn' },
   'autumn-swings': { pos: [-13.5, 1.7, 15.5], look: [-21, 1.5, 24.5], season: 'autumn' },
+  'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
 };
 const views = String(opt('views', Object.keys(VIEWS).join(','))).split(',');
 const out = String(opt('out', join(root, 'dev/shots', LEGACY ? 'before' : 'after')));
@@ -91,7 +94,8 @@ async function main() {
     await page.waitForFunction(() => window.__garden && document.querySelector('#loading')?.classList.contains('done'), { timeout: 120000, polling: 500 });
     await page.evaluate(() => window.__garden.setSetting('light', 'day'));
 
-    if (CHECK) await smoke(page);
+    if (FLOW === 'swing') { await swingFlow(page, 'desktop'); await swingFlowPhone(browser, url, errors); }
+    else if (CHECK) await smoke(page);
     else await shoot(page);
   } catch (e) {
     errors.unshift('harness: ' + (e.message || e));
@@ -106,6 +110,15 @@ async function shoot(page) {
   await mkdir(dirname(out + '-x.png'), { recursive: true });
   for (const name of views) {
     const v = VIEWS[name]; if (!v) throw new Error('Unknown view: ' + name);
+    if (v.sit) {
+      await page.click('#enter-sample');
+      await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+      await page.evaluate(() => window.__garden.sit(0));
+      await page.waitForFunction(() => window.__garden.state.mode === 'swing', { timeout: 60000, polling: 200 });
+      await page.keyboard.down('KeyW'); await sleep(1800); await page.keyboard.up('KeyW');
+      if (await page.$('#sw-read')) { await page.keyboard.press('KeyR'); }
+      await sleep(2800); await page.screenshot({ path: `${out}-${name}.png` }); console.log('saved', `${out}-${name}.png`); continue;
+    }
     if (!v.intro) await page.evaluate(v => {
       const g = window.__garden;
       if (!document.querySelector('#hide-ui')) { const s = document.createElement('style'); s.id = 'hide-ui'; s.textContent = '#intro,#loading,#hud,.toast,#toast{display:none!important}'; document.head.append(s); }
@@ -134,6 +147,14 @@ async function smoke(page) {
     await sleep(3000);
     await page.keyboard.press('Escape'); await sleep(1500);
   });
+  await step('sit on a swing, read two poems, stand up', async () => {
+    await page.evaluate(() => window.__garden.sit(0));
+    await page.waitForFunction(() => window.__garden.state.mode === 'swing', { timeout: 120000, polling: 300 });
+    await page.keyboard.press('KeyR'); await sleep(600);
+    const t0 = await page.$eval('#sr-title', e => e.textContent); await page.keyboard.press('ArrowLeft'); await sleep(300);
+    if (t0 === await page.$eval('#sr-title', e => e.textContent)) throw new Error('the swing reader did not turn the page');
+    await page.keyboard.press('KeyE'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 120000, polling: 300 });
+  });
   await step('switch to autumn and rain', async () => {
     await page.evaluate(() => { const g = window.__garden; g.setSetting('season', 'autumn'); g.setSetting('weather', 'rain'); });
     await sleep(3000);
@@ -149,3 +170,73 @@ async function smoke(page) {
 }
 
 main().catch(e => { console.error(e.message || e); process.exit(1); });
+
+// ---- reading while swinging ----
+const step = async (label, fn) => { process.stdout.write('  ' + label + '… '); const r = await fn(); console.log(r === undefined ? 'ok' : r); };
+const swingState = page => page.evaluate(() => { const g = window.__garden, sw = g.state.swing; return { mode: g.state.mode, theta: sw ? sw.theta : 0, open: document.querySelector('#swreader').classList.contains('open'), title: document.querySelector('#sr-title').textContent }; });
+async function amplitude(page, ms) { let a = 0; const end = Date.now() + ms; while (Date.now() < end) { a = Math.max(a, Math.abs((await swingState(page)).theta)); await sleep(100); } return a; }
+async function enterAndSit(page, tapOrClick) {
+  await tapOrClick('#enter-sample');
+  await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+  await page.evaluate(() => window.__garden.sit(0));
+  await page.waitForFunction(() => window.__garden.state.mode === 'swing', { timeout: 60000, polling: 200 });
+}
+async function swingFlow(page, label) {
+  console.log(label + ':');
+  await step('enter and sit on a swing', () => enterAndSit(page, sel => page.click(sel)));
+  await step('hold W to swing', async () => { await page.keyboard.down('KeyW'); const a = await amplitude(page, 3000); await page.keyboard.up('KeyW'); if (a < 0.25) throw new Error('swing amplitude only ' + a.toFixed(2)); return 'amplitude ' + a.toFixed(2) + ' rad'; });
+  await step('press R to open the reader', async () => { await page.keyboard.press('KeyR'); await sleep(900); if (!(await swingState(page)).open) throw new Error('reader did not open'); });
+  await step('keep swinging with the reader open', async () => { await page.keyboard.down('Space'); const a = await amplitude(page, 2500); await page.keyboard.up('Space'); if (a < 0.3) throw new Error('amplitude ' + a.toFixed(2)); return 'amplitude ' + a.toFixed(2) + ' rad'; });
+  await step('flip through five poems while swinging', async () => {
+    const seen = new Set([(await swingState(page)).title]);
+    await page.keyboard.down('KeyW');
+    for (let i = 0; i < 2; i++) { await page.keyboard.press('ArrowLeft'); await sleep(250); seen.add((await swingState(page)).title); }
+    for (let i = 0; i < 2; i++) { await page.click('#sr-prev'); await sleep(250); seen.add((await swingState(page)).title); }
+    const st = await swingState(page); await page.keyboard.up('KeyW');
+    if (seen.size < 5) throw new Error('saw only ' + seen.size + ' poems'); if (st.mode !== 'swing') throw new Error('left the swing');
+    return seen.size + ' poems, still swinging';
+  });
+  await step('Space after clicking a button pumps, and does not press the button', async () => {
+    await page.click('#sr-prev'); await sleep(200); const before = (await swingState(page)).title;
+    await page.keyboard.down('Space'); await sleep(1200); await page.keyboard.up('Space'); await sleep(200);
+    const after = await swingState(page); if (after.title !== before) throw new Error('Space pressed the focused button');
+    const focused = await page.evaluate(() => document.activeElement && document.activeElement.id); return 'focus on: ' + (focused || 'nothing');
+  });
+  await step('order: near me', async () => { await page.click('[data-o="near"]'); await sleep(300); return (await page.$eval('#sr-prev', b => b.textContent)) + ' / ' + (await page.$eval('#sr-next', b => b.textContent)); });
+  await step('swing by itself with no keys held', async () => { await page.click('#sr-auto'); await sleep(4000); const a = await amplitude(page, 5000); if (a < 0.12) throw new Error('auto swing amplitude ' + a.toFixed(2)); return 'amplitude ' + a.toFixed(2) + ' rad'; });
+  await page.screenshot({ path: join(root, 'dev/shots/swing-reader-desktop.png') });
+  await step('press E to stand up; the reader closes', async () => {
+    await page.keyboard.press('KeyE'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 30000, polling: 200 });
+    await sleep(1200); if ((await swingState(page)).open) throw new Error('reader still open');
+  });
+}
+async function swingFlowPhone(browser, url, errors) {
+  console.log('phone:');
+  const ctx = await browser.createBrowserContext(), page = await ctx.newPage(); // fresh storage: no garden yet
+  page.on('pageerror', e => errors.push('page error (phone): ' + e.message));
+  await page.emulate({ viewport: { width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true }, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' });
+  await page.evaluateOnNewDocument(() => { let s = 7; Math.random = () => { s = s * 16807 % 2147483647; return (s - 1) / 2147483646; }; });
+  await page.goto(url, { waitUntil: 'load', timeout: 120000 });
+  await page.waitForFunction(() => window.__garden && document.querySelector('#loading')?.classList.contains('done'), { timeout: 120000, polling: 500 });
+  await page.evaluate(() => window.__garden.setSetting('light', 'day'));
+  await step('enter and sit on a swing', () => enterAndSit(page, sel => page.tap(sel)));
+  await step('tap Read: a bottom sheet opens', async () => { await page.tap('#sw-read'); await sleep(900); const st = await swingState(page); if (!st.open) throw new Error('not open'); const h = await page.$eval('#swreader', e => Math.round(e.getBoundingClientRect().top)); return 'sheet starts at y=' + h + ' of 844'; });
+  await step('Swing, Read and Stand up stay reachable above the sheet', async () => {
+    const r = await page.evaluate(() => ['#sw-pump', '#sw-read', '#sw-off'].map(s => { const b = document.querySelector(s).getBoundingClientRect(), top = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return s + (top === document.querySelector(s) ? ' ok' : ' covered') + ' (' + Math.round(b.height) + 'px)'; }));
+    if (r.some(x => x.includes('covered'))) throw new Error(r.join(', ')); return r.join(', ');
+  });
+  await step('hold Swing while reading', async () => {
+    const b = await page.$eval('#sw-pump', e => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+    await page.touchscreen.touchStart(b.x, b.y); const a = await amplitude(page, 3000); await page.touchscreen.touchEnd();
+    if (a < 0.25) throw new Error('amplitude ' + a.toFixed(2)); return 'amplitude ' + a.toFixed(2) + ' rad';
+  });
+  await step('swing by itself from still, no touch', async () => {
+    await page.evaluate(() => { const sw = window.__garden.state.swing; sw.theta = 0; sw.omega = 0; });
+    await page.tap('#sr-auto'); await sleep(9000); const a = await amplitude(page, 5000);
+    if (a < 0.3 || a > 0.6) throw new Error('amplitude ' + a.toFixed(2) + ' rad, wanted a gentle 0.3–0.6'); return 'settles at ' + a.toFixed(2) + ' rad';
+  });
+  await step('flip through five poems', async () => { const seen = new Set([(await swingState(page)).title]); for (let i = 0; i < 4; i++) { await page.tap('#sr-prev'); await sleep(300); seen.add((await swingState(page)).title); } if (seen.size < 5) throw new Error('saw ' + seen.size); return seen.size + ' poems'; });
+  await sleep(2500); // let the lines finish fading in
+  await page.screenshot({ path: join(root, 'dev/shots/swing-reader-phone.png') });
+  await step('tap Stand up; the reader closes', async () => { await page.tap('#sw-off'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 30000, polling: 200 }); await sleep(1200); if ((await swingState(page)).open) throw new Error('reader still open'); });
+}

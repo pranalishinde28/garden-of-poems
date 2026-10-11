@@ -19,16 +19,24 @@ provide({
 
 /* ================= input ================= */
 export const keys = new Set();
-const isTyping = e => /INPUT|TEXTAREA/.test(e.target.tagName);
+// only text fields keep keys for themselves; buttons and toggles never take W, Space or the arrows
+const isTyping = e => !!(e.target.closest && e.target.closest('textarea, select, [contenteditable="true"], input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=range]):not([type=file])'));
 addEventListener('keydown', e => {
   if (isTyping(e)) { if (e.key === 'Escape') late.closeEditor(); return; }
-  if (state.mode === 'swing') { if (e.code === 'KeyE' || e.code === 'Escape') { late.leaveSwing(); return; } if (e.code === 'Space') e.preventDefault(); }
+  if (state.mode === 'swing') {
+    if (e.code === 'Escape' && late.swingReaderOpen()) { late.closeSwingReader(); return; }
+    if (e.code === 'KeyE' || e.code === 'Escape') { late.leaveSwing(); return; }
+    if (e.code === 'KeyR' && !e.repeat) { late.toggleSwingReader(); return; }
+    if (late.swingReaderOpen() && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) { e.preventDefault(); late.stepSwingReader(e.code === 'ArrowLeft' ? -1 : 1); return; }
+    if (e.code === 'Space') e.preventDefault();
+  }
   if (e.code === 'Escape') { if (state.mode === 'focus') late.closeReader(); else if (state.mode === 'writing') late.closeEditor(); late.closePops(); return; }
   if (state.mode === 'focus' && !state.reflection) { if (e.code === 'ArrowLeft') { late.stepPoem(-1); return; } if (e.code === 'ArrowRight') { late.stepPoem(1); return; } }
   if (e.code === 'KeyE' && state.mode === 'walk' && late.cueTarget) { e.preventDefault(); interact(late.cueTarget); return; }
   if (/^(Key[WASD]|Arrow|Shift|Space)/.test(e.code)) { keys.add(e.code); if ((e.code.startsWith('Arrow') || e.code === 'Space') && (state.mode === 'walk' || state.mode === 'swing')) e.preventDefault(); }
 });
-addEventListener('keyup', e => keys.delete(e.code));
+// a focused button would otherwise 'click' on Space keyup while it pumps the swing
+addEventListener('keyup', e => { keys.delete(e.code); if (state.mode === 'swing' && e.code === 'Space' && !isTyping(e)) e.preventDefault(); });
 addEventListener('blur', () => keys.clear());
 
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();

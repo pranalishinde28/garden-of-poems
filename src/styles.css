@@ -226,3 +226,43 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   #r-body .ln{animation-duration:.01s;animation-delay:0s}
   .panel,#intro,#toast{transition-duration:.2s}
 }
+
+/* ---------- reading while swinging ---------- */
+#swreader{left:4vw;top:50%;width:min(390px,34vw);max-height:74vh;transform:translate(-14px,-50%);border-radius:3px;display:flex;flex-direction:column}
+#swreader.open{transform:translate(0,-50%)}
+#swreader .sr-head{display:flex;align-items:center;justify-content:space-between;padding:.9rem .8rem 0 1.8rem;font-style:italic;color:var(--accent);font-size:1.02rem}
+#sr-close{width:36px;height:36px;border-radius:50%;font-size:1.6rem;line-height:1;color:var(--ink-soft)}
+#sr-close:hover{background:var(--line);color:var(--ink)}
+#swreader .scroll{overflow:auto;padding:.6rem 1.8rem 1rem;user-select:text;-webkit-user-select:text;touch-action:pan-y}
+#swreader h2{margin:0 0 1rem;font-weight:500;font-style:italic;font-size:1.85rem;line-height:1.1}
+#sr-body{font-size:1.2rem;line-height:1.66}
+#sr-body .ln{white-space:pre-wrap;opacity:0;animation:ln 1s ease forwards;animation-delay:calc(var(--i) * 70ms + 120ms)}
+#sr-body .gap{height:.8em}
+#swreader .meta{margin-top:1.2rem;font-size:1rem;color:var(--ink-soft)}
+#swreader .meta .d{font-style:italic;color:var(--ink)}
+#swreader .sr-bar{border-top:1px solid var(--line);padding:.55rem 1rem .8rem 1.4rem;display:flex;flex-direction:column;gap:.45rem}
+.sr-nav{display:flex;align-items:center;gap:.4rem}
+.sr-nav button{padding:.35rem .7rem;border-radius:8px;font-size:1.08rem}
+.sr-nav button:hover:not(:disabled){background:var(--line)}
+.sr-nav button:disabled{opacity:.3;cursor:default}
+#sr-pos{flex:1;text-align:center;font-style:italic;color:var(--ink-soft);font-size:.98rem}
+.sr-opts{display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;font-size:.98rem}
+.sr-opts .seg button{font-size:.98rem;padding:.2rem .7rem .26rem}
+#sr-auto{padding:.2rem .7rem .26rem;border:1px solid var(--line);border-radius:999px;font-style:italic}
+#sr-auto[aria-pressed="true"]{background:var(--ink);color:var(--paper-strong);border-color:transparent}
+#swingui #sw-read[aria-pressed="true"]{background:var(--line)}
+@media (max-width:760px),(pointer:coarse) and (max-height:560px){
+  #swreader{left:0;right:0;top:auto;bottom:0;width:auto;height:44vh;max-height:none;border-radius:16px 16px 0 0;transform:translateY(20px);padding-bottom:env(safe-area-inset-bottom,0px)}
+  #swreader.open{transform:none}
+  #swreader h2{font-size:1.5rem;margin-bottom:.7rem}
+  #sr-body{font-size:1.1rem}
+  #swreader .scroll{flex:1;padding:.4rem 1.3rem .8rem}
+  #swreader .sr-head{padding:.6rem .6rem 0 1.3rem}
+  body.sr-open #swingui{bottom:calc(44vh + env(safe-area-inset-bottom,0px) + 12px)}
+  .sr-nav button,.sr-opts button,#sr-close{min-height:44px}
+}
+@media (prefers-reduced-motion:reduce){#sr-body .ln{animation-duration:.01s;animation-delay:0s}}
+#swingui{transition:opacity .5s,transform .5s,bottom .6s ease}
+@media (pointer:coarse){#swingui button{min-height:44px;padding-top:.5rem;padding-bottom:.55rem}}
+/* the walking joystick has nothing to do on a swing */
+body.on-swing #joy{opacity:0;pointer-events:none}
