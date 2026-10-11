@@ -21,9 +21,10 @@ import { updateFx, updatePlants } from './updates.js';
 import { renderReflection } from '../water/reflection.js';
 import { renderPost } from '../world/post.js';
 import { updateFigure } from '../player/figure.js';
+import { noteFrame, quality } from '../settings/quality.js';
 import { late } from './late.js';
 
-let last = performance.now(), first = true;
+let last = performance.now(), first = true, reflFrame = 0;
 export function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now; setTime(T + dt);
   windU.uTime.value = T; waterU.uTime.value = T;
@@ -53,8 +54,9 @@ export function frame(now) {
   sky.position.copy(camera.position);
   Music.update(state.rain);
   camera.updateMatrixWorld();
-  renderReflection();
-  if (POST.on) renderPost(); else renderer.render(scene, camera);
+  noteFrame(now);
+  if (quality.reflEvery === 1 || (++reflFrame % quality.reflEvery) === 0) renderReflection();
+  if (POST.on && quality.post) renderPost(); else renderer.render(scene, camera);
   if (first) { first = false; setTimeout(() => $('#loading').classList.add('done'), 200); }
   requestAnimationFrame(frame);
 }

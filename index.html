@@ -10,10 +10,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&display=swap" rel="stylesheet"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M16 4c3 4 3 8 0 12-3-4-3-8 0-12zM16 16c4-2 8-1 11 2-4 2-8 1-11-2zM16 16c-4-2-8-1-11 2 4 2 8 1 11-2zM16 16v12%22 fill=%22%23e8b7c8%22 stroke=%22%235a6b45%22 stroke-width=%221.2%22/%3E%3C/svg%3E">
 </head>
 <body>
-<canvas id="c" tabindex="-1" aria-label="A garden you can walk through. Each plant is a poem."></canvas>
+<main id="world"><canvas id="c" tabindex="-1" aria-label="A garden you can walk through. Each plant is a poem. The map (M) lists every poem."></canvas></main>
 <div id="vignette"></div>
 
-<div id="intro">
+<div id="intro" role="banner">
   <h1>THE GARDEN OF POEMS</h1>
   <p class="sub">Every poem you write leaves something growing here.</p>
   <button class="enter" id="enter">Enter the garden</button>
@@ -27,24 +27,8 @@
   <button class="tip" id="h-write" data-tip="Write at the bench" aria-label="Write a poem at the bench">
     <svg viewBox="0 0 24 24"><path d="M12 2.5v2.2M9 6.2h6l-.6 1.6H9.6zM8.4 7.8h7.2l.9 9.2a1.6 1.6 0 0 1-1.6 1.8H9.1a1.6 1.6 0 0 1-1.6-1.8z"/><path d="M12 11.2c-1.1 1.2-1.3 2.4 0 3.8 1.3-1.4 1.1-2.6 0-3.8z"/><path d="M9 21.3h6"/></svg>
   </button>
-  <button class="tip" id="h-time" data-tip="Walk through time" aria-label="Walk through time" aria-pressed="false">
-    <svg viewBox="0 0 24 24"><path d="M6.5 3h11M6.5 21h11M7.5 3c0 4.5 4.5 6 4.5 9s-4.5 4.5-4.5 9M16.5 3c0 4.5-4.5 6-4.5 9s4.5 4.5 4.5 9"/><path d="M9.8 18.6c.8-1 1.4-1.4 2.2-1.4s1.4.4 2.2 1.4"/></svg>
-  </button>
-  <button class="tip" id="h-theme" data-tip="Autumn" aria-label="Switch to autumn" aria-pressed="false">
-    <svg viewBox="0 0 24 24"><path d="M12 2.8l1.5 3.4 3-1.3-.8 3.4 3.4.5-2.4 2.4 1.9 1.3-3.6.9.4 2.3-3.4-1.5-1.4 1.6-1.4-1.6-3.4 1.5.4-2.3-3.6-.9 1.9-1.3-2.4-2.4 3.4-.5-.8-3.4 3 1.3z"/><path d="M12 15.2V21.5"/></svg>
-  </button>
-  <button class="tip" id="h-night" data-tip="Moonlight" aria-label="Toggle moonlight" aria-pressed="false">
-    <svg viewBox="0 0 24 24" id="i-moon"><path d="M19.5 14.6A8 8 0 0 1 9.4 4.5a8 8 0 1 0 10.1 10.1z"/></svg>
-    <svg viewBox="0 0 24 24" id="i-sun" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>
-  </button>
   <button class="tip" id="h-map" data-tip="Map (M)" aria-label="Open the garden map">
     <svg viewBox="0 0 24 24"><path d="M3.5 6.5l5.5-2 6 2 5.5-2v13l-5.5 2-6-2-5.5 2z"/><path d="M9 4.5v13M15 6.5v13"/></svg>
-  </button>
-  <button class="tip" id="h-view" data-tip="See yourself (V)" aria-label="Switch to third person" aria-pressed="false">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="6.2" r="2.4"/><path d="M12 9v6.2M8.6 11.6l3.4-1.4 3.4 1.4M9.6 20.5l2.4-5.3 2.4 5.3"/></svg>
-  </button>
-  <button class="tip" id="h-home" data-tip="Return to the gate" aria-label="Return to the gate">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 5.5l2.2 6.5L12 18.5 9.8 12z"/><path d="M12 5.5l2.2 6.5H9.8z" fill="currentColor"/></svg>
   </button>
   <button class="tip" id="h-sound" data-tip="Music" aria-label="Toggle music" aria-pressed="true">
     <svg viewBox="0 0 24 24" id="i-snd"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11"/></svg>
@@ -56,23 +40,45 @@
   <button class="tip" id="h-gardens" data-tip="Public gardens" aria-label="Public gardens">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/></svg>
   </button>
+  <button class="tip" id="h-help" data-tip="Keys and help (?)" aria-label="Keys and help" aria-haspopup="dialog">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.9v.5"/><circle cx="12" cy="17" r=".9" fill="currentColor"/></svg>
+  </button>
   <button class="tip" id="h-more" data-tip="More" aria-label="More options" aria-pressed="false">
     <svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r=".9" fill="currentColor"/><circle cx="12" cy="12" r=".9" fill="currentColor"/><circle cx="18.5" cy="12" r=".9" fill="currentColor"/></svg>
   </button>
 </nav>
-<div class="pop" id="time-pop"><div id="timebar" role="radiogroup" aria-label="Show poems from">
+<div class="pop" id="time-pop" role="region" aria-label="Walk through time"><div id="timebar" role="radiogroup" aria-label="Show poems from">
   <button role="radio" data-f="today" aria-checked="false">Today</button>
   <button role="radio" data-f="month" aria-checked="false">This month</button>
   <button role="radio" data-f="year" aria-checked="false">This year</button>
   <button role="radio" data-f="all" aria-checked="true">All poems</button>
 </div></div>
-<div class="pop" id="menu-pop"><div id="menu">
+<div class="pop" id="menu-pop" role="region" aria-label="More"><div id="menu">
+  <p class="mh">In the garden</p>
+  <button class="mrow" id="h-time" data-tip="Walk through time" aria-label="Walk through time" aria-pressed="false">
+    <svg viewBox="0 0 24 24"><path d="M6.5 3h11M6.5 21h11M7.5 3c0 4.5 4.5 6 4.5 9s-4.5 4.5-4.5 9M16.5 3c0 4.5-4.5 6-4.5 9s4.5 4.5 4.5 9"/><path d="M9.8 18.6c.8-1 1.4-1.4 2.2-1.4s1.4.4 2.2 1.4"/></svg><span class="lbl"></span>
+  </button>
+  <button class="mrow" id="h-theme" data-tip="Autumn" aria-label="Switch to autumn" aria-pressed="false">
+    <svg viewBox="0 0 24 24"><path d="M12 2.8l1.5 3.4 3-1.3-.8 3.4 3.4.5-2.4 2.4 1.9 1.3-3.6.9.4 2.3-3.4-1.5-1.4 1.6-1.4-1.6-3.4 1.5.4-2.3-3.6-.9 1.9-1.3-2.4-2.4 3.4-.5-.8-3.4 3 1.3z"/><path d="M12 15.2V21.5"/></svg><span class="lbl"></span>
+  </button>
+  <button class="mrow" id="h-night" data-tip="Moonlight" aria-label="Toggle moonlight" aria-pressed="false">
+    <svg viewBox="0 0 24 24" id="i-moon"><path d="M19.5 14.6A8 8 0 0 1 9.4 4.5a8 8 0 1 0 10.1 10.1z"/></svg>
+    <svg viewBox="0 0 24 24" id="i-sun" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg><span class="lbl"></span>
+  </button>
+  <button class="mrow" id="h-view" data-tip="See yourself (V)" aria-label="Switch to third person" aria-pressed="false">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="6.2" r="2.4"/><path d="M12 9v6.2M8.6 11.6l3.4-1.4 3.4 1.4M9.6 20.5l2.4-5.3 2.4 5.3"/></svg><span class="lbl"></span>
+  </button>
+  <button class="mrow" id="h-home" data-tip="Return to the gate" aria-label="Return to the gate">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 5.5l2.2 6.5L12 18.5 9.8 12z"/><path d="M12 5.5l2.2 6.5H9.8z" fill="currentColor"/></svg><span class="lbl"></span>
+  </button>
+  <button id="m-rain">Let it rain</button>
+  <p class="mh">Music</p>
   <button id="m-own">Play my own music files</button>
   <button id="m-piano" hidden>Switch back to the piano</button>
-  <button id="m-sample">Plant the sample poems</button>
-  <button id="m-rain">Let it rain</button>
+  <p class="mh">This device</p>
+  <button id="m-quality">Quality: Auto</button>
   <button id="m-cine">Cinematic look: on</button>
-  <button id="m-help">How to move</button>
+  <button id="m-sample">Plant the sample poems</button>
   <button id="m-clear" class="danger">Clear the garden</button>
 </div></div>
 
@@ -86,7 +92,7 @@
   </div>
 </section>
 <div id="visitbar" hidden><span>Visiting <em id="visit-name"></em></span><button id="visit-home">Return to my garden</button></div>
-<section id="gardens" class="panel" role="dialog" aria-labelledby="g-title" hidden>
+<section id="gardens" class="panel" tabindex="-1" role="dialog" aria-labelledby="g-title" hidden>
   <button id="g-close" aria-label="Close">×</button>
   <h2 id="g-title">Gardens</h2>
   <div id="g-account"></div>
@@ -103,7 +109,7 @@
     <div id="g-list"></div>
   </div>
 </section>
-<section id="custom" class="panel" role="dialog" aria-labelledby="c-title" hidden>
+<section id="custom" class="panel" tabindex="-1" role="dialog" aria-labelledby="c-title" hidden>
   <button id="c-close" class="x" aria-label="Close">×</button>
   <h2 id="c-title">Customize your garden</h2>
   <p class="c-note" id="c-note"></p>
@@ -146,7 +152,7 @@
   <h3>Music</h3>
   <div class="seg" data-k="music"><button data-v="piano">Soft piano</button><button data-v="own">My own music</button><button data-v="off">Silence</button></div>
 </section>
-<section id="signpanel" class="panel" role="dialog" aria-labelledby="s-name" hidden>
+<section id="signpanel" class="panel" tabindex="-1" role="dialog" aria-labelledby="s-name" hidden>
   <button id="s-close" class="x" aria-label="Close">×</button>
   <h2 id="s-name"></h2>
   <p id="s-by" class="g-m"></p>
@@ -155,9 +161,9 @@
   <button id="s-edit" class="g-link">Edit the sign</button>
 </section>
 <div id="toast" role="status" aria-live="polite"></div>
-<div id="region"><div class="n"></div><div class="s"></div></div>
+<div id="region" role="complementary" aria-label="Where you are"><div class="n"></div><div class="s"></div></div>
 <div id="hint"></div>
-<button id="cue"><span id="cue-t"></span><kbd>E</kbd></button>
+<button id="cue" aria-hidden="true" tabindex="-1"><span id="cue-t"></span><kbd>E</kbd></button>
 <div id="joy" hidden><div id="knob"></div></div>
 
 <section id="reader" class="panel" role="dialog" aria-labelledby="r-title" tabindex="-1" hidden>
@@ -185,7 +191,7 @@
   </div>
 </section>
 
-<section id="editor" class="panel" role="dialog" aria-labelledby="e-ask" hidden>
+<section id="editor" class="panel" tabindex="-1" role="dialog" aria-labelledby="e-ask" hidden>
   <div id="seed-dot"></div>
   <div class="fields">
     <p class="ask" id="e-ask">What are you carrying today?</p>
@@ -193,6 +199,8 @@
     <input type="text" id="e-title" maxlength="90" placeholder="Untitled" autocomplete="off">
     <label class="f" for="e-body">Poem</label>
     <textarea id="e-body" placeholder="Begin anywhere."></textarea>
+    <p class="e-meta"><span id="e-count" aria-live="off"></span><span id="e-draft" hidden>Kept as you left it. <button class="g-link" id="e-fresh">Start over</button></span></p>
+    <p id="e-suggest" hidden></p>
     <label class="f" id="e-mood-l">Mood, if you know it</label>
     <div class="moods" id="e-moods" role="group" aria-labelledby="e-mood-l"></div>
     <label class="f" for="e-theme">Theme, a person or a season (optional)</label>
@@ -214,6 +222,28 @@
   <div id="map-legend" aria-hidden="true"></div>
 </section>
 <button id="minimap-btn" aria-label="Open the map" hidden><canvas id="minimap" width="264" height="264"></canvas></button>
+<section id="helpsheet" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
+  <button class="x" id="help-close" aria-label="Close">×</button>
+  <h2 id="help-title">Finding your way</h2>
+  <div class="help-cols">
+    <div><h3>Moving</h3>
+      <dl class="keys only-fine"><dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows</dt><dd>walk</dd><dt><kbd>Shift</kbd></dt><dd>walk faster</dd><dt>Drag</dt><dd>look around</dd></dl>
+      <dl class="keys only-coarse"><dt>The circle, bottom left</dt><dd>walk</dd><dt>Swipe</dt><dd>look around</dd></dl>
+      <h3>Doing</h3>
+      <dl class="keys"><dt><kbd class="only-fine">E</kbd><span class="only-fine"> or click</span><span class="only-coarse">Tap</span></dt><dd>when something glows: read a poem, sit at the bench, swing</dd><dt>The bench under the wisteria</dt><dd>write a poem</dd><dt>The pond</dt><dd>an older poem rises as a reflection</dd></dl>
+    </div>
+    <div class="only-fine"><h3>Keys</h3>
+      <dl class="keys"><dt><kbd>M</kbd></dt><dd>the map</dd><dt><kbd>V</kbd></dt><dd>see yourself, or look through your eyes</dd><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>earlier or later poem</dd><dt><kbd>R</kbd></dt><dd>read while on a swing</dd><dt><kbd>W</kbd> or <kbd>Space</kbd></dt><dd>swing higher</dd><dt><kbd>Esc</kbd></dt><dd>close, or stand up</dd><dt><kbd>?</kbd></dt><dd>this page</dd></dl>
+    </div>
+  </div>
+  <p class="help-foot"><button class="g-link" id="help-steps">Show the first steps again</button></p>
+</section>
+<section id="steps" role="dialog" aria-labelledby="steps-t" aria-live="polite" hidden>
+  <p class="st-n" id="steps-n"></p><h2 id="steps-t"></h2><p id="steps-b"></p>
+  <div class="st-bar"><button id="steps-skip">Skip</button><button id="steps-next">Next</button></div>
+</section>
+<div id="sr-say" class="sr-only" aria-live="polite"></div>
+<p id="savestate" role="status" aria-live="polite" hidden></p>
 <div id="loading"></div>
 <script type="module" src="/src/main.js"></script>
 </body>

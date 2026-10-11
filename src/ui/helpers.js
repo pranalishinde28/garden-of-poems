@@ -16,7 +16,11 @@ provide({
 
 /* ================= UI helpers ================= */
 let toastTimer = null;
-export function toast(msg, ms = 4200) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms); }
+export function toast(msg, ms = 4200, action) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show'); t.classList.toggle('has-action', !!action);
+  if (action) { const b = document.createElement('button'); b.textContent = action.label; b.onclick = () => { t.classList.remove('show'); clearTimeout(toastTimer); action.run(); }; t.append(' ', b); }
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms);
+}
 let hintTimer = null;
 export function showHint(ms = 9000) {
   const h = $('#hint');
@@ -27,7 +31,11 @@ const cueEl = $('#cue'); let cueTarget = null, cueKey = '';
 export function setCue(t) {
   cueTarget = t;
   const label = !t ? '' : t.kind === 'plant' ? `Read “${t.plant.poem.title}”` : t.kind === 'pond' ? 'Look into the water' : t.kind === 'board' ? 'Read the garden sign' : t.kind === 'swing' ? 'Sit on the swing' : 'Sit and write';
-  if (label !== cueKey) { cueKey = label; if (label) $('#cue-t').textContent = label; cueEl.classList.toggle('show', !!label); }
+  if (label !== cueKey) {
+    cueKey = label; if (label) $('#cue-t').textContent = label; cueEl.classList.toggle('show', !!label);
+    // only a prompt with words is offered to assistive technology
+    cueEl.setAttribute('aria-hidden', label ? 'false' : 'true'); cueEl.tabIndex = label ? 0 : -1; if (label) cueEl.setAttribute('aria-label', label + (isTouch ? '' : ' (E)'));
+  }
 }
 cueEl.addEventListener('click', () => { if (cueTarget && state.mode === 'walk') interact(cueTarget); });
 export let regionKey = '', regionTimer = null;

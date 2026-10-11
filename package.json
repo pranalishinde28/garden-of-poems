@@ -11,7 +11,8 @@
     "shots": "node dev/screenshot.mjs",
     "flow:swing": "node dev/screenshot.mjs --flow swing",
     "flow:avatar": "node dev/screenshot.mjs --flow avatar",
-    "flow:map": "node dev/screenshot.mjs --flow map"
+    "flow:map": "node dev/screenshot.mjs --flow map",
+    "flow:ux": "node dev/screenshot.mjs --flow ux"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.45.4",

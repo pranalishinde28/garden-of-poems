@@ -100,6 +100,8 @@ async function main() {
 
     if (FLOW === 'avatar') await avatarFlow(page);
     else if (FLOW === 'map') await mapFlow(page, browser, url, errors);
+    else if (FLOW === 'ux') await uxFlow(page);
+    else if (FLOW === 'quality') await qualityFlow(page);
     else if (FLOW === 'audit') await auditFlow(page, browser, url, errors);
     else if (FLOW === 'swing') { await swingFlow(page, 'desktop'); await swingFlowPhone(browser, url, errors); }
     else if (CHECK) await smoke(page);
@@ -370,7 +372,7 @@ async function auditFlow(page, browser, url, errors) {
       await click(sel); await sleep(wait); await audit(pg, prefix + name); await pg.keyboard.press('Escape'); await sleep(900);
       await pg.evaluate(() => document.querySelectorAll('.panel.open .x, #c-close, #g-close').forEach(b => b.click())); await sleep(700);
     }
-    await click('#h-more'); await sleep(400); await click('#m-help'); await sleep(900); await audit(pg, prefix + '07-help'); await pg.keyboard.press('Escape'); await sleep(800);
+    await click('#h-help'); await sleep(900); await audit(pg, prefix + '07-help'); await pg.keyboard.press('Escape'); await sleep(800);
     await pg.evaluate(() => { const g = window.__garden; g.openPoem([...g.plants.values()][2]); }); await sleep(3500); await audit(pg, prefix + '08-reader'); await pg.keyboard.press('Escape'); await sleep(1500);
     await click('#h-write'); await pg.waitForFunction(() => window.__garden.state.mode === 'writing', { timeout: 60000, polling: 200 }); await sleep(1500); await audit(pg, prefix + '09-editor'); await pg.keyboard.press('Escape'); await sleep(1500);
     await pg.evaluate(() => window.__garden.setSetting('light', 'night')); await sleep(4500); await audit(pg, prefix + '10-night');
@@ -387,4 +389,68 @@ async function auditFlow(page, browser, url, errors) {
   await ph.evaluate(() => window.__garden.setSetting('light', 'day'));
   console.log('phone:'); await runAll(ph, 'phone-', true);
   await wf(join(dir, 'audit.json'), JSON.stringify(report, null, 1)); console.log('  wrote dev/shots/audit/audit.json');
+}
+
+// ---- what each quality level costs: render time per frame, measured around the frame callback ----
+async function qualityFlow(page) {
+  await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+  await page.evaluate(() => { const p = window.__garden.player; p.pos.set(0, 0, 14); p.yaw = 0; p.pitch = -0.15; });
+  for (const lv of ['high', 'medium', 'low']) {
+    await page.evaluate(lv => window.__garden.chooseQuality(lv), lv); await sleep(2500);
+    const r = await page.evaluate(() => new Promise(res => {
+      // add up every render pass (reflection, scene, post) per frame
+      const R = window.__garden.renderer, orig = R.render.bind(R); let tri = 0, calls = 0, px = 0; R.info.autoReset = false;
+      R.render = (sc, cam) => { R.info.reset(); orig(sc, cam); tri += R.info.render.triangles; calls += R.info.render.calls; const t = R.getRenderTarget(); px += t ? t.width * t.height : R.domElement.width * R.domElement.height; };
+      const N = 60; let n = 0; const f = () => { if (++n < N) requestAnimationFrame(f); else { R.render = orig; R.info.autoReset = true; res({ trianglesPerFrame: Math.round(tri / N), drawCallsPerFrame: Math.round(calls / N), megapixelsDrawnPerFrame: +(px / N / 1e6).toFixed(2), pixelRatio: R.getPixelRatio() }); } };
+      requestAnimationFrame(f); }));
+    console.log('  ' + lv.padEnd(7) + JSON.stringify(r));
+  }
+  await page.evaluate(() => window.__garden.chooseQuality('auto'));
+}
+
+// ---- Phase 5 behaviour: first steps, help, panels, drafts, undo ----
+async function uxFlow(page) {
+  const shot = n => page.screenshot({ path: join(root, `dev/shots/ux-${n}.png`) });
+  await step('first steps appear for a first visit, and can be skipped', async () => {
+    await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+    await page.waitForSelector('#steps.show', { timeout: 8000 }); await shot('steps');
+    const t = []; for (let i = 0; i < 3; i++) { t.push(await page.$eval('#steps-t', e => e.textContent)); await page.click('#steps-next'); await sleep(250); }
+    await sleep(700); if (!(await page.$eval('#steps', e => e.hidden))) throw new Error('steps still showing'); return t.join(' → ');
+  });
+  await step('? opens the help sheet; Esc closes it and focus returns', async () => {
+    await page.focus('#h-help'); await page.keyboard.press('Enter'); await page.waitForSelector('#helpsheet.open', { timeout: 5000 }); await sleep(900); await shot('help');
+    const inside = await page.evaluate(() => document.querySelector('#helpsheet').contains(document.activeElement));
+    await page.keyboard.press('Escape'); await sleep(1000);
+    const back = await page.evaluate(() => document.activeElement && document.activeElement.id);
+    if (!inside) throw new Error('focus did not move into the help sheet'); if (back !== 'h-help') throw new Error('focus went to ' + back); return 'focus in, then back on #h-help';
+  });
+  await step('Esc closes Customize; Tab stays inside it', async () => {
+    await page.click('#h-custom'); await page.waitForSelector('#custom.open'); await sleep(600);
+    for (let i = 0; i < 60; i++) await page.keyboard.press('Tab');
+    const inside = await page.evaluate(() => document.querySelector('#custom').contains(document.activeElement));
+    await page.keyboard.press('Escape'); await sleep(1000); const open = await page.$('#custom.open');
+    if (!inside) throw new Error('Tab left the panel'); if (open) throw new Error('Esc did not close Customize');
+  });
+  await step('the More menu: labelled rows', async () => { await page.click('#h-more'); await sleep(500); await shot('menu'); const r = await page.$$eval('#menu button', b => b.filter(x => x.offsetParent).map(x => x.textContent.trim().replace(/\s+/g, ' '))); await page.keyboard.press('Escape'); return r.join(' | '); });
+  await step('a draft survives closing the bench and reloading', async () => {
+    await page.click('#h-write'); await page.waitForSelector('#editor.open', { timeout: 60000 }); await sleep(600);
+    await page.type('#e-title', 'Unfinished'); await page.type('#e-body', 'The kettle sang\nbefore the house woke\nand I was alone with my grief and the tears of the morning\nmissing you, missing everything gone');
+    await sleep(900); const count = await page.$eval('#e-count', e => e.textContent), sug = await page.$eval('#e-suggest', e => e.hidden ? '(none)' : e.textContent); await shot('editor');
+    await page.reload({ waitUntil: 'load' }); await page.waitForFunction(() => window.__garden && document.querySelector('#loading')?.classList.contains('done'), { timeout: 120000, polling: 500 });
+    await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 500 });
+    await page.click('#h-write'); await page.waitForSelector('#editor.open', { timeout: 60000 }); await sleep(600);
+    const back = await page.$eval('#e-body', e => e.value), note = await page.$eval('#e-draft', e => !e.hidden);
+    await page.click('#e-cancel'); await sleep(800);
+    if (!back.startsWith('The kettle sang') || !note) throw new Error('draft not restored'); return `${count}; suggestion: ${sug}`;
+  });
+  await step('removing a poem offers Undo, and Undo brings it back', async () => {
+    const before = await page.evaluate(() => window.__garden.poems.length);
+    await page.evaluate(() => { const g = window.__garden; g.openPoem([...g.plants.values()].find(p => !p.dying)); }); await sleep(2500);
+    const title = await page.$eval('#r-title', e => e.textContent);
+    await page.click('#r-del'); await sleep(300); await page.click('#r-yes'); await sleep(900); await shot('undo');
+    const mid = await page.evaluate(() => window.__garden.poems.length);
+    await page.click('#toast button'); await sleep(1500);
+    const after = await page.evaluate(() => window.__garden.poems.length), has = await page.evaluate(t => window.__garden.poems.some(p => p.title === t), title);
+    if (mid !== before - 1 || after !== before || !has) throw new Error(`${before} → ${mid} → ${after}`); return `“${title}”: ${before} → ${mid} → ${after}`;
+  });
 }
