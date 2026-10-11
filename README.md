@@ -2,7 +2,7 @@
 
 A walkable 3D garden where every poem grows into a plant. Each person signs in to their own garden, keeps it private or opens it to visitors, and can wander other people's public gardens and leave them kind notes.
 
-The app is static files: `index.html`, `config.js`, and a Supabase database for accounts and storage. Without Supabase keys it still runs, saving one garden on the device.
+The app is a static site built with Vite and Three.js, with a Supabase database for accounts and storage. Without Supabase keys it still runs, saving one garden on the device.
 
 ## 1. Create the database (about 5 minutes)
 
@@ -15,20 +15,37 @@ Already set up the database with an earlier version? Run `supabase/upgrade-1-cus
 
 ## 2. Connect the app
 
-Open **Project Settings → API** and copy the **Project URL** and the **anon public** key into `config.js`:
+You need Node.js 20 or newer.
 
-```js
-window.GARDEN_CONFIG = {
-  supabaseUrl: 'https://abcdefgh.supabase.co',
-  supabaseAnonKey: 'eyJhbGciOi...'
-};
+```sh
+npm install
+cp .env.example .env
 ```
 
-The anon key is meant to be public. The row-level security rules in the schema decide who can read or change what.
+Open **Project Settings → API** in Supabase and put the **Project URL** and the **publishable** (or **anon public**) key into `.env`:
 
-## 3. Host it
+```sh
+VITE_SUPABASE_URL=https://abcdefgh.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_...
+```
 
-Any static host works: drag the folder onto Netlify Drop, run `npx vercel` inside it, or push it to GitHub Pages. To try it locally, run `npx serve .` and open the address it prints (opening the file directly will not let the sign-in emails link back).
+That key is meant to be public; the row-level security rules in the schema decide who can read or change what. Never put the secret (service_role) key in `.env`. Without these values the app still runs, keeping one garden on the device.
+
+## 3. Run, test and build
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | the garden at http://localhost:8080, reloading as you edit |
+| `npm run build` | a static site in `dist/` |
+| `npm run preview` | serves `dist/` at http://localhost:8080 |
+| `npm run check` | builds, then walks the garden in headless Chrome and fails on any page error |
+| `npm run shots` | screenshots of fixed viewpoints into `dev/shots/` (after `npm run build`) |
+
+Compare two sets of screenshots with `node dev/compare.mjs dev/shots intro pond`, which expects `before-*.png` and `after-*.png` pairs.
+
+## 4. Host it
+
+Any static host works: build, then publish `dist/` (Netlify, Vercel, GitHub Pages). If the site lives under a sub-path, build with `GARDEN_BASE=/that-path/ npm run build`. Then add the site's address under **Authentication → URL Configuration** in Supabase (Site URL and Redirect URLs), so confirmation and password-reset emails link back to it.
 
 ## Customizing a garden
 
