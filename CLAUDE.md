@@ -22,25 +22,39 @@ The owner's quality bar, in their words over the conversation: "everything shoul
 
 ### Files
 ```
-index.html                  the whole app: HTML, CSS and one large <script> (≈3,750 lines)
-config.js                   Supabase URL + publishable key (filled in, live project)
-README.md                   setup and hosting guide for humans
-supabase/schema.sql         full database schema with row-level security
-supabase/upgrade-1-customize.sql   adds gardens.settings to older databases
+index.html            page markup only; loads src/main.js
+src/main.js           imports every module in run order, then starts the frame loop
+src/styles.css        all CSS
+src/core/             util, shared state (state, the clock T, tweens), late.js, loop.js (frame), updates
+src/world/            terrain, renderer, textures, sky, lights, wind, geometry, ground, paths, grass,
+                      decor, arbors, tulips, swings, lamps, fuji, particles, atmosphere, post
+src/plants/           mapping (mood → plant), autumnLeaves, sakura, flowers, types, registry, flowerGardens, samples
+src/water/            water.js (shader), reflection.js
+src/animals/          animals.js (and SFX)
+src/audio/            music.js (piano, own files, rain sound)
+src/player/           camera.js (player, tweens, collision), walk.js
+src/ui/               input, helpers, filter, reading, writing, swinging, themes, hud, intro
+src/cloud/            cloud.js (Supabase client, sync), gardensPanel, visiting, notes
+src/settings/         storage.js (poems, SETTINGS, THEME, localStorage/IDB), customize.js
+src/debug.js          window.__garden for the test harness, only with ?debug in the URL
+dev/screenshot.mjs    headless Chrome (Puppeteer): --check smoke test, or screenshots of fixed views
+dev/compare.mjs       mean pixel difference between before-*/after-* screenshot pairs
+.env.example          VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (copy to .env, which is git-ignored)
+supabase/schema.sql   full database schema with row-level security
 ```
-There is no build step. Three.js r128 and supabase-js 2.45.4 load as UMD scripts from CDNs (cdnjs, jsdelivr). Everything else is inline. Open via a local static server, not `file://`, or Supabase auth redirects break.
-
-The `dev/` test helpers from the claude.ai conversation (`dev/mock-supabase.js`, `dev/screenshot.py`) were not carried over into this folder. Recreate them if headless screenshot tests are needed (see trap 7).
+Built with Vite. Three.js stays at **r128** (pinned `three@0.128.0`) and supabase-js at 2.45.4, both from npm. The single-file app this was split from is the baseline commit on `main`.
 
 ### Running locally
-- Serve on **http://localhost:8080**; that is the Site URL and Redirect URL configured in Supabase.
-- Use a server that sends `Cache-Control: no-store` (or hard-reload with Cmd+Shift+R). Python's plain `http.server` lets Chrome cache `config.js`, and a stale copy makes the app say "Accounts are not connected yet" even though keys are set. A minimal no-cache server is a `SimpleHTTPRequestHandler` subclass whose `end_headers` adds that header.
+- `npm install`, `cp .env.example .env` and fill it in, then `npm run dev` (http://localhost:8080, the Site URL configured in Supabase).
+- `npm run check` builds and runs the smoke test: it enters with the sample poems, opens one, switches to autumn and rain, checks the canvas drew, and fails on any page error. It also prints whether accounts are connected.
+- Screenshots: `npm run build && npm run shots -- --out dev/shots/after`; for the old single file, `node dev/screenshot.mjs --legacy old.html --out dev/shots/before`. Then `node dev/compare.mjs dev/shots <views…>`. Run-to-run noise (wind, clouds, animals) is a mean difference of about 3–12/255 depending on the view, so compare against a noise run before calling something changed.
+- `node dev/screenshot.mjs --check --url http://localhost:8080/` tests a running dev server.
 - If a local Python lacks CA certificates, run HTTPS scripts with `SSL_CERT_FILE=/etc/ssl/cert.pem`.
 
 ### Supabase (live)
 - A live project exists. Its URL and publishable key are in `.env` locally and in the deploy secrets; its ID and settings are in `CLAUDE.local.md`.
 - Check **Authentication → Sign In / Providers** and **URL Configuration** before launch; the current values are in `CLAUDE.local.md`.
-- The client uses the new-style **publishable key** (`sb_publishable_...`) in `config.js`; it works with supabase-js 2.45.4. Never put the secret / service_role key in the client.
+- The client uses the new-style **publishable key** (`sb_publishable_...`) from `.env`; it works with supabase-js 2.45.4. Never put the secret / service_role key in the client.
 - When the app is hosted somewhere, update Site URL and Redirect URLs in Authentication → URL Configuration.
 
 ### Stack and data
@@ -59,8 +73,12 @@ The `dev/` test helpers from the claude.ai conversation (`dev/mock-supabase.js`,
 - **Guests:** with no account the garden lives in `localStorage` (`garden-of-poems:v1`). The first sign-in on a device imports those poems into the account.
 - **Sync:** `savePoems()` writes localStorage then calls `queueSync()`. That diffs against `Cloud.last` and upserts or deletes only the changed rows.
 
-### Layout of the main script (top to bottom)
-Order matters because of `const` temporal-dead-zone rules (see traps).
+### Module order
+The modules are the old script's sections, and `src/main.js` imports them in the same top-to-bottom order, so they run exactly as before. The numbered list below is that order. Two rules keep it working:
+- **Imports only point backwards.** A module imports names from modules that run before it. If it needs something from a later module (usually a function called from an event handler), it uses `late.name` from `core/late.js`; the later module registers a getter with `provide({...})` at its top. A forward `import` would make the later module run first and break load order.
+- **Shared variables change through setters.** `poems`, `SETTINGS`, `THEME` (settings/storage.js), `T`, `tween`, `seed`, `introA` (core/state.js), `shadowDirty`, `shadowClock`, `trailClock` are `let`s owned by one module. Other modules read them through live imports and change them with `setPoems`, `replaceSettings`, `setThemeName`, `setTime`, `setTween`, `setShadowDirty` and so on; an imported binding can't be assigned.
+
+### Layout of the code (run order)
 
 1. **Utilities and terrain.**
    - Utilities: `rng(seed)`, `hashStr`, `smooth`.
@@ -98,7 +116,7 @@ Order matters because of `const` temporal-dead-zone rules (see traps).
     - `SFX`: chirp, quack, thump, peacock.
     - State machine `state.mode`: intro, walk, focus (reading), writing, cinematic, swing. Camera tweens, input (WASD, drag-look, touch joystick), `pick()` raycasting.
 13. **Reading and writing.** The reader panel, the pond's "reflections" of older poems, the editor, and the seed flight (`startSeed` / `updateSeed`). Swings: sit, pump with W or Space, stand up. Themes: `setTheme`.
-14. **Accounts:** `Cloud` (Supabase) handles auth, sync, the Gardens panel, visiting other gardens, and notes. `cloudInit()` skips Supabase entirely if the config is missing or still contains `YOUR_`.
+14. **Accounts:** `Cloud` (Supabase) handles auth, sync, the Gardens panel, visiting other gardens, and notes. `cloudInit()` skips Supabase entirely if `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are missing or still contain `YOUR_`.
 15. **Customize:** settings UI, applying settings, autumn veils, and the **sign board** at the gate with name, byline, welcome line and links.
 16. **HUD wiring and startup.** Samples (12 original demo poems), init, intro screen, the frame loop and post-processing (`renderPost`: bloom, film grade, vignette, grain), then `cloudInit()`.
 
@@ -113,26 +131,26 @@ Order matters because of `const` temporal-dead-zone rules (see traps).
 - **Moving off claude.ai:** a claude.ai artifact can't reach outside servers, which is why the app moved to Supabase plus static hosting.
 - **Weather:** `SETTINGS.weather` is `clear`, `showers` or `rain`, saved with the garden so visitors see it. `state.rain` (0–1) eases toward `rainWanted()`; `atmosphere()` uses it to grey the sky and fog (`skyU.uRain`, `RAIN_D`/`RAIN_N`), dim the sun, ripple the water (`waterU.uRain`), and fade pollen and fireflies. Passing showers rain for about 2½ minutes in every 7, starting when chosen. The ⋯ menu has a quick "Let it rain" toggle.
 - **Positions are deterministic:** they come from a hash of the poem id and are stored with the poem. A poem always lives in the same place; the garden is a landscape, not a random scatter.
-- **Single file for now:** the original brief asked for Next.js + TypeScript + React Three Fiber + Zustand. The app was built as one static `index.html` instead; migrating is planned only once the design settles (see open threads).
+- **Vite and plain ES modules, not Next.js:** the original brief asked for Next.js + TypeScript + React Three Fiber + Zustand. The app was built as one static `index.html`, then split mechanically into ES modules with Vite (October 2026), keeping its run order and behaviour exactly; screenshots before and after matched within run-to-run noise.
 
 ## Traps already found (read before editing)
 
 1. **InstancedMesh + shared material + instanceColor:** if one InstancedMesh using a material calls `setColorAt` and another using the same material doesn't, three r128 compiles the program expecting `instanceColor`. The second mesh then crashes the renderer (`Cannot read properties of null (reading 'isInterleavedBufferAttribute')`). Always call `setColorAt` on every instanced mesh that shares a material such as `VC`.
-2. **TDZ ordering:** the script is one scope with many `const`s. Anything run at load (IIFEs, init calls) must only touch names declared above it. A previous bug: `POST` was used by menu wiring before its declaration. `function` declarations are hoisted; `const` arrow functions are not.
+2. **Load order (was TDZ ordering):** anything run at load (IIFEs, init calls) may only use names from modules that already ran. In the single file, `function` declarations were hoisted, so a load-time call to a function defined further down worked; across modules it doesn't. `late.fn` is `undefined` until the later module runs, which shows up as `U.fn is not a function` in the built bundle. Fix by moving the helper into an earlier module (this happened with `pointsMat`, now in renderer.js, and the autumn leaf palettes, now loaded before sakura.js).
 3. **`windify` program cache:** `customProgramCacheKey` must vary with amplitude and mode, or every material shares one shader.
 4. **Shadows are manual:** `renderer.shadowMap.autoUpdate = false`. Set `shadowDirty = true` after anything moves or appears.
 5. **Water reflection:** a second render from a mirrored camera, clipped at the water plane. Grass and tulips sit on layer 2 so the reflection skips them, for performance. Anything heavy that doesn't need reflecting should go on layer 2 too.
 6. **Performance is the main risk.** There is a lot here: about 23k grass tufts, thousands of instanced flowers, the reflection pass, shadows and post-processing. Real devices haven't been profiled yet. A quality setting (low, medium, high) is the obvious next step.
-7. **Testing:** headless Chromium uses software WebGL at about 1–2 fps. A screenshot harness has to raise the frame-time cap in a temporary copy so tweens finish. Grab frames with `canvas.toDataURL` inside `requestAnimationFrame`; Playwright's page screenshot can time out while the GPU is busy.
+7. **Testing:** `dev/screenshot.mjs` seeds `Math.random`, forces daylight, and sets the camera directly through `window.__garden`. On macOS headless Chrome uses the GPU (`--use-angle=metal`) and page screenshots work. On Linux CI there is no GPU, so WebGL is software and runs at a few fps; the smoke test asks for reduced motion so the entry tween is short.
 8. **Live Supabase verified at the API level (2026-10-07):** sign-up and the profile and garden triggers, poem upsert and read, private-garden isolation, the public garden listing with its poem count, private poems hidden from visitors, and every note rule all passed against the live project. Sign-up through the page UI and the password-reset email flow have not been checked yet. PostgREST rejects a bulk upsert whose rows have different keys (`PGRST102`); the app's `toRow` always emits every column, so keep it that way.
-9. **Stale `config.js`:** see "Running locally". If the Gardens panel says accounts aren't connected, check the served file and hard-reload before debugging code.
+9. **Supabase keys are baked in at build time.** Vite inlines `VITE_*` values when it builds, so changing `.env` needs a rebuild (or a restart of `npm run dev`). If the Gardens panel says accounts aren't connected, check `.env` and rebuild before debugging code.
 
 ## What the owner wants next (open threads)
 
 They said they want to "edit a lot of things in the garden". Expect many visual and layout tweaks; ask them to describe or screenshot what feels wrong. Likely directions:
 
 - **Realism:** better trees, grass, water and sky. Consider glTF models and PBR textures, or a move to a modern Three.js (r160+), whose physically based lighting and tone mapping are much better than r128's.
-- **Code structure:** split the single file into ES modules with Vite, for example `world/`, `plants/`, `animals/`, `ui/`, `cloud/`, `settings/`. The original brief named Next.js + TypeScript + React Three Fiber + Zustand; a move there is reasonable once the design settles.
+- **Three.js upgrade:** r128 → current, as its own step: colour management (`outputColorSpace`, hex colours treated as sRGB), physically based light units, `WebGLMultisampleRenderTarget` → `samples`, and the shader-chunk names that `windify` and the water shader patch.
 - **Performance:** quality presets, chunked culling, fewer reflection objects, and a mobile path.
 - **Community:** moderation for notes (report or hide), rate limits (a Supabase edge function or a check constraint per author per day), and a nicer public garden directory.
 - **Customization:** more options, such as poem tree species per mood, more flower types, path layouts, placing features by hand, and snow (rain is done).
