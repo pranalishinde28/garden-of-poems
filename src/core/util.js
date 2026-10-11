@@ -4,6 +4,9 @@ export const $ = s => document.querySelector(s);
 export const isTouch = matchMedia('(pointer: coarse)').matches;
 export const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 export const V3 = THREE.Vector3;
+// the site's own address, including the base path it is served from (e.g. /garden-of-poems/ on GitHub Pages);
+// auth emails link back here, so it must match a Redirect URL in Supabase
+export const siteURL = () => new URL(import.meta.env.BASE_URL, location.origin).href;
 
 /* ================= utilities ================= */
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

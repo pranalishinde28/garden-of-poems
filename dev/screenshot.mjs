@@ -73,7 +73,9 @@ async function main() {
   const site = URL_ ? { cleanup: async () => {} } : await siteDir();
   const server = URL_ ? { close() {} } : await serve(site.dir);
   const url = URL_ ? URL_ + (URL_.includes('?') ? '&' : '?') + 'debug' : `http://127.0.0.1:${server.address().port}${BASE}?debug`;
-  const browser = await puppeteer.launch({ headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
+  // macOS: the real GPU through Metal. Linux CI has no GPU, so WebGL runs on SwiftShader (slow but complete).
+  const gpu = process.platform === 'darwin' ? ['--use-angle=metal', '--enable-gpu'] : ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
+  const browser = await puppeteer.launch({ headless: true, protocolTimeout: 600000, args: [...gpu, '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
   const errors = [];
   try {
     const page = await browser.newPage();

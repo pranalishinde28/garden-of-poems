@@ -43,9 +43,26 @@ That key is meant to be public; the row-level security rules in the schema decid
 
 Compare two sets of screenshots with `node dev/compare.mjs dev/shots intro pond`, which expects `before-*.png` and `after-*.png` pairs.
 
-## 4. Host it
+## 4. Deploy to GitHub Pages
 
-Any static host works: build, then publish `dist/` (Netlify, Vercel, GitHub Pages). If the site lives under a sub-path, build with `GARDEN_BASE=/that-path/ npm run build`. Then add the site's address under **Authentication → URL Configuration** in Supabase (Site URL and Redirect URLs), so confirmation and password-reset emails link back to it.
+The workflow in `.github/workflows/deploy.yml` runs on every push to `main`. It installs, runs `npm run check`, builds with your Supabase values, and publishes `dist/` to `https://<user>.github.io/<repo>/`. Pull requests run the check too, without deploying.
+
+One-time setup:
+
+1. **Secrets.** In GitHub, open **Settings → Secrets and variables → Actions → New repository secret** and add:
+   - `VITE_SUPABASE_URL`: your Project URL
+   - `VITE_SUPABASE_ANON_KEY`: your publishable (anon) key
+
+   Or from a terminal: `gh secret set VITE_SUPABASE_URL` and `gh secret set VITE_SUPABASE_ANON_KEY`, pasting each value when asked. These keys end up in the public site anyway; keeping them as secrets just keeps them out of the code.
+2. **Pages.** **Settings → Pages → Build and deployment → Source: GitHub Actions.**
+3. **Supabase.** In **Authentication → URL Configuration**:
+   - **Site URL:** `https://<user>.github.io/<repo>/`
+   - **Redirect URLs:** add `https://<user>.github.io/<repo>/**`, and keep `http://localhost:8080/**` for local work.
+
+   Confirmation and password-reset emails link back to the site's base address, so it must be on that list.
+4. Push to `main`, or run the workflow by hand from the **Actions** tab. The address appears on the workflow run and under **Settings → Pages**.
+
+The base path comes from the repository name (`GARDEN_BASE` in the workflow). Elsewhere, build with `GARDEN_BASE=/that-path/ npm run build`, or leave it unset for a site at the root of its domain, and publish `dist/`.
 
 ## Customizing a garden
 

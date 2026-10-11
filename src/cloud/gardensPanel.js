@@ -1,4 +1,4 @@
-import { $ } from '../core/util.js';
+import { $, siteURL } from '../core/util.js';
 import { toast } from '../ui/helpers.js';
 import { closePanel, openPanel } from '../ui/reading.js';
 import { Cloud, ownPoems, saveGardenSettings, syncNow } from './cloud.js';
@@ -53,7 +53,7 @@ function renderAccount() {
           if (!/^[a-z0-9_]{3,24}$/.test(un)) throw new Error('Usernames are 3 to 24 characters: lowercase letters, numbers and _.');
           const { data: taken } = await Cloud.sb.from('profiles').select('id').eq('username', un).maybeSingle();
           if (taken) throw new Error('That username is taken. Try another.');
-          const { data, error } = await Cloud.sb.auth.signUp({ email: em, password: pw, options: { data: { username: un, display_name: disp.value.trim().slice(0, 60) }, emailRedirectTo: location.origin + location.pathname } });
+          const { data, error } = await Cloud.sb.auth.signUp({ email: em, password: pw, options: { data: { username: un, display_name: disp.value.trim().slice(0, 60) }, emailRedirectTo: siteURL() } });
           if (error) throw error;
           if (!data.session) { box.innerHTML = ''; box.append(el('h3', '', 'Check your email'), el('p', '', `We sent a confirmation link to ${em}. Open it on this device to finish creating your account.`)); return; }
         } else {
@@ -69,7 +69,7 @@ function renderAccount() {
     box.append(sw);
     if (mode === 'in') {
       const fg = el('button', 'g-link', 'Forgot your password?');
-      fg.onclick = async () => { const em = email.value.trim(); if (!/^\S+@\S+\.\S+$/.test(em)) { err.textContent = 'Type your email above first.'; return; } const { error } = await Cloud.sb.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname }); err.textContent = error ? error.message : 'If that email has an account, a reset link is on its way.'; };
+      fg.onclick = async () => { const em = email.value.trim(); if (!/^\S+@\S+\.\S+$/.test(em)) { err.textContent = 'Type your email above first.'; return; } const { error } = await Cloud.sb.auth.resetPasswordForEmail(em, { redirectTo: siteURL() }); err.textContent = error ? error.message : 'If that email has an account, a reset link is on its way.'; };
       box.append(fg);
     }
     return;
@@ -93,7 +93,7 @@ $('#g-toggle').onclick = async () => {
   renderAccount();
 };
 $('#g-copy').onclick = async () => {
-  const url = location.origin + location.pathname + '?garden=' + encodeURIComponent(Cloud.profile.username);
+  const url = siteURL() + '?garden=' + encodeURIComponent(Cloud.profile.username);
   try { await navigator.clipboard.writeText(url); toast('The link to your garden is copied.'); } catch (e) { prompt('Copy the link to your garden:', url); }
 };
 async function loadGardens() {
