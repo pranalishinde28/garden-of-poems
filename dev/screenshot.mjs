@@ -6,6 +6,7 @@
 //   node dev/screenshot.mjs --check --url http://localhost:8080/   test a running server (npm run dev)
 //   node dev/screenshot.mjs --flow swing        sit, swing, read five poems, stand up (desktop and phone)
 //   node dev/screenshot.mjs --flow avatar       third person: walk, bench, swing, kneel to read, pond
+//   node dev/screenshot.mjs --flow audit        screens, axe accessibility results, tap targets and frame times into dev/shots/audit/
 //   node dev/screenshot.mjs --flow map          map: open, hover, two clicks to a poem, glide to a place, hidden features, phone
 //   options: --views intro,tunnel  --out dev/shots/after  --base /garden-of-poems/
 //
@@ -99,6 +100,7 @@ async function main() {
 
     if (FLOW === 'avatar') await avatarFlow(page);
     else if (FLOW === 'map') await mapFlow(page, browser, url, errors);
+    else if (FLOW === 'audit') await auditFlow(page, browser, url, errors);
     else if (FLOW === 'swing') { await swingFlow(page, 'desktop'); await swingFlowPhone(browser, url, errors); }
     else if (CHECK) await smoke(page);
     else await shoot(page);
@@ -335,11 +337,54 @@ async function mapFlow(page, browser, url, errors) {
   // phone
   const ctx = await browser.createBrowserContext(), ph = await ctx.newPage(); ph.on('pageerror', e => errors.push('page error (phone): ' + e.message));
   await ph.emulate({ viewport: { width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true }, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1' });
-  await ph.goto(url, { waitUntil: 'load' }); await ph.waitForFunction(() => window.__garden && document.querySelector('#loading')?.classList.contains('done'), { timeout: 120000, polling: 500 });
+  await ph.goto(url, { waitUntil: 'load', timeout: 180000 }); await ph.waitForFunction(() => window.__garden && document.querySelector('#loading')?.classList.contains('done'), { timeout: 120000, polling: 500 });
   await ph.evaluate(() => window.__garden.setSetting('light', 'day'));
   await step('phone: open the map and tap a poem', async () => {
     await ph.tap('#enter-sample'); await ph.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
     await ph.tap('#minimap-btn'); await sleep(900); await ph.screenshot({ path: join(root, 'dev/shots/map-phone.png') });
     await ph.tap('.map-poem'); await ph.waitForFunction(() => window.__garden.state.mode === 'focus', { timeout: 30000, polling: 200 }); return 'reading on the phone';
   });
+}
+
+// ---- UX audit: every screen, axe results, tap targets, frame times ----
+async function auditFlow(page, browser, url, errors) {
+  const { readFile: rf, writeFile: wf, mkdir: mk } = await import('node:fs/promises');
+  const axeSrc = await rf(join(root, 'node_modules/axe-core/axe.min.js'), 'utf8'), dir = join(root, 'dev/shots/audit'); await mk(dir, { recursive: true });
+  const report = {};
+  async function audit(pg, name) {
+    await pg.screenshot({ path: join(dir, name + '.png') });
+    await pg.evaluate(axeSrc);
+    const r = await pg.evaluate(async () => { const res = await window.axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'best-practice'], resultTypes: ['violations'] }); return res.violations.map(v => ({ id: v.id, impact: v.impact, help: v.help, n: v.nodes.length, where: v.nodes.slice(0, 4).map(n => n.target.join(' ')) })); });
+    r.push(...await pg.evaluate(() => [...document.querySelectorAll('button')].filter(b => b.offsetParent && !b.textContent.trim() && !b.getAttribute('aria-label') && !b.getAttribute('aria-labelledby')).map(b => ({ id: 'unnamed-button', where: [b.id || b.className] })).slice(0, 1)));
+    report[name] = r; console.log('  ' + name + ': ' + (r.length ? r.map(v => `${v.id}(${v.n})`).join(' ') : 'no axe violations'));
+  }
+  async function runAll(pg, prefix, tap) {
+    // a control that can't be reached is a finding, not a reason to stop
+    const click = async sel => { try { await (tap ? pg.tap(sel) : pg.click(sel)); } catch (e) { (report[prefix + 'unreachable'] = report[prefix + 'unreachable'] || []).push(sel); console.log('  ' + prefix + 'could not reach ' + sel); await pg.evaluate(s => document.querySelector(s)?.click(), sel); } };
+    await audit(pg, prefix + '01-intro');
+    await click('#enter-sample'); await pg.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+    await sleep(1200); await audit(pg, prefix + '02-first-walk');
+    report[prefix + 'hud'] = await pg.evaluate(() => { const b = [...document.querySelectorAll('#hud button')], r = b.map(x => x.getBoundingClientRect()); return { buttons: b.length, smallest: Math.round(Math.min(...r.map(q => Math.min(q.width, q.height)))), offscreen: r.filter(q => q.left < 0 || q.right > innerWidth).length, labels: b.map(x => x.getAttribute('aria-label')) }; });
+    console.log('  ' + prefix + 'hud: ' + JSON.stringify(report[prefix + 'hud']).slice(0, 160));
+    for (const [sel, name, wait] of [['#h-gardens', '03-gardens', 900], ['#h-custom', '04-customize', 1200], ['#h-time', '05-time', 500], ['#h-more', '06-menu', 500]]) {
+      await click(sel); await sleep(wait); await audit(pg, prefix + name); await pg.keyboard.press('Escape'); await sleep(900);
+      await pg.evaluate(() => document.querySelectorAll('.panel.open .x, #c-close, #g-close').forEach(b => b.click())); await sleep(700);
+    }
+    await click('#h-more'); await sleep(400); await click('#m-help'); await sleep(900); await audit(pg, prefix + '07-help'); await pg.keyboard.press('Escape'); await sleep(800);
+    await pg.evaluate(() => { const g = window.__garden; g.openPoem([...g.plants.values()][2]); }); await sleep(3500); await audit(pg, prefix + '08-reader'); await pg.keyboard.press('Escape'); await sleep(1500);
+    await click('#h-write'); await pg.waitForFunction(() => window.__garden.state.mode === 'writing', { timeout: 60000, polling: 200 }); await sleep(1500); await audit(pg, prefix + '09-editor'); await pg.keyboard.press('Escape'); await sleep(1500);
+    await pg.evaluate(() => window.__garden.setSetting('light', 'night')); await sleep(4500); await audit(pg, prefix + '10-night');
+    await click('#h-custom'); await sleep(1200); await audit(pg, prefix + '11-night-customize'); await pg.keyboard.press('Escape'); await sleep(700);
+    await pg.evaluate(() => window.__garden.setSetting('light', 'day')); await sleep(3000);
+  }
+  console.log('desktop:'); await runAll(page, 'desktop-', false);
+  // frame time while walking, on this machine
+  report.fps = await page.evaluate(() => new Promise(res => { const t = []; let last = performance.now(); const f = n => { t.push(n - last); last = n; if (t.length < 240) requestAnimationFrame(f); else { t.sort((a, b) => a - b); res({ medianMs: +t[120].toFixed(1), p95Ms: +t[228].toFixed(1) }); } }; requestAnimationFrame(f); }));
+  console.log('  frame time on this machine: ' + JSON.stringify(report.fps));
+  const ctx = await browser.createBrowserContext(), ph = await ctx.newPage(); ph.on('pageerror', e => errors.push('page error (phone): ' + e.message));
+  await ph.emulate({ viewport: { width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true }, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1' });
+  await ph.goto(url, { waitUntil: 'load', timeout: 180000 }); await ph.waitForFunction(() => window.__garden && document.querySelector('#loading')?.classList.contains('done'), { timeout: 120000, polling: 500 });
+  await ph.evaluate(() => window.__garden.setSetting('light', 'day'));
+  console.log('phone:'); await runAll(ph, 'phone-', true);
+  await wf(join(dir, 'audit.json'), JSON.stringify(report, null, 1)); console.log('  wrote dev/shots/audit/audit.json');
 }
