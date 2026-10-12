@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { C, V3, lerp } from '../core/util.js';
+import { C, V3, lerp, reduceMotion } from '../core/util.js';
 import { SETTINGS } from '../settings/storage.js';
 import { T, state } from '../core/state.js';
 import { SEASON, SKY, scene } from './renderer.js';
@@ -50,14 +50,14 @@ export function atmosphere(dt) {
   waterU.fogColor.value.copy(scene.fog.color); waterU.fogNear.value = scene.fog.near; waterU.fogFar.value = scene.fog.far;
   ffU.uOpacity.value = (0.02 + n * 0.95) * (1 - r * 0.85);
   linkU.uOpacity.value = 0.22 + n * 0.6;
-  petalU.uOpacity.value = 1 - n * 0.4;
+  petalU.uOpacity.value = (1 - n * 0.4) * (reduceMotion ? 0.25 : 1);
   nightGlow.forEach(g => { g.m.emissiveIntensity = lerp(g.day, g.night, n); });
   nightSprites.forEach(g => { g.s.material.opacity = lerp(g.day, g.night, n) + Math.sin(T * 3 + g.day * 9) * 0.02; });
   mist.forEach(s => { const u = s.userData; s.material.opacity = lerp(0.14, 0.06, n) * (state.season === 'winter' ? 1.3 : 1) * (1 + r * 0.8); s.position.x = u.x + Math.sin(T * 0.05 + u.ph) * 1.5; });
   const pp = SEASON[state.seasonCur].particle;
   if (state.seasonCur !== airSeason()) { airU.uOpacity.value -= dt * 0.8; if (airU.uOpacity.value <= 0) { airU.uOpacity.value = 0; state.seasonCur = airSeason(); const q = SEASON[state.seasonCur].particle; airU.uFall.value = q.fall; airU.uSway.value = q.sway; airU.uSize.value = q.size; airU.uLeaf.value = q.leaf; airU.uColor.value.copy(q.color); } }
   else airU.uOpacity.value = Math.min(pp.op * (1 - n * 0.3) * (1 - r), airU.uOpacity.value + dt * 0.5);
-  if (!SETTINGS.drift) airU.uOpacity.value = 0;
+  if (!SETTINGS.drift || reduceMotion) airU.uOpacity.value = 0; // reduced motion stills the drifting pollen and leaves
   if (Math.abs(lastNight - n) > 0.02) { lastNight = n; setShadowDirty(true); }
 }
 export function setShadowClock(v) { return (shadowClock = v); }

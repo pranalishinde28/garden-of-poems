@@ -42,7 +42,7 @@ function enterGarden(withSamples) {
     state.mode = 'walk'; syncPlayerFromCamera();
     $('#hud').hidden = false; if (isTouch) joy.hidden = false;
     if (withSamples) plantSamples(true);
-    if (!flag.get('seen-hint')) { showHint(); flag.set('seen-hint', '1'); }
+    late.maybeStartSteps();
     if (!poems.length) setTimeout(() => toast('Nothing grows here yet. Find the bench under the wisteria to write your first poem.', 6000), 4000);
   });
 }

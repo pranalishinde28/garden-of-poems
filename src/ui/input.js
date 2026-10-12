@@ -32,6 +32,7 @@ addEventListener('keydown', e => {
   }
   if (e.code === 'Escape') { if (state.mode === 'focus') late.closeReader(); else if (state.mode === 'writing') late.closeEditor(); late.closePops(); return; }
   if (state.mode === 'focus' && !state.reflection) { if (e.code === 'ArrowLeft') { late.stepPoem(-1); return; } if (e.code === 'ArrowRight') { late.stepPoem(1); return; } }
+  if ((e.key === '?' || e.code === 'KeyH') && !e.repeat && (state.mode === 'walk' || state.mode === 'swing')) { late.openHelp(); return; }
   if (e.code === 'KeyM' && !e.repeat && (state.mode === 'walk' || state.mode === 'swing')) { late.toggleMap(); return; }
   if (e.code === 'KeyV' && !e.repeat && (state.mode === 'walk' || state.mode === 'swing')) { late.toggleView(); return; }
   if (e.code === 'KeyE' && state.mode === 'walk' && late.cueTarget) { e.preventDefault(); interact(late.cueTarget); return; }
@@ -108,7 +109,10 @@ export const joy = $('#joy'), knob = $('#knob'), jv = { x: 0, y: 0 }; let joyId 
 function updJoy(e) {
   const r = joy.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, m = r.width / 2 - 14;
   let dx = e.clientX - cx, dy = e.clientY - cy; const l = Math.hypot(dx, dy); if (l > m) { dx *= m / l; dy *= m / l; }
-  knob.style.transform = `translate(${dx}px,${dy}px)`; jv.x = dx / m; jv.y = -dy / m;
+  knob.style.transform = `translate(${dx}px,${dy}px)`;
+  // a small dead zone, then a gentle curve: easier to stroll slowly, still full speed at the edge
+  const n = Math.min(1, Math.hypot(dx, dy) / m), k = n < 0.12 ? 0 : Math.pow((n - 0.12) / 0.88, 1.35) / (n || 1);
+  jv.x = dx / m * k; jv.y = -dy / m * k;
 }
 joy.addEventListener('pointerdown', e => { joyId = e.pointerId; try { joy.setPointerCapture(e.pointerId); } catch (_) {} updJoy(e); e.preventDefault(); });
 joy.addEventListener('pointermove', e => { if (e.pointerId === joyId) updJoy(e); });

@@ -5,7 +5,7 @@ import { T, setTween, state } from '../core/state.js';
 import { REGIONS, TYPE_REGION } from '../plants/mapping.js';
 import { camera } from '../world/renderer.js';
 import { decor, stoneNear } from '../world/paths.js';
-import { plants } from '../plants/registry.js';
+import { createPlant, plants, removePlant } from '../plants/registry.js';
 import { waterU } from '../water/water.js';
 import { rebuildConnections, rebuildPetals } from '../world/particles.js';
 import { Music } from '../audio/music.js';
@@ -24,8 +24,37 @@ provide({
 
 /* ================= reading ================= */
 export const reader = $('#reader');
-export function openPanel(el) { el.hidden = false; requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open'))); }
-export function closePanel(el) { el.classList.remove('open'); clearTimeout(el._t); el._t = setTimeout(() => { if (!el.classList.contains('open')) el.hidden = true; }, 900); }
+// One behaviour for every panel: focus moves in and comes back when it closes, Tab stays inside,
+// and Esc or a click on the garden closes the settings-like panels (the reader and the editor keep
+// their own closing, and the swing reader never takes focus from the swing).
+const panels = [], CLOSERS = { custom: '#c-close', gardens: '#g-close', signpanel: '#s-close', helpsheet: '#help-close' };
+export function openPanel(el) {
+  el.hidden = false; requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
+  if (el.id === 'swreader') return;
+  if (!panels.includes(el)) { panels.push(el); el._returnTo = document.activeElement; }
+  document.body.classList.add('panel-open');
+  requestAnimationFrame(() => { if (!el.contains(document.activeElement)) el.focus({ preventScroll: true }); });
+}
+export function closePanel(el) {
+  el.classList.remove('open'); clearTimeout(el._t); el._t = setTimeout(() => { if (!el.classList.contains('open')) el.hidden = true; }, 900);
+  const i = panels.indexOf(el); if (i < 0) return; panels.splice(i, 1);
+  if (!panels.length) document.body.classList.remove('panel-open');
+  const back = el._returnTo; el._returnTo = null;
+  if (el.contains(document.activeElement) && back && back.focus && document.contains(back)) back.focus({ preventScroll: true });
+}
+const focusables = el => [...el.querySelectorAll('button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])')].filter(n => !n.disabled && n.offsetParent !== null);
+addEventListener('keydown', e => {
+  const top = panels[panels.length - 1]; if (!top) return;
+  if (e.key === 'Escape' && CLOSERS[top.id]) { e.preventDefault(); e.stopImmediatePropagation(); $(CLOSERS[top.id]).click(); return; }
+  if (e.key !== 'Tab') return;
+  const f = focusables(top); if (!f.length) return;
+  const i = f.indexOf(document.activeElement);
+  if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); } else if (!e.shiftKey && (i === f.length - 1 || i < 0)) { e.preventDefault(); f[0].focus(); }
+}, true);
+addEventListener('pointerdown', e => {
+  const top = panels[panels.length - 1];
+  if (top && CLOSERS[top.id] && e.target.id === 'c' && !top.contains(e.target)) $(CLOSERS[top.id]).click();
+}, true);
 export function regionLabel(p) { const n = REGIONS[TYPE_REGION[p.plantType]].name; return 'Grows in ' + n.replace(/^The /, 'the '); }
 export function fillReader(p, reflection) {
   reader.classList.toggle('is-reflection', !!reflection);
@@ -130,9 +159,17 @@ $('#r-del').onclick = () => {
 $('#r-no').onclick = () => { $('#r-confirm').hidden = true; $('#r-bar').hidden = false; };
 $('#r-yes').onclick = () => {
   const id = state.reading, p = poems.find(q => q.id === id); if (!p) return;
+  const at = poems.indexOf(p);
   setPoems(poems.filter(q => q.id !== id)); savePoems();
   const pl = plants.get(id); if (pl) { pl.dying = true; pl.target = 0; pl.speed = 1 / 1.4; pl.delay = 0.5; }
-  closeReader(); toast(`“${p.title}” was removed from the garden.`);
+  closeReader();
+  toast(`“${p.title}” was removed.`, 7000, { label: 'Undo', run: () => {
+    // put it back where it was, and let it grow again
+    const list = poems.slice(); list.splice(Math.min(at, list.length), 0, p); setPoems(list); savePoems();
+    const old = plants.get(p.id); if (old) removePlant(old);
+    const np = createPlant(p, { visible: false }); np.target = 1; np.speed = 1 / 1.6; np.pulse = 1;
+    rebuildConnections(); rebuildPetals(); late.updateSign(); state.season = computeSeason(); toast(`“${p.title}” is growing again.`, 2600);
+  } });
   rebuildConnections(); rebuildPetals(); late.updateSign(); state.season = computeSeason();
 };
 

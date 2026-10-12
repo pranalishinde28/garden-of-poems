@@ -19,15 +19,16 @@ export const POINT_VS_HEAD = 'uniform float uScale;';
 export function pointsMat(uniforms, vs, fs, additive) {
   return new THREE.ShaderMaterial({ uniforms: Object.assign({ uScale: pointScale }, uniforms), vertexShader: vs, fragmentShader: fs, transparent: true, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending });
 }
-const reflScale = isTouch ? 0.35 : 0.5;
+export const reflQuality = { scale: isTouch ? 0.35 : 0.5 }; // settings/quality.js changes this
 export const reflRT = new THREE.WebGLRenderTarget(16, 16, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
 function onResize() {
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   pointScale.value = renderer.getPixelRatio() * innerHeight * 0.866;
   const pr = renderer.getPixelRatio();
-  reflRT.setSize(Math.max(64, Math.floor(innerWidth * pr * reflScale)), Math.max(64, Math.floor(innerHeight * pr * reflScale)));
+  reflRT.setSize(Math.max(64, Math.floor(innerWidth * pr * reflQuality.scale)), Math.max(64, Math.floor(innerHeight * pr * reflQuality.scale)));
 }
+export { onResize };
 onResize(); addEventListener('resize', onResize);
 export const maxAniso = renderer.capabilities.getMaxAnisotropy();
 

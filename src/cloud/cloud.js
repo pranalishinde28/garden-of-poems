@@ -1,3 +1,4 @@
+import { $ } from '../core/util.js';
 import { createClient } from '@supabase/supabase-js';
 import { KEY, SETTINGS, THEME, cleanSettings, flag, poems, replaceSettings, savePoems, setThemeName } from '../settings/storage.js';
 import { state } from '../core/state.js';
@@ -64,7 +65,17 @@ async function onAuthChanged() {
   } catch (e) { toast('Your garden could not be loaded from your account just now.'); late.renderAccount(); }
 }
 function loadLocal(key) { try { const a = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(a) ? a.filter(p => p && p.id && typeof p.content === 'string') : []; } catch (e) { return []; } }
-function queueSync() { if (!Cloud.user || state.visiting) return; clearTimeout(Cloud.timer); Cloud.timer = setTimeout(syncNow, 1200); }
+// a quiet line under the HUD: whether your poems have reached your account
+const saveEl = $('#savestate'); let saveFade = 0;
+export function setSaveState(s) {
+  if (!Cloud.user || state.visiting) { saveEl.hidden = true; return; }
+  const text = { saving: 'Saving…', saved: 'Saved', offline: 'Not saved yet: you are offline', retry: 'Not saved yet: trying again' }[s];
+  saveEl.hidden = false; saveEl.dataset.s = s; saveEl.textContent = text; saveEl.classList.remove('quiet');
+  clearTimeout(saveFade); if (s === 'saved') saveFade = setTimeout(() => saveEl.classList.add('quiet'), 3500);
+}
+function queueSync() { if (!Cloud.user || state.visiting) return; setSaveState(navigator.onLine === false ? 'offline' : 'saving'); clearTimeout(Cloud.timer); Cloud.timer = setTimeout(syncNow, 1200); }
+addEventListener('offline', () => { if (!Cloud.user) return; setSaveState('offline'); toast('You are offline. Your poems stay safe on this device and will be saved when you are back.', 6000); });
+addEventListener('online', () => { if (!Cloud.user) return; toast('Back online. Saving your garden.', 3000); queueSync(); });
 export async function syncNow() {
   if (!Cloud.user) return;
   if (Cloud.busy) { Cloud.again = true; return; }
@@ -75,8 +86,8 @@ export async function syncNow() {
     const removed = [...Cloud.last.keys()].filter(id => !now.has(id));
     if (changed.length) { const { error } = await Cloud.sb.from('poems').upsert(changed); if (error) throw error; }
     if (removed.length) { const { error } = await Cloud.sb.from('poems').delete().eq('owner', Cloud.user.id).in('id', removed); if (error) throw error; }
-    Cloud.last = now; Cloud.warned = false;
-  } catch (e) { if (!Cloud.warned) { Cloud.warned = true; toast('Some changes have not reached your account yet. They are safe on this device and will be sent again.'); } setTimeout(queueSync, 8000); }
+    Cloud.last = now; Cloud.warned = false; setSaveState('saved');
+  } catch (e) { setSaveState(navigator.onLine === false ? 'offline' : 'retry'); if (!Cloud.warned) { Cloud.warned = true; toast('Some changes have not reached your account yet. They are safe on this device and will be sent again.'); } setTimeout(queueSync, 8000); }
   Cloud.busy = false; if (Cloud.again) { Cloud.again = false; queueSync(); }
 }
 export async function saveGardenSettings(patch) {

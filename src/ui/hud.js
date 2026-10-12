@@ -50,7 +50,9 @@ const fileInput = $('#file-music');
 $('#m-own').onclick = () => { closePops(); fileInput.value = ''; fileInput.click(); };
 fileInput.addEventListener('change', () => { if (fileInput.files && fileInput.files.length) Music.useFiles(fileInput.files); });
 $('#m-piano').onclick = () => { closePops(); Music.backToPiano(); toast('Back to the piano.'); };
-$('#m-help').onclick = () => { closePops(); showHint(10000); };
+$('#h-help').onclick = () => { closePops(); late.openHelp(); };
+// the rows in ⋯ show their current state as words (their data-tip changes with season, light and view)
+document.querySelectorAll('#menu .mrow').forEach(b => { const set = () => { const t = (b.dataset.tip || '').replace(/ \(.\)$/, ''); b.querySelector('.lbl').textContent = b.id === 'h-theme' ? 'Turn to ' + t.toLowerCase() : t; }; set(); new MutationObserver(set).observe(b, { attributes: true, attributeFilter: ['data-tip'] }); });
 function setCineUI() { $('#m-cine').textContent = POST.on ? 'Cinematic look: on' : 'Cinematic look: off'; }
 $('#m-cine').onclick = () => { POST.on = !POST.on; flag.set('cine', POST.on ? '1' : '0'); setCineUI(); };
 setCineUI();

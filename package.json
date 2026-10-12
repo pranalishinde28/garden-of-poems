@@ -11,13 +11,15 @@
     "shots": "node dev/screenshot.mjs",
     "flow:swing": "node dev/screenshot.mjs --flow swing",
     "flow:avatar": "node dev/screenshot.mjs --flow avatar",
-    "flow:map": "node dev/screenshot.mjs --flow map"
+    "flow:map": "node dev/screenshot.mjs --flow map",
+    "flow:ux": "node dev/screenshot.mjs --flow ux"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.45.4",
     "three": "0.128.0"
   },
   "devDependencies": {
+    "axe-core": "^4.14.0",
     "puppeteer": "^25.13.0",
     "vite": "^8.3.4"
   }

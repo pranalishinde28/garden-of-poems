@@ -7,7 +7,7 @@ import { GEO } from './geometry.js';
 import { BENCH, inTulip, stoneNear } from './paths.js';
 
 /* ================= grass ================= */
-const grassChunks = [];
+export const grassChunks = [];
 export let grassMat;
 (function buildGrass() {
   const R0 = rng(5), pos = [], col = [], nrm = [], idx = [];

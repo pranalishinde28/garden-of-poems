@@ -1,12 +1,12 @@
 :root{
   --ink:#27311f;
-  --ink-soft:rgba(39,49,31,.66);
-  --paper:rgba(244,239,227,.72);
+  --ink-soft:rgba(39,49,31,.78);
+  --paper:rgba(244,239,227,.86);
   --paper-strong:rgba(244,239,227,.94);
   --line:rgba(39,49,31,.2);
   --accent:#6f5f86;
   --rose:#a26f6f;
-  --hud:rgba(244,239,227,.46);
+  --hud:rgba(244,239,227,.64);
   --hud-ink:#2c3627;
   --veil:rgba(244,239,227,.5);
   --shadow:0 24px 70px rgba(20,32,22,.22);
@@ -17,20 +17,20 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --ink:#efe9dc;--ink-soft:rgba(239,233,220,.66);--paper:rgba(19,29,30,.66);--paper-strong:rgba(19,29,30,.94);
-    --line:rgba(239,233,220,.2);--accent:#c6b9e0;--rose:#dcaaa6;--hud:rgba(19,29,30,.42);--hud-ink:#efe9dc;
+    --ink:#efe9dc;--ink-soft:rgba(239,233,220,.8);--paper:rgba(19,29,30,.84);--paper-strong:rgba(19,29,30,.94);
+    --line:rgba(239,233,220,.2);--accent:#c6b9e0;--rose:#dcaaa6;--hud:rgba(19,29,30,.62);--hud-ink:#efe9dc;
     --veil:rgba(10,18,22,.45);--shadow:0 24px 70px rgba(0,0,0,.4);
   }
 }
 :root[data-theme="dark"]{
-  --ink:#efe9dc;--ink-soft:rgba(239,233,220,.66);--paper:rgba(19,29,30,.66);--paper-strong:rgba(19,29,30,.94);
-  --line:rgba(239,233,220,.2);--accent:#c6b9e0;--rose:#dcaaa6;--hud:rgba(19,29,30,.42);--hud-ink:#efe9dc;
+  --ink:#efe9dc;--ink-soft:rgba(239,233,220,.8);--paper:rgba(19,29,30,.84);--paper-strong:rgba(19,29,30,.94);
+  --line:rgba(239,233,220,.2);--accent:#c6b9e0;--rose:#dcaaa6;--hud:rgba(19,29,30,.62);--hud-ink:#efe9dc;
   --veil:rgba(10,18,22,.45);--shadow:0 24px 70px rgba(0,0,0,.4);
 }
 /* the world's own night overrides the panels so they match the light */
 body.is-night{
-  --ink:#efe9dc;--ink-soft:rgba(239,233,220,.66);--paper:rgba(17,27,32,.62);--paper-strong:rgba(17,27,32,.94);
-  --line:rgba(239,233,220,.2);--accent:#c6b9e0;--rose:#dcaaa6;--hud:rgba(17,27,32,.4);--hud-ink:#efe9dc;
+  --ink:#efe9dc;--ink-soft:rgba(239,233,220,.8);--paper:rgba(17,27,32,.84);--paper-strong:rgba(17,27,32,.94);
+  --line:rgba(239,233,220,.2);--accent:#c6b9e0;--rose:#dcaaa6;--hud:rgba(17,27,32,.64);--hud-ink:#efe9dc;
   --veil:rgba(8,14,20,.42);
 }
 *,*::before,*::after{box-sizing:inherit}
@@ -332,3 +332,59 @@ body.on-swing #minimap-btn{bottom:calc(env(safe-area-inset-bottom,0px) + 90px)}
   #map-places small{font-style:italic;color:rgba(47,58,40,.68)}
   #map-legend{font-size:.88rem;gap:.2rem .7rem;padding-bottom:.8rem}
 }
+
+/* ---------- the More menu: labelled rows and small headings ---------- */
+#menu .mh{margin:.55rem .9rem .1rem;font-size:.86rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+#menu .mh:first-child{margin-top:.2rem}
+#menu .mrow{display:flex;align-items:center;gap:.6rem;width:100%;text-align:left}
+#menu .mrow svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+#menu .mrow svg[hidden]{display:none}
+#menu .mrow[aria-pressed="true"] .lbl{font-weight:600}
+@media (pointer:coarse){#menu button{min-height:44px}}
+
+/* ---------- help sheet ---------- */
+#helpsheet{left:50%;top:50%;width:min(620px,92vw);max-height:86vh;overflow:auto;transform:translate(-50%,-47%);border-radius:4px;padding:2rem 2.2rem 1.4rem;touch-action:pan-y}
+#helpsheet.open{transform:translate(-50%,-50%)}
+#helpsheet h2{margin:0 0 .6rem;font-style:italic;font-weight:500;font-size:2rem}
+#helpsheet h3{margin:1rem 0 .4rem;font-weight:500;font-size:1.2rem}
+.help-cols{display:grid;grid-template-columns:1fr 1fr;gap:0 2rem}
+@media (max-width:620px){.help-cols{grid-template-columns:1fr}}
+.keys{display:grid;grid-template-columns:fit-content(46%) 1fr;gap:.35rem .9rem;margin:0;font-size:1.05rem}
+.keys dt{white-space:normal}.keys dd{margin:0;color:var(--ink-soft);font-style:italic}
+.keys kbd,#steps kbd{font-family:var(--serif);font-style:normal;font-size:.92rem;border:1px solid var(--line);border-radius:5px;padding:0 .35rem;margin-right:.15rem}
+.help-foot{margin:1.2rem 0 0}
+@media (pointer:coarse){.only-fine{display:none!important}}
+@media (pointer:fine){.only-coarse{display:none!important}}
+
+/* ---------- first steps ---------- */
+#steps{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 110px);transform:translate(-50%,10px);width:min(430px,88vw);z-index:14;background:var(--paper-strong);color:var(--ink);border-radius:10px;padding:1rem 1.3rem .8rem;box-shadow:var(--shadow);opacity:0;transition:opacity .5s,transform .5s}
+#steps.show{opacity:1;transform:translate(-50%,0)}
+#steps .st-n{margin:0;font-size:.9rem;font-style:italic;color:var(--accent)}
+#steps h2{margin:.1rem 0 .3rem;font-weight:500;font-style:italic;font-size:1.5rem}
+#steps p{margin:0;font-size:1.1rem;line-height:1.45}
+.st-bar{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.7rem}
+.st-bar button{padding:.3rem 1rem .36rem;border-radius:999px;border:1px solid var(--line);min-height:40px}
+#steps-next{background:var(--ink);color:var(--paper-strong);border-color:transparent}
+@media (pointer:coarse){#steps{bottom:calc(env(safe-area-inset-bottom,0px) + 158px)}}
+
+/* ---------- while a panel is open, the walking controls step aside ---------- */
+body.panel-open #joy,body.panel-open #minimap-btn,body.panel-open #hint,body.panel-open #cue,body.panel-open #steps{opacity:0!important;pointer-events:none!important}
+#joy,#minimap-btn,#hint,#cue{transition:opacity .4s}
+.sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.panel:focus{outline:none}
+
+#savestate{position:fixed;top:calc(env(safe-area-inset-top,0px) + 66px);right:calc(env(safe-area-inset-right,0px) + 22px);margin:0;font-style:italic;font-size:.98rem;color:var(--hud-ink);background:var(--hud);padding:.12rem .7rem .18rem;border-radius:999px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:9;transition:opacity .8s}
+#savestate::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:.45rem;vertical-align:middle;background:#7c9b62}
+#savestate[data-s="saving"]::before{background:#d6a838}
+#savestate[data-s="offline"]::before,#savestate[data-s="retry"]::before{background:#c0634f}
+#savestate.quiet{opacity:.45}
+body.panel-open #savestate{opacity:0}
+@media (pointer:coarse){#intro .alt,#intro button{min-height:44px;padding-top:.6rem;padding-bottom:.6rem}}
+
+/* ---------- writing: count, draft note, mood suggestion; a toast with an action ---------- */
+.e-meta{display:flex;justify-content:space-between;gap:1rem;margin:.25rem 0 0;font-size:.95rem;font-style:italic;color:var(--ink-soft);min-height:1.2em}
+#e-suggest{margin:.5rem 0 0;font-style:italic;font-size:1.02rem;color:var(--accent)}
+#toast.has-action{pointer-events:auto}
+#toast button{font-style:normal;text-decoration:underline;text-underline-offset:3px;margin-left:.35rem;padding:.2rem .3rem;min-height:36px}
+@media (pointer:coarse){#hud button{width:44px;height:44px}}
