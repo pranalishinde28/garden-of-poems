@@ -2,7 +2,7 @@ import { $, isTouch } from '../core/util.js';
 import { bridgeH, riverDist } from '../world/terrain.js';
 import { poems } from '../settings/storage.js';
 import { state } from '../core/state.js';
-import { REGIONS, TYPE_REGION } from '../plants/mapping.js';
+import { REGIONS, regionKeyFor } from '../plants/mapping.js';
 import { featOn, inTulip } from '../world/paths.js';
 import { SWING_GARDEN } from '../world/swings.js';
 import { interact } from './input.js';
@@ -58,7 +58,7 @@ export function regionAt(x, z) {
   for (const k in REGIONS) {
     const g = REGIONS[k], d = Math.abs(Math.atan2(Math.sin(a - g.a), Math.cos(a - g.a)));
     if (d < g.sa + 0.15 && r > g.r0 - 3 && r < g.r1 + 5 && d / g.sa < bs) {
-      if (!poems.some(p => TYPE_REGION[p.plantType] === k && late.inFilter(p))) continue;
+      if (!poems.some(p => regionKeyFor(p) === k && late.inFilter(p))) continue;
       bs = d / g.sa; best = g;
     }
   }

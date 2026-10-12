@@ -39,6 +39,10 @@ const VIEWS = {
   overview: { pos: [6, 34, 48], look: [-12, 0, 14] },
   'autumn-tunnel': { pos: [0, 1.7, 35.5], look: [0, 1.5, 17], season: 'autumn' },
   'autumn-swings': { pos: [-13.5, 1.7, 15.5], look: [-21, 1.5, 24.5], season: 'autumn' },
+  'season-spring': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'spring', samples: true },
+  'season-summer': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'summer', samples: true },
+  'season-autumn': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'autumn', samples: true },
+  'season-winter': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'winter', samples: true },
   'lineup': { lineup: true, pos: [3.1, 1.25, 25.2], look: [3.1, 0.95, 21.6] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
 };
@@ -119,6 +123,10 @@ async function shoot(page) {
   await mkdir(dirname(out + '-x.png'), { recursive: true });
   for (const name of views) {
     const v = VIEWS[name]; if (!v) throw new Error('Unknown view: ' + name);
+    if (v.samples && !(await page.evaluate(() => window.__garden.poems.length))) {
+      await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+      await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await sleep(9000);
+    }
     if (v.lineup) await page.evaluate(() => {
       const O = [['casual', '#3d4a6b', 'short', '#1d1a19', '#d9a77f', 'none'], ['yukata', '#efe6d4', 'bun', '#3a2a20', '#f6dcc6', 'parasol'], ['kimono', '#e7b7c4', 'long', '#1d1a19', '#ecc4a2', 'none'],
         ['coat', '#b5603d', 'bob', '#8a4f2e', '#7f5236', 'scarf'], ['yukata', '#3d4a6b', 'tail', '#c49a62', '#a26c47', 'hat'], ['casual', '#6f8a5a', 'short', '#9c9893', '#3f2a1f', 'scarf']];
@@ -135,9 +143,10 @@ async function shoot(page) {
     }
     if (!v.intro) await page.evaluate(v => {
       const g = window.__garden;
-      if (!document.querySelector('#hide-ui')) { const s = document.createElement('style'); s.id = 'hide-ui'; s.textContent = '#intro,#loading,#hud,.toast,#toast{display:none!important}'; document.head.append(s); }
+      if (!document.querySelector('#hide-ui')) { const s = document.createElement('style'); s.id = 'hide-ui'; s.textContent = '#intro,#loading,#hud,.toast,#toast,#steps,#minimap-btn,#cue,#hint,#savestate{display:none!important}'; document.head.append(s); }
       g.state.mode = 'cinematic';
       if (g.SETTINGS.season !== (v.season || 'spring')) g.setSetting('season', v.season || 'spring');
+      document.querySelector('#toast')?.classList.remove('show');
       g.camera.position.set(...v.pos); g.curLook.set(...v.look); g.camera.lookAt(g.curLook);
     }, v);
     await sleep(v.season ? 4000 : 2500);
