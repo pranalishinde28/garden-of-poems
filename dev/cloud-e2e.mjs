@@ -15,6 +15,9 @@ const sql = q => execFileSync('docker', ['exec', '-i', DB, 'psql', '-U', 'postgr
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const stamp = Date.now().toString(36).slice(-5), ADA = 'ada_' + stamp, BOB = 'bob_' + stamp;
 let failed = 0;
+// LEGACY=1: the database is still on the original schema (no save_poem etc.); the page must fall back
+const LEGACY = !!process.env.LEGACY;
+const skip = () => 'skipped before the database update';
 const step = async (label, fn) => { process.stdout.write('  ' + label + '… '); try { const r = await fn(); console.log(r === undefined ? 'ok' : r); } catch (e) { failed++; console.log('FAILED: ' + (e.message || e)); } };
 
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
@@ -79,7 +82,7 @@ await step('offline: the poem waits, then saves when back online', async () => {
   await saved(pa); const after = sql(`select count(*) from public.poems where id = '${p2}'`);
   if (before !== '0' || after !== '1') throw new Error(`database had ${before} then ${after}`); return `"${st}" while offline, then saved`;
 });
-await step('a change made elsewhere is not overwritten: conflict, keep both', async () => {
+await step('a change made elsewhere is not overwritten: conflict, keep both', async () => { if (LEGACY) return skip();
   sql(`update public.poems set content = 'Changed on another device.' where id = '${p1}'`);
   await editPoem(pa, p1, 'Changed on this device.');
   await pa.waitForSelector('#conflict.open', { timeout: 15000 }); await pa.screenshot({ path: join(root, 'dev/shots/cloud-conflict.png') });
@@ -87,7 +90,7 @@ await step('a change made elsewhere is not overwritten: conflict, keep both', as
   const rows = sql(`select string_agg(content, ' | ' order by content) from public.poems where owner = '${adaId()}' and title = 'Kettle' and deleted_at is null`);
   if (!rows.includes('another device') || !rows.includes('this device')) throw new Error(rows); return rows;
 });
-await step('remove a poem: it waits in Recently removed, and comes back', async () => {
+await step('remove a poem: it waits in Recently removed, and comes back', async () => { if (LEGACY) return skip();
   await pa.evaluate(id => { const g = window.__garden; g.openPoem(g.plants.get(id)); }, p2); await sleep(1500);
   await pa.click('#r-del'); await sleep(300); await pa.click('#r-yes'); await sleep(2500); await saved(pa);
   const del = sql(`select deleted_at is not null from public.poems where id = '${p2}'`);
@@ -98,7 +101,7 @@ await step('remove a poem: it waits in Recently removed, and comes back', async 
   const back = sql(`select deleted_at is null from public.poems where id = '${p2}'`), here = await pa.evaluate(id => window.__garden.poems.some(p => p.id === id), p2);
   if (del !== 't' || back !== 't' || !here) throw new Error(`deleted ${del}, back ${back}, here ${here}`); return 'removed, then restored';
 });
-await step('Undo after the removal has synced brings it back (not refused as removed)', async () => {
+await step('Undo after the removal has synced brings it back (not refused as removed)', async () => { if (LEGACY) return skip();
   await pa.evaluate(id => { const g = window.__garden; g.openPoem(g.plants.get(id)); }, p2); await sleep(1500);
   await pa.click('#r-del'); await sleep(300); await pa.click('#r-yes'); await saved(pa); await sleep(400);
   const mid = sql(`select deleted_at is not null from public.poems where id = '${p2}'`);
@@ -106,7 +109,7 @@ await step('Undo after the removal has synced brings it back (not refused as rem
   const end = sql(`select deleted_at is null from public.poems where id = '${p2}'`);
   if (mid !== 't' || end !== 't') throw new Error(`after remove ${mid}, after undo ${end}`); return 'restored on the server';
 });
-await step('a poem removed on another device does not come back', async () => {
+await step('a poem removed on another device does not come back', async () => { if (LEGACY) return skip();
   sql(`update public.poems set deleted_at = now() where id = '${p1}'`);
   await editPoem(pa, p1, 'One more edit from here.'); await sleep(2500);
   const here = await pa.evaluate(id => window.__garden.poems.some(p => p.id === id), p1), still = sql(`select deleted_at is not null from public.poems where id = '${p1}'`);
@@ -134,6 +137,15 @@ await step('export the garden as JSON and Markdown', async () => {
   return `${Object.keys(ex).join(', ')}: ${j.poems.length} poems, ${j.notes.length} notes; markdown starts "${md.split('\n')[0]}"`;
 });
 
+if (LEGACY) await step('before the update: removing deletes the row; Undo writes it back', async () => {
+  await pa.evaluate(id => { const g = window.__garden; g.openPoem(g.plants.get(id)); }, p2); await sleep(1500);
+  await pa.click('#r-del'); await sleep(300); await pa.click('#r-yes'); await saved(pa); await sleep(400);
+  const mid = sql(`select count(*) from public.poems where id = '${p2}'`);
+  await pa.click('#toast button'); await sleep(2500); await saved(pa);
+  const end = sql(`select count(*) from public.poems where id = '${p2}'`);
+  if (mid !== '0' || end !== '1') throw new Error(`rows after remove ${mid}, after undo ${end}`); return 'deleted, then back';
+});
+
 console.log('Bob, a visitor:');
 const B = await person(), pb = B.page;
 await step('sign up', async () => { await signUp(pb, BOB); return '@' + BOB; });
@@ -148,19 +160,24 @@ await step('leave notes; the fourth on one poem is kindly refused', async () => 
   await pb.evaluate(() => { const g = window.__garden; g.openPoem([...g.plants.values()][0]); }); await sleep(2500);
   for (let i = 1; i <= 4; i++) { await pb.evaluate(t => { document.querySelector('#r-note').value = t; }, 'Note ' + i); await pb.click('#r-note-send'); await sleep(1300); }
   const toast = await pb.$eval('#toast', e => e.textContent), n = sql(`select count(*) from public.notes where author = (select id from public.profiles where username = '${BOB}')`);
+  if (LEGACY) return `${n} stored (no rate limit before the update)`;
   if (n !== '3') throw new Error(n + ' notes stored'); return `${n} stored; then: "${toast}"`;
 });
-await step('Ada hides a note from visitors', async () => {
+await step('Ada hides a note from visitors', async () => { if (LEGACY) return skip();
   await pa.evaluate(id => { const g = window.__garden; g.openPoem(g.plants.get(id)); }, p2); await sleep(2500);
   const btn = await pa.$('#r-notes-list .n-acts .g-link'); if (!btn) throw new Error('no notes shown to the poet');
   await btn.click(); await sleep(1500); return sql(`select count(*) from public.notes where hidden`) + ' hidden';
 });
 await step('Bob deletes his account; everything of his goes', async () => {
-  await pb.keyboard.press('Escape'); await sleep(600); await pb.click('#h-gardens'); await pb.waitForSelector('#g-acct');
+  await pb.evaluate(() => document.querySelector('#r-close')?.click()); await pb.waitForFunction(() => window.__garden.state.mode !== 'focus', { timeout: 10000, polling: 200 }); await sleep(600);
+  await pb.click('#h-gardens'); await pb.waitForSelector('#gardens.open'); await pb.waitForSelector('#g-acct .g-link');
   await pb.evaluate(() => [...document.querySelectorAll('#g-acct .g-link')].find(b => /Delete my account/.test(b.textContent)).click());
-  await pb.type('.g-confirm input', BOB); await pb.click('.g-confirm .g-btn'); await sleep(2500);
+  await pb.type('.g-confirm input', BOB); await pb.click('.g-confirm .g-btn');
+  await pb.waitForFunction(() => /gone|database update|not work/i.test(document.querySelector('#toast').textContent), { timeout: 15000, polling: 200 }).catch(() => {});
+  if (LEGACY) { await pb.waitForFunction(() => /database update/.test(document.querySelector('#toast').textContent), { timeout: 10000, polling: 200 }).catch(() => {}); const t = await pb.$eval('#toast', e => e.textContent); if (sql(`select count(*) from public.profiles where username = '${BOB}'`) !== '1') throw new Error('the account went anyway'); if (!/database update/.test(t)) throw new Error('said: ' + t); return 'kindly declined: "' + t + '"'; }
   const left = sql(`select count(*) from public.profiles where username = '${BOB}'`) + ' profiles, ' + sql(`select count(*) from public.notes n join auth.users u on u.id = n.author where u.email = '${BOB}@example.test'`) + ' notes';
-  if (!left.startsWith('0 profiles')) throw new Error(left); return left + ' left';
+  if (!left.startsWith('0 profiles')) { await pb.screenshot({ path: join(root, 'dev/shots/cloud-delete-fail.png') }); throw new Error(left + '; the page said: ' + await pb.$eval('#toast', e => e.textContent)); }
+  return left + ' left';
 });
 
 await browser.close(); server.close();

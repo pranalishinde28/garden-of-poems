@@ -50,6 +50,14 @@ export const fromRow = (r: PoemRow): Poem => ({ id: r.id, title: r.title, conten
 // what counts as a change worth sending (not the server's own timestamps)
 const sig = (p: Poem) => JSON.stringify(payload(p));
 
+// ---------- before the database update ----------
+// A live database still on the original schema has no save_poem() or deleted_at. The page then saves
+// the old way (upsert and delete) and leaves out what needs the update, until the database is migrated.
+export const db = { legacy: false };
+type PgErr = { code?: string; message?: string } | null;
+const missing = (e: PgErr) => !!e && (e.code === 'PGRST202' || e.code === 'PGRST204' || e.code === 'PGRST205' || e.code === '42883' || e.code === '42703' || e.code === '42P01' || /does not exist|could not find/i.test(e.message || ''));
+export const NEEDS_UPDATE = 'This arrives with the next database update. Everything else works as before.';
+
 // ---------- the sync queue, kept per person on this device ----------
 let sync: SyncState = { base: {}, sigs: {}, queue: [], removed: [] };
 const syncKey = () => 'garden-of-poems:sync:' + Cloud.user!.id;
@@ -80,11 +88,14 @@ async function onAuthChanged() {
   }
   try {
     const sb = Cloud.sb!, id = Cloud.user.id;
-    const [{ data: prof }, { data: gard }, { data: rows, error }] = await Promise.all([
+    const [{ data: prof }, { data: gard }] = await Promise.all([
       sb.from('profiles').select('*').eq('id', id).maybeSingle(),
       sb.from('gardens').select('*').eq('owner', id).maybeSingle(),
-      sb.from('poems').select('*').eq('owner', id).is('deleted_at', null).order('created_at'),
     ]);
+    let res = await sb.from('poems').select('*').eq('owner', id).is('deleted_at', null).order('created_at');
+    db.legacy = missing(res.error);
+    if (db.legacy) res = await sb.from('poems').select('*').eq('owner', id).order('created_at');
+    const { data: rows, error } = res;
     if (error) throw error;
     Cloud.profile = prof; Cloud.garden = gard;
     if (late.useProfileAvatar) late.useProfileAvatar(prof);
@@ -145,10 +156,12 @@ export async function syncNow() {
   try {
     while (sync.queue.length) {
       const o = sync.queue[0];
+      if (db.legacy) { await sendLegacy(o); sync.queue.shift(); keepSync(); continue; }
       if (o.op === 'save') {
         const p = ownPoems().find(q => String(q.id) === o.id);
         if (p) {
           const { data, error } = await sb.rpc('save_poem', { p: payload(p) as Json, base: sync.base[o.id] ?? undefined });
+          if (missing(error)) { db.legacy = true; continue; }
           if (error) throw error;
           const r = data as unknown as SaveResult;
           if (r.status === 'saved') { sync.base[o.id] = r.row.updated_at; sync.sigs[o.id] = sig(p); }
@@ -175,6 +188,15 @@ export async function syncNow() {
   Cloud.busy = false; if (Cloud.again) { Cloud.again = false; queueSync(); }
 }
 // change your own poems; while visiting another garden, only the saved copy of yours changes
+// the old way, for a database without save_poem(): last write wins, removing deletes
+async function sendLegacy(o: Op) {
+  const sb = Cloud.sb!, owner = Cloud.user!.id;
+  if (o.op === 'remove') { const { error } = await sb.from('poems').delete().eq('owner', owner).eq('id', o.id); if (error) throw error; delete sync.base[o.id]; return; }
+  if (o.op === 'restore') return; // the save that follows puts it back
+  const p = ownPoems().find(q => String(q.id) === o.id); if (!p) return;
+  const { error } = await sb.from('poems').upsert({ ...payload(p), owner, updated_at: new Date().toISOString() } as Database['public']['Tables']['poems']['Insert']);
+  if (error) throw error; sync.sigs[o.id] = sig(p);
+}
 function dropLocal(id: string) {
   if (state.visiting) { state.ownSaved = (state.ownSaved || []).filter((p: Poem) => String(p.id) !== id); return; }
   const pl = plants.get(id); if (pl) removePlant(pl);
@@ -213,7 +235,7 @@ $('#cf-both-btn').onclick = () => resolve('both');
 
 // ---------- recently removed (30 days) ----------
 export async function removedPoems(): Promise<PoemRow[]> {
-  if (!Cloud.user || !Cloud.sb) return [];
+  if (!Cloud.user || !Cloud.sb || db.legacy) return [];
   const { data } = await Cloud.sb.from('poems').select('*').eq('owner', Cloud.user.id).not('deleted_at', 'is', null).order('deleted_at', { ascending: false }).limit(60);
   return data || [];
 }
@@ -227,18 +249,34 @@ export async function restoreRemoved(row: PoemRow) {
 // ---------- the public garden list: search, a page at a time ----------
 export async function listGardens(q: string, after?: PublicGarden): Promise<PublicGarden[]> {
   const { data, error } = await Cloud.sb!.rpc('list_public_gardens', { q: q || undefined, after_updated: after?.updated_at ?? undefined, after_owner: after?.owner ?? undefined, lim: 12 });
-  if (error) throw error; return (data || []) as PublicGarden[];
+  if (!missing(error)) { if (error) throw error; return (data || []) as PublicGarden[]; }
+  // before the update: the view directly, newest first
+  let req = Cloud.sb!.from('public_gardens').select('*').order('updated_at', { ascending: false }).limit(12);
+  const t = (q || '').replace(/[,()%*]/g, ' ').trim();
+  if (t) req = req.or(`name.ilike.%${t}%,username.ilike.%${t}%,display_name.ilike.%${t}%`);
+  if (after?.updated_at) req = req.lt('updated_at', after.updated_at);
+  const r2 = await req; if (r2.error) throw r2.error; return (r2.data || []) as PublicGarden[];
 }
 
 // ---------- your account ----------
-export async function usernameAvailable(name: string) { const { data } = await Cloud.sb!.rpc('username_available', { name }); return !!data; }
+export async function usernameAvailable(name: string) {
+  const { data, error } = await Cloud.sb!.rpc('username_available', { name });
+  if (!missing(error)) return !!data;
+  const r = await Cloud.sb!.from('profiles').select('id').eq('username', name.toLowerCase()).maybeSingle(); return !r.data;
+}
 export async function changeUsername(name: string) {
   const { data, error } = await Cloud.sb!.rpc('change_username', { new_name: name });
+  if (missing(error)) { // before the update: change it directly (row-level security allows your own profile)
+    const n = name.trim().toLowerCase(), r = await Cloud.sb!.from('profiles').update({ username: n }).eq('id', Cloud.user!.id);
+    if (r.error) throw new Error(r.error.code === '23505' ? 'That username is taken. Try another.' : 'That did not work just now.');
+    if (Cloud.profile) Cloud.profile.username = n; return n;
+  }
   if (error) throw new Error(error.message);
   if (Cloud.profile) Cloud.profile.username = data as string; return data as string;
 }
 export async function deleteAccount() {
   const id = Cloud.user!.id, { error } = await Cloud.sb!.rpc('delete_my_account');
+  if (missing(error)) throw new Error('Deleting an account arrives with the next database update. Your garden is untouched.');
   if (error) throw new Error(error.message);
   for (const k of [KEY + ':u:' + id, 'garden-of-poems:sync:' + id, 'garden-of-poems:settings:u:' + id]) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
   await Cloud.sb!.auth.signOut();

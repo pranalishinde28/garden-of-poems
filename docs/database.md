@@ -46,7 +46,7 @@ npx supabase stop
 
 Your live project already has the baseline (you ran `schema.sql` by hand), so the plan is: tell Supabase the baseline is applied, then push the four new migrations.
 
-**Do this before merging the app changes.** The new page calls `save_poem()` and the other functions, and they need to exist first. The old page keeps working against the new database.
+**The order doesn't matter.** The page notices a database still on the original schema (no `deleted_at`, no `save_poem()`) and saves the old way: upsert, delete, last write wins. It also leaves out what needs the update (recently removed, hiding and reporting notes, deleting an account) with a short note. Once you migrate, the new behaviour starts at the next sign-in, without a redeploy. `LEGACY=1 node dev/cloud-e2e.mjs` against a local database reset to the baseline (`npx supabase db reset --version 20261011000000`) tests that mode.
 
 1. **Back up first.** Dashboard → Database → Backups (free plans keep daily backups), or after step 2: `npx supabase db dump --linked > backup-before-migrations.sql`.
 2. **Link the project** (each command opens a browser or asks for something only you have):

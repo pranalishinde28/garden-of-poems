@@ -1,7 +1,7 @@
 import { $, siteURL } from '../core/util.js';
 import { toast } from '../ui/helpers.js';
 import { closePanel, openPanel } from '../ui/reading.js';
-import { Cloud, changeUsername, deleteAccount, exportGarden, listGardens, ownPoems, removedPoems, restoreRemoved, saveGardenSettings, syncNow, usernameAvailable } from './cloud.ts';
+import { Cloud, NEEDS_UPDATE, db, changeUsername, deleteAccount, exportGarden, listGardens, ownPoems, removedPoems, restoreRemoved, saveGardenSettings, syncNow, usernameAvailable } from './cloud.ts';
 import { late, provide } from '../core/late.js';
 
 // names other modules reach through late (see core/late.js)
@@ -89,7 +89,7 @@ function renderAccount() {
 async function renderRemoved() {
   const box = $('#g-removed'); box.textContent = 'Looking…';
   const rows = await removedPoems(); box.innerHTML = '';
-  if (!rows.length) { box.append(el('p', 'g-m', 'Nothing here.')); return; }
+  if (!rows.length) { box.append(el('p', 'g-m', db.legacy ? NEEDS_UPDATE : 'Nothing here.')); return; }
   rows.forEach(r => {
     const days = Math.max(0, 30 - Math.floor((Date.now() - new Date(r.deleted_at)) / 864e5));
     const row = el('div', 'g-row'), t = el('div', 'g-t'); t.append(el('div', 'g-n', r.title), el('div', 'g-m', `${days} day${days === 1 ? '' : 's'} left`));

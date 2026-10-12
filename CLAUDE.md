@@ -68,7 +68,7 @@ Built with Vite. Three.js stays at **r128** (pinned `three@0.128.0`) and supabas
 - Check **Authentication → Sign In / Providers** and **URL Configuration** before launch; the current values are in `CLAUDE.local.md`.
 - The client uses the new-style **publishable key** (`sb_publishable_...`) from `.env`; it works with supabase-js 2.45.4. Never put the secret / service_role key in the client.
 - When the app is hosted somewhere, update Site URL and Redirect URLs in Authentication → URL Configuration.
-- **Until the owner runs the steps in docs/database.md, the live database is still on the baseline.** The new page needs `save_poem()` and the other functions, so migrate the database before merging the Phase 6 app changes.
+- **Until the owner runs the steps in docs/database.md, the live database is still on the baseline.** `cloud.ts` detects that at sign-in (`db.legacy`: `deleted_at` or an RPC missing) and falls back to upsert/delete sync, a direct `public_gardens` query and direct username updates; features that need the update say so (`NEEDS_UPDATE`). Keep that fallback until the live database is migrated.
 
 ### Stack and data
 - **Rendering:** Three.js r128, procedural geometry and canvas-drawn textures only (no image or model assets).
