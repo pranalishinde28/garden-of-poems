@@ -42,7 +42,7 @@ import './ui/writing.js';
 import './ui/swingReader.js';
 import './ui/swinging.js';
 import './ui/themes.js';
-import './cloud/cloud.js';
+import './cloud/cloud.ts';
 import './cloud/gardensPanel.js';
 import './cloud/visiting.js';
 import './cloud/notes.js';
@@ -66,7 +66,7 @@ import { state } from './core/state.js';
 import { camera } from './world/renderer.js';
 import { curLook } from './player/camera.js';
 import { applyFilter } from './ui/filter.js';
-import { cloudInit } from './cloud/cloud.js';
+import { cloudInit } from './cloud/cloud.ts';
 import { frame } from './core/loop.js';
 
 camera.position.set(0, 12.5, 33); curLook.set(0, 0.5, 0); camera.lookAt(curLook);

@@ -388,3 +388,28 @@ body.panel-open #savestate{opacity:0}
 #toast.has-action{pointer-events:auto}
 #toast button{font-style:normal;text-decoration:underline;text-underline-offset:3px;margin-left:.35rem;padding:.2rem .3rem;min-height:36px}
 @media (pointer:coarse){#hud button{width:44px;height:44px}}
+
+/* ---------- a sync conflict ---------- */
+#conflict{left:50%;top:50%;width:min(640px,92vw);max-height:86vh;overflow:auto;transform:translate(-50%,-47%);border-radius:4px;padding:1.8rem 2rem 1.4rem}
+#conflict.open{transform:translate(-50%,-50%)}
+#conflict h2{margin:0 0 .3rem;font-style:italic;font-weight:500;font-size:1.8rem}
+.cf-sub{margin:0 0 1rem;color:var(--ink-soft);font-style:italic}
+.cf-cols{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+@media (max-width:560px){.cf-cols{grid-template-columns:1fr}}
+.cf-cols h3{margin:0 0 .3rem;font-weight:500;font-size:1.15rem}
+.cf-cols pre{white-space:pre-wrap;font-family:var(--serif);font-size:1.08rem;line-height:1.55;margin:0 0 .8rem;padding:.6rem .8rem;border:1px solid var(--line);border-radius:6px;min-height:5rem}
+.cf-when{margin:-.2rem 0 .3rem;font-size:.92rem;font-style:italic;color:var(--ink-soft)}
+.cf-pick{padding:.35rem 1rem .42rem;border-radius:999px;background:var(--ink);color:var(--paper-strong);min-height:40px}
+.cf-foot{margin:1rem 0 0}
+
+#g-search{width:100%;font-family:var(--serif);font-size:1.08rem;color:var(--ink);background:transparent;border:0;border-bottom:1px solid var(--line);padding:.3rem 0;margin:.2rem 0 .4rem}
+#g-acct input[type=text],.g-confirm input{width:100%;font-family:var(--serif);font-size:1.08rem;color:var(--ink);background:transparent;border:0;border-bottom:1px solid var(--line);padding:.25rem 0}
+.g-ex{display:flex;flex-direction:column;align-items:flex-start;margin:.8rem 0 .4rem}
+.g-link.danger,.g-btn.danger{color:var(--rose)}
+.g-btn.danger{border-color:var(--rose)}
+.g-confirm{margin-top:.6rem;padding:.6rem .8rem;border:1px solid var(--rose);border-radius:6px}
+.g-confirm p{margin:0 0 .4rem}
+
+.n-acts{display:flex;gap:.8rem;flex-wrap:wrap}
+.n-row.is-hidden .n-t{opacity:.55}
+.cf-cols > div{display:flex;flex-direction:column}.cf-cols pre{flex:1}.cf-cols .cf-pick{align-self:flex-start}

@@ -12,7 +12,12 @@
     "flow:swing": "node dev/screenshot.mjs --flow swing",
     "flow:avatar": "node dev/screenshot.mjs --flow avatar",
     "flow:map": "node dev/screenshot.mjs --flow map",
-    "flow:ux": "node dev/screenshot.mjs --flow ux"
+    "flow:ux": "node dev/screenshot.mjs --flow ux",
+    "typecheck": "tsc -p tsconfig.json",
+    "db:types": "supabase gen types typescript --local > src/cloud/database.types.ts",
+    "db:test": "supabase test db",
+    "e2e:local": "sh dev/e2e-local.sh",
+    "db:snapshot": "sh dev/db-snapshot.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.45.4",
@@ -21,6 +26,8 @@
   "devDependencies": {
     "axe-core": "^4.14.0",
     "puppeteer": "^25.13.0",
+    "supabase": "^2.120.0",
+    "typescript": "^7.0.2",
     "vite": "^8.3.4"
   }
 }

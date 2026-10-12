@@ -1,7 +1,7 @@
 import { $, siteURL } from '../core/util.js';
 import { toast } from '../ui/helpers.js';
 import { closePanel, openPanel } from '../ui/reading.js';
-import { Cloud, ownPoems, saveGardenSettings, syncNow } from './cloud.js';
+import { Cloud, NEEDS_UPDATE, db, changeUsername, deleteAccount, exportGarden, listGardens, ownPoems, removedPoems, restoreRemoved, saveGardenSettings, syncNow, usernameAvailable } from './cloud.ts';
 import { late, provide } from '../core/late.js';
 
 // names other modules reach through late (see core/late.js)
@@ -51,8 +51,7 @@ function renderAccount() {
         if (mode === 'up') {
           const un = user.value.trim().toLowerCase();
           if (!/^[a-z0-9_]{3,24}$/.test(un)) throw new Error('Usernames are 3 to 24 characters: lowercase letters, numbers and _.');
-          const { data: taken } = await Cloud.sb.from('profiles').select('id').eq('username', un).maybeSingle();
-          if (taken) throw new Error('That username is taken. Try another.');
+          if (!(await usernameAvailable(un))) throw new Error('That username is taken. Try another.');
           const { data, error } = await Cloud.sb.auth.signUp({ email: em, password: pw, options: { data: { username: un, display_name: disp.value.trim().slice(0, 60) }, emailRedirectTo: siteURL() } });
           if (error) throw error;
           if (!data.session) { box.innerHTML = ''; box.append(el('h3', '', 'Check your email'), el('p', '', `We sent a confirmation link to ${em}. Open it on this device to finish creating your account.`)); return; }
@@ -83,6 +82,46 @@ function renderAccount() {
   $('#g-status').textContent = g.is_public ? 'Your garden is public. Anyone can walk through it and read the poems you have not kept private.' : 'Your garden is private. Only you can see it.';
   $('#g-toggle').textContent = g.is_public ? 'Make my garden private' : 'Make my garden public';
   $('#g-copy').hidden = !(g.is_public && p.username);
+  renderRemoved(); renderAcct();
+}
+
+// ---- recently removed: bring a poem back within 30 days ----
+async function renderRemoved() {
+  const box = $('#g-removed'); box.textContent = 'Looking…';
+  const rows = await removedPoems(); box.innerHTML = '';
+  if (!rows.length) { box.append(el('p', 'g-m', db.legacy ? NEEDS_UPDATE : 'Nothing here.')); return; }
+  rows.forEach(r => {
+    const days = Math.max(0, 30 - Math.floor((Date.now() - new Date(r.deleted_at)) / 864e5));
+    const row = el('div', 'g-row'), t = el('div', 'g-t'); t.append(el('div', 'g-n', r.title), el('div', 'g-m', `${days} day${days === 1 ? '' : 's'} left`));
+    const b = el('button', '', 'Bring it back'); b.onclick = async () => { b.disabled = true; if (await restoreRemoved(r)) row.remove(); else b.disabled = false; };
+    row.append(t, b); box.append(row);
+  });
+}
+// ---- your account: username, export, delete ----
+function renderAcct() {
+  const box = $('#g-acct'); box.innerHTML = '';
+  const l = el('label', 'f', 'Username, for your garden link'), i = el('input'); i.type = 'text'; i.id = 'g-username'; l.htmlFor = i.id; i.value = (Cloud.profile && Cloud.profile.username) || ''; i.autocomplete = 'username';
+  const msg = el('p', 'g-m'); msg.setAttribute('role', 'status'); const save = el('button', 'g-btn', 'Change username'); save.disabled = true;
+  let t = 0;
+  i.oninput = () => {
+    const v = i.value.trim().toLowerCase(); save.disabled = true; clearTimeout(t);
+    if (v === (Cloud.profile && Cloud.profile.username)) { msg.textContent = ''; return; }
+    if (!/^[a-z0-9_]{3,24}$/.test(v)) { msg.textContent = '3 to 24 characters: lowercase letters, numbers and _.'; return; }
+    msg.textContent = 'Checking…'; t = setTimeout(async () => { const ok = await usernameAvailable(v); if (i.value.trim().toLowerCase() !== v) return; msg.textContent = ok ? 'That one is free.' : 'That username is taken.'; save.disabled = !ok; }, 350);
+  };
+  save.onclick = async () => { save.disabled = true; try { const n = await changeUsername(i.value); msg.textContent = `Your garden link now uses @${n}.`; renderAccount(); } catch (e) { msg.textContent = e.message; } };
+  const ex = el('div', 'g-ex'); const j = el('button', 'g-link', 'Download my garden (JSON)'), m = el('button', 'g-link', 'Download my poems (Markdown)');
+  j.onclick = () => exportGarden('json'); m.onclick = () => exportGarden('md'); ex.append(j, m);
+  const del = el('button', 'g-link danger', 'Delete my account');
+  del.onclick = () => {
+    const c = el('div', 'g-confirm'), name = (Cloud.profile && Cloud.profile.username) || '';
+    c.append(el('p', '', `This removes your garden, every poem and every note, for good. Type ${name} to confirm.`));
+    const ci = el('input'); ci.type = 'text'; ci.setAttribute('aria-label', 'Type your username to confirm'); const go = el('button', 'g-btn danger', 'Delete everything'); go.disabled = true;
+    ci.oninput = () => { go.disabled = ci.value.trim().toLowerCase() !== name; };
+    go.onclick = async () => { go.disabled = true; try { await deleteAccount(); closeGardens(); toast('Your account and garden are gone. Thank you for the poems.', 6000); } catch (e) { toast(e.message || 'That did not work. Try again.'); go.disabled = false; } };
+    c.append(ci, go); del.replaceWith(c); ci.focus();
+  };
+  box.append(l, i, msg, save, ex, del);
 }
 $('#g-custom').onclick = () => { closeGardens(); late.openCustomize(); };
 $('#g-toggle').onclick = async () => {
@@ -96,15 +135,19 @@ $('#g-copy').onclick = async () => {
   const url = siteURL() + '?garden=' + encodeURIComponent(Cloud.profile.username);
   try { await navigator.clipboard.writeText(url); toast('The link to your garden is copied.'); } catch (e) { prompt('Copy the link to your garden:', url); }
 };
-async function loadGardens() {
-  const list = $('#g-list'), empty = $('#g-empty');
-  list.innerHTML = ''; empty.hidden = false;
+let lastGarden = null, gq = '';
+async function loadGardens(more) {
+  const list = $('#g-list'), empty = $('#g-empty'), moreBtn = $('#g-morelist');
+  if (!more) { list.innerHTML = ''; lastGarden = null; }
+  empty.hidden = false; moreBtn.hidden = true;
   if (!Cloud.ready) return;
   empty.textContent = 'Looking for gardens…';
-  const { data, error } = await Cloud.sb.from('public_gardens').select('*').order('updated_at', { ascending: false }).limit(60);
-  if (error) { empty.textContent = 'The gardens could not be loaded just now.'; return; }
-  const rows = (data || []).filter(g => (!Cloud.user || g.owner !== Cloud.user.id) && g.poem_count > 0);
-  if (!rows.length) { empty.textContent = 'No public gardens yet. When other poets open their gardens, they will appear here.'; return; }
+  let data;
+  try { data = await listGardens(gq, lastGarden); } catch (e) { empty.textContent = 'The gardens could not be loaded just now.'; return; }
+  if (data.length) lastGarden = data[data.length - 1];
+  moreBtn.hidden = data.length < 12;
+  const rows = data.filter(g => (!Cloud.user || g.owner !== Cloud.user.id) && g.poem_count > 0);
+  if (!rows.length && !list.children.length) { empty.textContent = gq ? 'No gardens by that name yet.' : 'No public gardens yet. When other poets open their gardens, they will appear here.'; return; }
   empty.hidden = true;
   rows.forEach(g => {
     const row = el('div', 'g-row'), t = el('div', 'g-t');
@@ -118,5 +161,8 @@ function openGardens() { late.closePops(); renderAccount(); openPanel(gardensPan
 export function closeGardens() { closePanel(gardensPanel); }
 $('#h-gardens').onclick = () => gardensPanel.classList.contains('open') ? closeGardens() : openGardens();
 $('#g-close').onclick = closeGardens;
+let searchT = 0;
+$('#g-search').oninput = e => { clearTimeout(searchT); searchT = setTimeout(() => { gq = e.target.value.trim(); loadGardens(false); }, 300); };
+$('#g-morelist').onclick = () => loadGardens(true);
 $('#intro-account').onclick = () => { late.enterGarden(false); setTimeout(openGardens, 600); };
 

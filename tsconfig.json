@@ -1,0 +1,10 @@
+{
+  // Type-checks the TypeScript parts (the cloud module, against supabase/ types); the rest stays JavaScript.
+  "compilerOptions": {
+    "target": "ES2020", "module": "ESNext", "moduleResolution": "bundler",
+    "strict": true, "noEmit": true, "skipLibCheck": true,
+    "allowJs": true, "checkJs": false, "allowImportingTsExtensions": true,
+    "types": ["vite/client"], "lib": ["ES2020", "DOM", "DOM.Iterable"]
+  },
+  "include": ["src/cloud/*.ts"]
+}

@@ -3,7 +3,7 @@ import { $ } from '../core/util.js';
 import { state } from '../core/state.js';
 import { flag } from './storage.js';
 import { renderer } from '../world/renderer.js';
-import { Cloud } from '../cloud/cloud.js';
+import { Cloud } from '../cloud/cloud.ts';
 import { AVATAR_OPTIONS, animateAvatar, buildAvatar, cleanAvatar } from '../player/avatar.js';
 import { getAvatar, setAvatar, setThirdPerson } from '../player/figure.js';
 import { setViewUI } from '../ui/hud.js';

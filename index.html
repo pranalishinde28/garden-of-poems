@@ -102,11 +102,18 @@
     <button id="g-toggle" class="g-btn">Make my garden public</button>
     <button id="g-copy" class="g-link" hidden>Copy the link to my garden</button>
     <button id="g-custom" class="g-link">Customize its look, sign and music</button>
+    <h3>Recently removed</h3>
+    <p class="g-m">Poems you remove wait here for 30 days before they are gone for good.</p>
+    <div id="g-removed"></div>
+    <h3>Your account</h3>
+    <div id="g-acct"></div>
   </div>
   <div id="g-visit">
     <h3>Visit a garden</h3>
-    <p id="g-empty"></p>
+    <input type="search" id="g-search" placeholder="Search by garden or poet" aria-label="Search public gardens" autocomplete="off">
+    <p id="g-empty" role="status"></p>
     <div id="g-list"></div>
+    <button id="g-morelist" class="g-link" hidden>More gardens</button>
   </div>
 </section>
 <section id="custom" class="panel" tabindex="-1" role="dialog" aria-labelledby="c-title" hidden>
@@ -243,6 +250,15 @@
   <div class="st-bar"><button id="steps-skip">Skip</button><button id="steps-next">Next</button></div>
 </section>
 <div id="sr-say" class="sr-only" aria-live="polite"></div>
+<section id="conflict" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="cf-h" hidden>
+  <h2 id="cf-h">This poem changed in two places</h2>
+  <p class="cf-sub">“<span id="cf-title"></span>” was changed on this device and somewhere else. Which shall stay?</p>
+  <div class="cf-cols">
+    <div><h3>On this device</h3><pre id="cf-local"></pre><button class="cf-pick" id="cf-local-btn">Keep this one</button></div>
+    <div><h3>Elsewhere</h3><p class="cf-when" id="cf-server-when"></p><pre id="cf-server"></pre><button class="cf-pick" id="cf-server-btn">Keep this one</button></div>
+  </div>
+  <p class="cf-foot"><button class="g-link" id="cf-both-btn">Keep both, as two poems</button></p>
+</section>
 <p id="savestate" role="status" aria-live="polite" hidden></p>
 <div id="loading"></div>
 <script type="module" src="/src/main.js"></script>
