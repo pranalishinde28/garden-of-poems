@@ -32,7 +32,7 @@ export let groundMesh;
 })();
 
 /* far mountains, hazed into the sky */
-export const mountainU = [];
+export const mountainU = [], mountainMeshes = [];
 (function buildMountains() {
   [{ r: 300, h: 70, col: '#71869b', haze: 0.5, seed: 3 }, { r: 220, h: 42, col: '#4d6457', haze: 0.3, seed: 8 }].forEach(L => {
     const seg = 220, pos = [], vt = [], idx = [], R = rng(L.seed), ph = [R() * 6, R() * 6, R() * 6, R() * 6];
@@ -48,7 +48,7 @@ export const mountainU = [];
     const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: u, side: DS, fog: false,
       vertexShader: 'attribute float aT;varying float vT;void main(){vT=aT;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
       fragmentShader: 'uniform vec3 uCol,uHor;uniform float uHaze,uNight;varying float vT;void main(){vec3 c=uCol*(0.8+0.3*vT)*mix(1.,0.2,uNight);c=mix(c,uHor,clamp(uHaze+(1.-vT)*0.35,0.,1.));gl_FragColor=vec4(c,1.);}' }));
-    scene.add(m);
+    scene.add(m); mountainMeshes.push(m);
   });
 })();
 

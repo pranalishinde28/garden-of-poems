@@ -46,6 +46,9 @@ const VIEWS = {
   'fuji-view': { pos: [8, 2.6, 16], look: [-25, 14, -200], season: 'spring' },
   'fuji-high': { pos: [4, 14, 44], look: [-20, 10, -200], season: 'spring' },
   'fuji-winter': { pos: [8, 2.6, 16], look: [-25, 14, -200], season: 'winter' },
+  'sea-view': { pos: [8, 2.6, 16], look: [-25, 2, -200], season: 'spring', view: 'sea' },
+  'sea-high': { pos: [4, 26, 60], look: [-10, -2, -60], season: 'summer', view: 'sea' },
+  'sea-gate': { pos: [30, 3, 55], look: [140, -4, 90], season: 'spring', view: 'sea' },
   'lineup': { lineup: true, pos: [3.1, 1.25, 25.2], look: [3.1, 0.95, 21.6] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
 };
@@ -150,6 +153,7 @@ async function shoot(page) {
       g.state.mode = 'cinematic';
       if (g.SETTINGS.season !== (v.season || 'spring')) g.setSetting('season', v.season || 'spring');
       document.querySelector('#toast')?.classList.remove('show');
+      if (g.SETTINGS.view !== (v.view || 'fuji')) g.setSetting('view', v.view || 'fuji');
       g.camera.position.set(...v.pos); g.curLook.set(...v.look); g.camera.lookAt(g.curLook);
     }, v);
     await sleep(v.season ? 4000 : 2500);

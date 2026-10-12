@@ -1,3 +1,4 @@
+import { applyHorizon } from '../world/horizon.js';
 import * as THREE from 'three';
 import { $, C, V3, rng } from '../core/util.js';
 import { groundH } from '../world/terrain.js';
@@ -37,7 +38,7 @@ provide({
 /* ================= customizing a garden: scenery, features, trees, music, and the sign ================= */
 animals.forEach(a => { a.cat = (a.train || a.legs || (a.home && a.head && !a.wl)) ? 'land' : (a.l || a.wl) ? 'air' : 'water'; });
 const SHOW_LABELS = [['wisteria', 'Wisteria arbors'], ['tulips', 'Tulip fields'], ['roses', 'Rose garden'], ['hydrangeas', 'Blue hydrangeas'], ['lilies', 'White lilies'], ['orchids', 'Purple orchids'], ['lamps', 'Garden lamps'], ['swings', 'Swing garden'], ['land', 'Deer, peacocks and rabbits'], ['air', 'Birds and butterflies'], ['water', 'Ducks and koi']];
-const SCENE_LABELS = [['fuji', 'Mount Fuji on the horizon'], ['mist', 'Morning mist over the water'], ['drift', 'Pollen, leaves or snow in the air']];
+const SCENE_LABELS = [['fuji', 'Mount Fuji, when the horizon is the mountains'], ['mist', 'Morning mist over the water'], ['drift', 'Pollen, leaves or snow in the air']];
 const settingsKey = () => 'garden-of-poems:settings' + (Cloud.user ? ':u:' + Cloud.user.id : '');
 function localSettings(key) { try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v ? cleanSettings(v) : null; } catch (e) { return null; } }
 let settingsTimer = null;
@@ -50,6 +51,7 @@ export function applyVisibility() {
   // in winter the flower beds rest under the snow (the choices themselves are kept)
   const resting = THEME === 'winter' ? ['tulips', 'roses', 'hydrangeas', 'lilies', 'orchids'] : [];
   for (const k in REG) { const on = k === 'fuji' ? SETTINGS.fuji : featOn(k) && !resting.includes(k); REG[k].forEach(o => { o.visible = on; }); }
+  applyHorizon(SETTINGS.view, SETTINGS.fuji);
   mist.forEach(s => { s.visible = SETTINGS.mist; });
   koi.forEach(k => { k.g.visible = featOn('water'); });
   setShadowDirty(true);
