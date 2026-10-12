@@ -12,6 +12,7 @@ import { flowerSpots } from '../world/tulips.js';
 import { SFX, okGround, randomSpot, regAnimal } from '../animals/animals.js';
 import { late } from '../core/late.js';
 
+export const ROSE_GARDEN = { x: 54, z: 14 };
 /* ================= flower gardens: lilies, orchids, roses, hydrangeas ================= */
 const floretTex = canvasTex(64, 64, (g) => {
   for (let i = 0; i < 4; i++) { g.save(); g.translate(32, 32); g.rotate(i * Math.PI / 2 + 0.3); const gr = g.createRadialGradient(0, -12, 2, 0, -12, 16); gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#e6e9f4'); g.fillStyle = gr; g.beginPath(); g.ellipse(0, -13, 10, 14, 0, 0, 7); g.fill(); g.restore(); }
@@ -77,7 +78,7 @@ const flowerMat = () => windify(new THREE.MeshLambertMaterial({ vertexColors: tr
   for (let k = 0; k < 14; k++) { const a = k * 2.4, tilt = 0.25 + k * 0.075, rr = 0.004 + k * 0.0016; e.set(0, a, tilt, 'YXZ'); q.setFromEuler(e); rose.add(GEO.petal, new V3(Math.cos(a) * rr, 0, Math.sin(a) * rr), new V3(0.05 + k * 0.0022, 0.06, 0.05 + k * 0.0018), white.clone().multiplyScalar(1 - (13 - k) * 0.025), q); }
   const roseHead = rose.build();
   const RCOL = ['#b3122b', '#e7799b', '#f7f1ea', '#f2c94c', '#ee6f5a', '#c2185b'].map(C);
-  const RG = { x: 54, z: 14 }, roses = [], bushes = new Merge();
+  const RG = ROSE_GARDEN, roses = [], bushes = new Merge();
   const bushSpots = [];
   for (let i = 0; i < 14; i++) { const a = i / 14 * 6.28; bushSpots.push([RG.x + Math.cos(a) * 6, RG.z + Math.sin(a) * 6, RCOL[i % RCOL.length]]); }
   for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28 + 0.3; bushSpots.push([RG.x + Math.cos(a) * 3, RG.z + Math.sin(a) * 3, RCOL[(i + 2) % RCOL.length]]); }

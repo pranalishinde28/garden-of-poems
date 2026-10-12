@@ -266,3 +266,69 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 @media (pointer:coarse){#swingui button{min-height:44px;padding-top:.5rem;padding-bottom:.55rem}}
 /* the walking joystick has nothing to do on a swing */
 body.on-swing #joy{opacity:0;pointer-events:none}
+
+/* ---------- your figure (Customize) ---------- */
+.av-wrap{display:flex;gap:1rem;align-items:flex-start}
+#av-preview{width:150px;height:206px;flex:none;border-radius:6px;background:linear-gradient(180deg,rgba(150,178,160,.18),rgba(110,140,100,.28))}
+.av-ctl{flex:1;min-width:0}
+.av-row{display:grid;grid-template-columns:5.6rem 1fr;align-items:center;gap:.5rem;margin:.32rem 0;font-size:1.02rem}
+.av-row .seg button{font-size:.96rem;padding:.16rem .6rem .22rem}
+.sw{display:flex;flex-wrap:wrap;gap:.3rem}
+.sw button{width:24px;height:24px;border-radius:50%;border:1px solid var(--line);box-shadow:inset 0 0 0 2px rgba(255,255,255,.18)}
+.sw button[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:2px}
+#av-height{width:100%;accent-color:var(--accent)}
+@media (max-width:560px){.av-wrap{flex-direction:column;align-items:center}.av-ctl{width:100%}.av-row{grid-template-columns:5rem 1fr}}
+@media (pointer:coarse){.sw button{width:34px;height:34px}.av-row .seg button{min-height:40px}}
+
+/* ---------- the garden map ---------- */
+#mapview{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;background:radial-gradient(ellipse at 50% 40%,rgba(250,246,234,.97),rgba(236,228,206,.97));color:#2f3a28;opacity:0;transition:opacity .45s ease;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+#mapview.open{opacity:1}
+.map-head{position:relative;text-align:center;padding:1.1rem 3.5rem .2rem}
+.map-head h2{margin:0;font-weight:500;font-style:italic;font-size:1.9rem}
+.map-head p{margin:.15rem 0 0;font-style:italic;color:rgba(47,58,40,.7);font-size:1.05rem}
+#map-close{position:absolute;right:1rem;top:.9rem;width:44px;height:44px;border-radius:50%;font-size:1.8rem;color:rgba(47,58,40,.7)}
+#map-close:hover{background:rgba(47,58,40,.1)}
+#map-stage{position:relative;flex:1;min-height:0}
+#map-canvas{position:absolute;inset:0}
+#map-marks{position:absolute;inset:0;pointer-events:none}
+#map-marks button{position:absolute;pointer-events:auto;transform:translate(-50%,-50%)}
+.map-place{display:flex;align-items:center;gap:.35rem;padding:.2rem;border-radius:999px;color:#2f3a28;font-family:var(--serif)}
+.map-place .dot{width:11px;height:11px;border-radius:50%;background:#2f3a28;box-shadow:0 0 0 3px rgba(250,246,234,.9);flex:none}
+.map-place .t{display:flex;flex-direction:column;align-items:flex-start;line-height:1.05;text-align:left;background:rgba(250,246,234,.78);padding:.1rem .45rem .2rem;border-radius:6px}
+.map-place em{font-size:1.02rem}
+.map-place small{font-size:.86rem;font-style:italic;color:rgba(47,58,40,.68)}
+.map-place.side-l{flex-direction:row-reverse;transform:translate(calc(-100% + 9px),-50%)}
+.map-place.side-l .t{align-items:flex-end;text-align:right}
+.map-place.side-r{transform:translate(-9px,-50%)}
+.map-place.small em{font-size:.95rem}
+.map-place:hover .t,.map-place:focus-visible .t{background:rgba(250,246,234,1);box-shadow:0 2px 10px rgba(40,50,30,.18)}
+.map-poem{width:22px;height:22px;border-radius:50%;display:grid;place-items:center}
+.map-poem::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px rgba(250,246,234,.9)}
+.map-poem.big::before{width:14px;height:14px}
+.map-poem:hover::before,.map-poem:focus-visible::before{transform:scale(1.35)}
+.map-poem::after{content:attr(data-title);position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);white-space:nowrap;font-style:italic;font-size:1rem;background:rgba(250,246,234,.96);color:#2f3a28;padding:.12rem .5rem;border-radius:6px;box-shadow:0 2px 10px rgba(40,50,30,.18);opacity:0;pointer-events:none;transition:opacity .2s}
+.map-poem:hover::after,.map-poem:focus-visible::after{opacity:1}
+#map-me{position:absolute;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:18px solid #9a3b2f;filter:drop-shadow(0 0 2px rgba(250,246,234,.9));pointer-events:none}
+#map-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:.4rem 1rem;padding:.4rem 1rem 1rem;font-size:.98rem;font-style:italic;color:rgba(47,58,40,.8)}
+#map-legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:.35rem;vertical-align:middle}
+#map-legend b{color:#9a3b2f;margin-right:.3rem;font-size:.8rem}
+#mapview button:focus-visible{outline:2px solid #2f3a28;outline-offset:2px}
+@media (pointer:coarse){.map-poem{width:44px;height:44px}.map-place{min-height:44px}}
+#minimap-btn{position:fixed;right:18px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);z-index:9;width:132px;height:132px;padding:0;border-radius:50%;box-shadow:0 8px 24px rgba(20,32,22,.25);opacity:.92;transition:opacity .3s}
+#minimap-btn:hover{opacity:1}
+#minimap{width:100%;height:100%;display:block}
+#minimap-btn.touch{width:104px;height:104px;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);right:12px}
+body.on-swing #minimap-btn{bottom:calc(env(safe-area-inset-bottom,0px) + 90px)}
+
+.map-poem{z-index:2}.map-place{z-index:1}
+#map-places{display:none}
+@media (max-width:640px){
+  .map-place small{display:none}
+  .map-place em{font-size:.86rem}
+  .map-place .t{padding:0 .3rem .05rem;background:rgba(250,246,234,.68)}
+  .map-place .dot{width:9px;height:9px}
+  #map-places{display:flex;gap:.45rem;overflow-x:auto;padding:.3rem 1rem .2rem;scroll-snap-type:x proximity}
+  #map-places button{flex:none;scroll-snap-align:start;border:1px solid rgba(47,58,40,.22);border-radius:999px;padding:.35rem .8rem;min-height:44px;color:#2f3a28;background:rgba(250,246,234,.8)}
+  #map-places small{font-style:italic;color:rgba(47,58,40,.68)}
+  #map-legend{font-size:.88rem;gap:.2rem .7rem;padding-bottom:.8rem}
+}

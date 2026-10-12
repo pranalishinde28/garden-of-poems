@@ -32,6 +32,8 @@ addEventListener('keydown', e => {
   }
   if (e.code === 'Escape') { if (state.mode === 'focus') late.closeReader(); else if (state.mode === 'writing') late.closeEditor(); late.closePops(); return; }
   if (state.mode === 'focus' && !state.reflection) { if (e.code === 'ArrowLeft') { late.stepPoem(-1); return; } if (e.code === 'ArrowRight') { late.stepPoem(1); return; } }
+  if (e.code === 'KeyM' && !e.repeat && (state.mode === 'walk' || state.mode === 'swing')) { late.toggleMap(); return; }
+  if (e.code === 'KeyV' && !e.repeat && (state.mode === 'walk' || state.mode === 'swing')) { late.toggleView(); return; }
   if (e.code === 'KeyE' && state.mode === 'walk' && late.cueTarget) { e.preventDefault(); interact(late.cueTarget); return; }
   if (/^(Key[WASD]|Arrow|Shift|Space)/.test(e.code)) { keys.add(e.code); if ((e.code.startsWith('Arrow') || e.code === 'Space') && (state.mode === 'walk' || state.mode === 'swing')) e.preventDefault(); }
 });

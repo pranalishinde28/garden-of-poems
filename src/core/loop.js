@@ -20,6 +20,7 @@ import { walk } from '../player/walk.js';
 import { updateFx, updatePlants } from './updates.js';
 import { renderReflection } from '../water/reflection.js';
 import { renderPost } from '../world/post.js';
+import { updateFigure } from '../player/figure.js';
 import { late } from './late.js';
 
 let last = performance.now(), first = true;
@@ -39,6 +40,7 @@ export function frame(now) {
   else if (state.mode === 'cinematic' && seed) updateSeed(dt);
   else if (state.mode === 'swing') updateSwing(dt);
   swings.forEach(sw => { if (sw !== (state.mode === 'swing' ? state.swing : null)) { sw.omega += (-(9.8 / sw.Lw) * Math.sin(sw.theta) - 0.6 * sw.omega) * dt; sw.theta += sw.omega * dt; sw.pivot.rotation.x = sw.theta; } });
+  updateFigure(dt);
   updateAnimals(dt);
   if (state.mode !== 'walk') { setCue(null); plants.forEach(pl => pl.glowT = 0); if (regionKey) showRegion(null); }
   if (hoverXY && !drag && !isTouch && (state.mode === 'walk' || state.mode === 'focus') && (Math.floor(T * 20) % 3 === 0)) {

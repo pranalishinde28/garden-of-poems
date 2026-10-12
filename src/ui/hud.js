@@ -7,6 +7,7 @@ import { plants } from '../plants/registry.js';
 import { rebuildConnections, rebuildPetals } from '../world/particles.js';
 import { Music } from '../audio/music.js';
 import { SPAWN, camTween, syncPlayerFromCamera } from '../player/camera.js';
+import { setThirdPerson } from '../player/figure.js';
 import { setCue, showHint, toast } from './helpers.js';
 import { applyFilter } from './filter.js';
 import { closePanel, closeReader, reader } from './reading.js';
@@ -71,3 +72,9 @@ $('#m-clear').onclick = e => {
   rebuildConnections(); rebuildPetals(); late.updateSign(); toast('The garden is empty again.');
 };
 
+/* first or third person */
+export function setViewUI() { const t = !!state.thirdPerson, b = $('#h-view'); b.setAttribute('aria-pressed', t ? 'true' : 'false'); b.dataset.tip = t ? 'See through your eyes (V)' : 'See yourself (V)'; b.setAttribute('aria-label', t ? 'Switch to first person' : 'Switch to third person'); }
+export function toggleView() { setThirdPerson(!state.thirdPerson); setViewUI(); toast(state.thirdPerson ? 'You can see yourself now. Press V to look through your own eyes again.' : 'Looking through your own eyes.', 3200); }
+$('#h-view').onclick = () => toggleView();
+setViewUI();
+provide({ get toggleView() { return toggleView; } });

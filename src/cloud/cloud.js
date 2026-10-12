@@ -48,6 +48,7 @@ async function onAuthChanged() {
     ]);
     if (error) throw error;
     Cloud.profile = prof; Cloud.garden = gard;
+    if (late.useProfileAvatar) late.useProfileAvatar(prof);
     let list = (rows || []).map(fromRow);
     Cloud.last = new Map(list.map(p => [p.id, sig(p)]));
     const guest = loadLocal(KEY);
