@@ -11,6 +11,8 @@ import { BENCH, decor, regBegin } from './paths.js';
 export const wisGeoBase = (() => { const g = GEO.card.clone(); g.translate(0, -0.5, 0); return g; })();
 export const wisMatP = windify(new THREE.MeshLambertMaterial({ map: wisTexP, alphaTest: 0.42, side: DS, emissive: '#1d1430' }), 0.03, 'const');
 export const wisMatW = windify(new THREE.MeshLambertMaterial({ map: wisTexW, alphaTest: 0.42, side: DS, emissive: '#22201c' }), 0.031, 'const');
+// the leafy roofs, bare in winter (settings/customize.js updateVeils)
+export const arborLeaves = [];
 function wisteriaArbor(o) {
   const g = new THREE.Group(); g.position.set(o.x, groundH(o.x, o.z), o.z); g.rotation.y = o.ry; scene.add(g);
   const post = M('#5a4636'), H = o.h || 2.7, L = o.len, W = o.wid, R = rng(o.seed || 1);
@@ -28,7 +30,7 @@ function wisteriaArbor(o) {
   // leaf canopy
   const lv = new Merge(), nLeaf = Math.round(L * W * 3.4);
   for (let i = 0; i < nLeaf; i++) lv.add(GEO.ico, new V3(-L / 2 - 0.25 + R() * (L + 0.5), H + 0.16 + R() * 0.22, -W / 2 - 0.25 + R() * (W + 0.5)), new V3(0.34 + R() * 0.3, 0.12 + R() * 0.07, 0.34 + R() * 0.3), C(['#5f7f3e', '#6f8c48', '#86a35a', '#7a9850'][Math.floor(R() * 4)]));
-  const lm = new THREE.Mesh(lv.build(), VC); lm.castShadow = true; g.add(lm);
+  const lm = new THREE.Mesh(lv.build(), VC); lm.castShadow = true; g.add(lm); arborLeaves.push(lm);
   // racemes: two crossed cards each, denser at the edges where they hang free
   const n = Math.round(L * W * (o.density || 17)), white = o.white ?? 0.22;
   const list = { P: [], W: [] };

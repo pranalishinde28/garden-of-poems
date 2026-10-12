@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { hashStr, rng } from '../core/util.js';
 import { groundH, riverDist } from '../world/terrain.js';
 import { poems } from '../settings/storage.js';
-import { COL, RAD, REGIONS, TYPE_REGION, plantTypeFor, seasonOf } from './mapping.js';
+import { COL, RAD, REGIONS, plantTypeFor, regionKeyFor, seasonOf } from './mapping.js';
 import { scene } from '../world/renderer.js';
 import { glowTex } from '../world/textures.js';
 import { DS, GEO, M, SHARED, part } from '../world/geometry.js';
@@ -54,7 +54,7 @@ export function removePlant(obj) {
   shadowDirty = true; late.rebuildPetals();
 }
 function assignPosition(p, type) {
-  const reg = REGIONS[TYPE_REGION[type]], R = rng(hashStr(p.id + ':place')), rad = RAD[type];
+  const reg = REGIONS[regionKeyFor(p)], R = rng(hashStr(p.id + ':place')), rad = RAD[type];
   const others = [];
   poems.forEach(q => { if (q !== p && q.position) others.push({ x: q.position.x, z: q.position.z, rad: RAD[q.plantType || plantTypeFor(q)] }); });
   let fallback = null;
@@ -76,7 +76,8 @@ function assignPosition(p, type) {
 }
 export function preparePoem(p) {
   const t = plantTypeFor(p);
-  if (p.plantType !== t && p.position && TYPE_REGION[p.plantType] !== TYPE_REGION[t]) p.position = null;
+  // a poem that was a flower or a bush before every poem became a tree is re-placed once, with room for its tree
+  if (p.plantType !== t && p.position) p.position = null;
   p.plantType = t;
   if (!p.position || riverDist(p.position.x, p.position.z) < 2.6 || decor.some(o => o.collide !== undefined && Math.hypot(o.x - p.position.x, o.z - p.position.z) < o.r + RAD[t] * 0.4)) p.position = assignPosition(p, t);
 }

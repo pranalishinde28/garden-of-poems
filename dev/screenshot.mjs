@@ -39,7 +39,17 @@ const VIEWS = {
   overview: { pos: [6, 34, 48], look: [-12, 0, 14] },
   'autumn-tunnel': { pos: [0, 1.7, 35.5], look: [0, 1.5, 17], season: 'autumn' },
   'autumn-swings': { pos: [-13.5, 1.7, 15.5], look: [-21, 1.5, 24.5], season: 'autumn' },
-  'lineup': { lineup: true, pos: [3.1, 1.25, 25.2], look: [3.1, 0.95, 21.6] },
+  'season-spring': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'spring', samples: true },
+  'season-summer': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'summer', samples: true },
+  'season-autumn': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'autumn', samples: true },
+  'season-winter': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'winter', samples: true },
+  'fuji-view': { pos: [8, 2.6, 16], look: [-25, 14, -200], season: 'spring' },
+  'fuji-high': { pos: [4, 14, 44], look: [-20, 10, -200], season: 'spring' },
+  'fuji-winter': { pos: [8, 2.6, 16], look: [-25, 14, -200], season: 'winter' },
+  'sea-view': { pos: [8, 2.6, 16], look: [-25, 2, -200], season: 'spring', view: 'sea' },
+  'sea-high': { pos: [4, 26, 60], look: [-10, -2, -60], season: 'summer', view: 'sea' },
+  'sea-gate': { pos: [30, 3, 55], look: [140, -4, 90], season: 'spring', view: 'sea' },
+  'lineup': { lineup: true, pos: [0, 0.95, 40.2], look: [0, 0.62, 36.6] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
 };
 const views = String(opt('views', Object.keys(VIEWS).join(','))).split(',');
@@ -119,10 +129,14 @@ async function shoot(page) {
   await mkdir(dirname(out + '-x.png'), { recursive: true });
   for (const name of views) {
     const v = VIEWS[name]; if (!v) throw new Error('Unknown view: ' + name);
+    if (v.samples && !(await page.evaluate(() => window.__garden.poems.length))) {
+      await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+      await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await sleep(9000);
+    }
     if (v.lineup) await page.evaluate(() => {
-      const O = [['casual', '#3d4a6b', 'short', '#1d1a19', '#d9a77f', 'none'], ['yukata', '#efe6d4', 'bun', '#3a2a20', '#f6dcc6', 'parasol'], ['kimono', '#e7b7c4', 'long', '#1d1a19', '#ecc4a2', 'none'],
-        ['coat', '#b5603d', 'bob', '#8a4f2e', '#7f5236', 'scarf'], ['yukata', '#3d4a6b', 'tail', '#c49a62', '#a26c47', 'hat'], ['casual', '#6f8a5a', 'short', '#9c9893', '#3f2a1f', 'scarf']];
-      window.__garden.lineup(O.map(([outfit, cloth, hairStyle, hairColor, skin, extra], i) => ({ outfit, cloth, hairStyle, hairColor, skin, extra, accent: ['#c9474a', '#e9c46a', '#d98fa6', '#f3efe6', '#c9474a', '#2f3f5c'][i], height: [1, 0.94, 0.97, 1.05, 1.02, 0.92][i] })), 0.85, 21.6);
+      const O = [['dress', '#9cc0d6', 'bun', '#1d1a19', '#f3cfb5', 'none'], ['dress', '#e7b7c4', 'twintails', '#5c3f2b', '#fbe3d3', 'parasol'], ['yukata', '#3d4a6b', 'bob', '#1d1a19', '#e2b393', 'none'],
+        ['kimono', '#b5603d', 'long', '#8a4f2e', '#c99573', 'none'], ['casual', '#6f8a5a', 'short', '#3a2a20', '#86593b', 'scarf'], ['coat', '#7b5a86', 'tail', '#c49a62', '#f3cfb5', 'hat']];
+      window.__garden.lineup(O.map(([outfit, cloth, hairStyle, hairColor, skin, extra], i) => ({ outfit, cloth, hairStyle, hairColor, skin, extra, accent: ['#f3efe6', '#e9c46a', '#c9474a', '#e9c46a', '#c9474a', '#2f3f5c'][i], height: [1, 0.94, 0.97, 1.05, 1.02, 0.92][i] })), -1.25, 36.6);
     });
     if (v.sit) {
       await page.click('#enter-sample');
@@ -135,9 +149,11 @@ async function shoot(page) {
     }
     if (!v.intro) await page.evaluate(v => {
       const g = window.__garden;
-      if (!document.querySelector('#hide-ui')) { const s = document.createElement('style'); s.id = 'hide-ui'; s.textContent = '#intro,#loading,#hud,.toast,#toast{display:none!important}'; document.head.append(s); }
+      if (!document.querySelector('#hide-ui')) { const s = document.createElement('style'); s.id = 'hide-ui'; s.textContent = '#intro,#loading,#hud,.toast,#toast,#steps,#minimap-btn,#cue,#hint,#savestate{display:none!important}'; document.head.append(s); }
       g.state.mode = 'cinematic';
       if (g.SETTINGS.season !== (v.season || 'spring')) g.setSetting('season', v.season || 'spring');
+      document.querySelector('#toast')?.classList.remove('show');
+      if (g.SETTINGS.view !== (v.view || 'fuji')) g.setSetting('view', v.view || 'fuji');
       g.camera.position.set(...v.pos); g.curLook.set(...v.look); g.camera.lookAt(g.curLook);
     }, v);
     await sleep(v.season ? 4000 : 2500);
@@ -265,7 +281,7 @@ async function swingFlowPhone(browser, url, errors) {
 async function avatarFlow(page) {
   const shot = async n => { await page.screenshot({ path: join(root, `dev/shots/avatar-${n}.png`) }); };
   const mode = () => page.evaluate(() => window.__garden.state.mode);
-  await page.evaluate(() => { const g = window.__garden; g.setAvatar({ outfit: 'yukata', cloth: '#3d4a6b', accent: '#e9c46a', hairStyle: 'bun', hairColor: '#3a2a20', skin: '#d9a77f', extra: 'none', height: 1 }); });
+  await page.evaluate(() => { const g = window.__garden; g.setAvatar({ outfit: 'dress', cloth: '#9cc0d6', accent: '#f3efe6', hairStyle: 'twintails', hairColor: '#1d1a19', skin: '#f3cfb5', extra: 'none', height: 1 }); });
   await step('enter, switch to third person (V)', async () => {
     await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
     await page.keyboard.press('KeyV'); await sleep(1500);
@@ -273,11 +289,10 @@ async function avatarFlow(page) {
   });
   await step('change your figure in Customize (live preview)', async () => {
     await page.click('#h-custom'); await sleep(1200);
-    await page.click('[data-av="outfit"] [data-v="kimono"]'); await page.click('[data-av="extra"] [data-v="parasol"]'); await page.click('[data-av="hairStyle"] [data-v="long"]');
-    await page.click('[data-av="cloth"] button:nth-child(2)'); await sleep(1500);
+    await page.click('[data-av="outfit"] [data-v="dress"]'); await page.click('[data-av="hairStyle"] [data-v="twintails"]'); await page.click('[data-av="cloth"] button:nth-child(1)'); await sleep(1500);
     await page.$eval('#custom', e => { e.scrollTop = 0; }); await shot('editor');
     const a = await page.evaluate(() => JSON.parse(localStorage.getItem('garden-of-poems:avatar')));
-    if (a.outfit !== 'kimono' || a.extra !== 'parasol') throw new Error('not saved: ' + JSON.stringify(a));
+    if (a.outfit !== 'dress' || a.hairStyle !== 'twintails') throw new Error('not saved: ' + JSON.stringify(a));
     await page.keyboard.press('Escape'); await sleep(900); await page.click('#c-close').catch(() => {}); await sleep(900);
     return 'saved on this device';
   });

@@ -1,7 +1,8 @@
+import { applyHorizon } from '../world/horizon.js';
 import * as THREE from 'three';
 import { $, C, V3, rng } from '../core/util.js';
 import { groundH } from '../world/terrain.js';
-import { SETTINGS, THEME, cleanSettings } from './storage.js';
+import { cleanSettings, resolveSeason, SETTINGS, THEME } from './storage.js';
 import { T, state } from '../core/state.js';
 import { maxAniso, scene } from '../world/renderer.js';
 import { canvasTex, wisTexP, wisTexW } from '../world/textures.js';
@@ -9,7 +10,7 @@ import { GEO, M, Merge, VC, part } from '../world/geometry.js';
 import { REG, decor, featOn } from '../world/paths.js';
 import { createPlant, nightGlow, plants, removePlant, setShadowDirty } from '../plants/registry.js';
 import { koi } from '../water/water.js';
-import { wisMatP, wisMatW } from '../world/arbors.js';
+import { wisMatP, wisMatW, arborLeaves } from '../world/arbors.js';
 import { swingVeilMat, swingVeilTex } from '../world/swings.js';
 import { animals } from '../animals/animals.js';
 import { mist } from '../plants/flowerGardens.js';
@@ -28,6 +29,7 @@ provide({
   get persistSettings() { return persistSettings; },
   get applyAllSettings() { return applyAllSettings; },
   get updateVeils() { return updateVeils; },
+  get applyVisibility() { return applyVisibility; },
   get board() { return board; },
   get openBoard() { return openBoard; },
   get openCustomize() { return openCustomize; },
@@ -36,17 +38,20 @@ provide({
 /* ================= customizing a garden: scenery, features, trees, music, and the sign ================= */
 animals.forEach(a => { a.cat = (a.train || a.legs || (a.home && a.head && !a.wl)) ? 'land' : (a.l || a.wl) ? 'air' : 'water'; });
 const SHOW_LABELS = [['wisteria', 'Wisteria arbors'], ['tulips', 'Tulip fields'], ['roses', 'Rose garden'], ['hydrangeas', 'Blue hydrangeas'], ['lilies', 'White lilies'], ['orchids', 'Purple orchids'], ['lamps', 'Garden lamps'], ['swings', 'Swing garden'], ['land', 'Deer, peacocks and rabbits'], ['air', 'Birds and butterflies'], ['water', 'Ducks and koi']];
-const SCENE_LABELS = [['fuji', 'Mount Fuji on the horizon'], ['mist', 'Morning mist over the water'], ['drift', 'Pollen, leaves or snow in the air']];
+const SCENE_LABELS = [['fuji', 'Mount Fuji, when the horizon is the mountains'], ['mist', 'Morning mist over the water'], ['drift', 'Pollen, leaves or snow in the air']];
 const settingsKey = () => 'garden-of-poems:settings' + (Cloud.user ? ':u:' + Cloud.user.id : '');
 function localSettings(key) { try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v ? cleanSettings(v) : null; } catch (e) { return null; } }
 let settingsTimer = null;
 export function persistSettings() {
   if (state.visiting) return;
   try { localStorage.setItem(settingsKey(), JSON.stringify(SETTINGS)); } catch (e) {}
-  if (Cloud.user) { clearTimeout(settingsTimer); settingsTimer = setTimeout(() => saveGardenSettings({ settings: SETTINGS, theme: THEME }), 900); }
+  if (Cloud.user) { clearTimeout(settingsTimer); settingsTimer = setTimeout(() => saveGardenSettings({ settings: SETTINGS, theme: THEME === 'autumn' || THEME === 'winter' ? 'autumn' : 'spring' }), 900); }
 }
 export function applyVisibility() {
-  for (const k in REG) { const on = k === 'fuji' ? SETTINGS.fuji : featOn(k); REG[k].forEach(o => { o.visible = on; }); }
+  // in winter the flower beds rest under the snow (the choices themselves are kept)
+  const resting = THEME === 'winter' ? ['tulips', 'roses', 'hydrangeas', 'lilies', 'orchids'] : [];
+  for (const k in REG) { const on = k === 'fuji' ? SETTINGS.fuji : featOn(k) && !resting.includes(k); REG[k].forEach(o => { o.visible = on; }); }
+  applyHorizon(SETTINGS.view, SETTINGS.fuji);
   mist.forEach(s => { s.visible = SETTINGS.mist; });
   koi.forEach(k => { k.g.visible = featOn('water'); });
   setShadowDirty(true);
@@ -64,7 +69,7 @@ function applyMusic(m) {
   late.setSoundUI();
 }
 function applyAllSettings(opts = {}) {
-  if (SETTINGS.season !== THEME) setTheme(SETTINGS.season, true); else if (opts.trees) rebuildAllPlants();
+  if (resolveSeason(SETTINGS.season) !== THEME) setTheme(SETTINGS.season, true); else if (opts.trees) rebuildAllPlants();
   updateVeils(); applyVisibility(); applyLight(); applyWeather(); drawBoard(); if (customPanel.classList.contains('open')) renderCustom();
 }
 export function setSetting(k, v) {
@@ -97,7 +102,9 @@ export function updateVeils() {
   const a = THEME === 'autumn';
   wisMatP.map = a ? veilAutumnA : wisTexP; wisMatW.map = a ? veilAutumnB : wisTexW; swingVeilMat.map = a ? veilAutumnA : swingVeilTex;
   wisMatP.emissive.set(a ? '#2a1008' : '#1d1430'); wisMatW.emissive.set(a ? '#2a1408' : '#22201c'); swingVeilMat.emissive.set(a ? '#2a1008' : '#2a1018');
-  [wisMatP, wisMatW, swingVeilMat].forEach(m => { m.needsUpdate = true; });
+  // winter: the wisteria and the swing veils are bare
+  [wisMatP, wisMatW, swingVeilMat].forEach(m => { m.needsUpdate = true; m.visible = THEME !== 'winter'; });
+  arborLeaves.forEach(l => { l.visible = THEME !== 'winter'; });
 }
 
 /* the sign at the gate */

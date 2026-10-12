@@ -8,6 +8,8 @@ import { BENCH, decor, stoneNear } from './paths.js';
 import { nightGlow, nightSprites } from '../plants/registry.js';
 import { state } from '../core/state.js';
 
+export const hedges = []; // the ring at the garden's edge; the sea view opens it (world/horizon.js)
+
 /* ================= decor: bench & pergola, gate, lanterns, rocks, bridge, hedges ================= */
 export const bench = new THREE.Group();
 (function buildBench() {
@@ -104,7 +106,7 @@ function boulder(x, z, s, seed) {
     d.position.set(x, groundH(x, z) + 0.15, z); d.scale.set(2.2 + R() * 0.9, 0.85 + R() * 0.35, 1.9 + R() * 0.8); d.rotation.set(0, R() * 6, 0); d.updateMatrix();
     hm.setMatrixAt(hi, d.matrix); hm.setColorAt(hi, hc[Math.floor(R() * 4)]); hi++;
   }
-  hm.count = hi; hm.frustumCulled = false; hm.receiveShadow = true; scene.add(hm);
+  hm.count = hi; hm.frustumCulled = false; hm.receiveShadow = true; scene.add(hm); hedges.push(hm);
 })();
 
 export const sign = new THREE.Group();

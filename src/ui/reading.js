@@ -2,7 +2,7 @@ import { $, V3, clamp, monthYear } from '../core/util.js';
 import { POND_R, WATER_Y } from '../world/terrain.js';
 import { poems, savePoems, setPoems } from '../settings/storage.js';
 import { T, setTween, state } from '../core/state.js';
-import { REGIONS, TYPE_REGION } from '../plants/mapping.js';
+import { REGIONS, regionKeyFor } from '../plants/mapping.js';
 import { camera } from '../world/renderer.js';
 import { decor, stoneNear } from '../world/paths.js';
 import { createPlant, plants, removePlant } from '../plants/registry.js';
@@ -55,7 +55,7 @@ addEventListener('pointerdown', e => {
   const top = panels[panels.length - 1];
   if (top && CLOSERS[top.id] && e.target.id === 'c' && !top.contains(e.target)) $(CLOSERS[top.id]).click();
 }, true);
-export function regionLabel(p) { const n = REGIONS[TYPE_REGION[p.plantType]].name; return 'Grows in ' + n.replace(/^The /, 'the '); }
+export function regionLabel(p) { const n = REGIONS[regionKeyFor(p)].name; return 'Grows in ' + n.replace(/^The /, 'the '); }
 export function fillReader(p, reflection) {
   reader.classList.toggle('is-reflection', !!reflection);
   const k = $('#r-kicker'); k.hidden = !reflection; k.textContent = reflection ? 'A reflection from the water' : '';

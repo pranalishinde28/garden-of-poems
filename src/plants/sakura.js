@@ -44,14 +44,18 @@ export function growSakura(g, R, o) {
   }
   tips.push({ p: top.clone(), dir: UP });
 
-  const style = SETTINGS.tree, aut = THEME === 'autumn' || style === 'maple', green = !aut && style === 'green', pi3 = Math.floor(R() * 3);
-  const pal = (aut ? (THEME !== 'autumn' ? AUTUMN_PALS[0] : AUTUMN_PALS[pi3]) : green ? GREEN_PALS[pi3] : SETTINGS.blossom === 'white' ? SAKURA_WHITE : SAKURA[o.season]).map(C);
+  // the garden's season dresses every tree: blossom in spring, full leaf in summer, red and gold in autumn, bare and snowy in winter
+  const aut = THEME === 'autumn', green = THEME === 'summer', bare = THEME === 'winter', pi3 = Math.floor(R() * 3);
+  const pal = (aut ? AUTUMN_PALS[pi3] : green ? GREEN_PALS[pi3] : SETTINGS.blossom === 'white' ? SAKURA_WHITE : SAKURA.spring).map(C);
   const cards = [];
   let maxR = 0, maxY = 0, sumY = 0;
   tips.forEach(t => {
     const s = o.bloom * (0.75 + R() * 0.5);
     maxR = Math.max(maxR, Math.hypot(t.p.x, t.p.z) + s); maxY = Math.max(maxY, t.p.y + s * 0.7); sumY += t.p.y;
-    if (!o.weeping) {
+    if (bare) { // snow along the tips instead of leaves
+      mg.add(GEO.sph, new V3(t.p.x, t.p.y + 0.05, t.p.z), new V3(0.14 + R() * 0.08, 0.05, 0.14 + R() * 0.08), C('#f3f6f9'));
+      if (R() < 0.6) mg.add(GEO.sph, new V3(t.p.x - t.dir.x * 0.4, t.p.y - t.dir.y * 0.4 + 0.04, t.p.z - t.dir.z * 0.4), new V3(0.1, 0.04, 0.1), C('#eef2f6'));
+    } else if (!o.weeping) {
       pg.add(GEO.ico, new V3(t.p.x, t.p.y + 0.1, t.p.z), new V3(s * 0.45, s * 0.32, s * 0.45), pal[Math.floor(R() * 4)].clone().multiplyScalar(0.7));
       for (let k = 0; k < 22; k++) {
         const u = new V3(R() - .5, R() - .5, R() - .5).normalize(), rr = s * (0.3 + R() * 0.8);
@@ -61,18 +65,24 @@ export function growSakura(g, R, o) {
       const L = (1.6 + R() * 2.2) * o.bloom, n = Math.ceil(L / 0.26);
       for (let k = 0; k <= n; k++) { const sw = (k / n) * 0.25; cards.push({ p: new V3(t.p.x + (R() - .5) * 0.3 + t.dir.x * sw, t.p.y - k * 0.26, t.p.z + (R() - .5) * 0.3 + t.dir.z * sw), s: 0.42 + R() * 0.22 }); }
     }
-    if (o.season === 'winter' && R() < 0.5) mg.add(GEO.sph, new V3(t.p.x, t.p.y + 0.04, t.p.z), new V3(0.09, 0.035, 0.09), C('#f1f4f7'));
   });
   const bm = mg.build(); const barkMesh = new THREE.Mesh(bm, BARK); g.add(barkMesh);
   const pm = pg.build(); if (pm) g.add(new THREE.Mesh(pm, VCP));
   const cg = GEO.card.clone(); cg.boundingSphere = new THREE.Sphere(new V3(0, o.h, 0), o.h + o.bloom * 5);
-  const im = new THREE.InstancedMesh(cg, (aut || green) ? mapleMat : cardMat, cards.length), dd = new THREE.Object3D(), tints = (aut || green) ? pal : ['#ffffff', '#fff0f4', '#fbe3ea', '#ffe8ee'].map(C);
-  cards.forEach((c, i) => { dd.position.copy(c.p); dd.rotation.set(R() * 6.28, R() * 6.28, R() * 6.28); dd.scale.setScalar(c.s); dd.updateMatrix(); im.setMatrixAt(i, dd.matrix); im.setColorAt(i, tints[Math.floor(R() * 4)]); });
-  im.userData.noShadow = true; g.add(im);
-  // fallen petals
-  const PN = 70, pim = new THREE.InstancedMesh(GEO.flatPetal, new THREE.MeshLambertMaterial({ color: 0xffffff, side: DS }), PN);
-  for (let i = 0; i < PN; i++) { const a = R() * 6.28, r = Math.sqrt(R()) * maxR * 1.05; dd.position.set(Math.cos(a) * r, 0.025, Math.sin(a) * r); dd.rotation.set(0, R() * 6.28, 0); dd.scale.setScalar((0.8 + R() * 0.6) * (aut ? 2.2 : 1)); dd.updateMatrix(); pim.setMatrixAt(i, dd.matrix); pim.setColorAt(i, pal[Math.floor(R() * 4)]); }
-  pim.userData.noShadow = true; pim.frustumCulled = false; g.add(pim);
-  return { tips, canopy: { r: maxR * 0.85, top: sumY / tips.length + 0.2 }, h: maxY + 0.2, trunkTop: top, mid, extraMats: [pim.material] };
+  const dd = new THREE.Object3D();
+  if (cards.length) {
+    const im = new THREE.InstancedMesh(cg, (aut || green) ? mapleMat : cardMat, cards.length), tints = (aut || green) ? pal : ['#ffffff', '#fff0f4', '#fbe3ea', '#ffe8ee'].map(C);
+    cards.forEach((c, i) => { dd.position.copy(c.p); dd.rotation.set(R() * 6.28, R() * 6.28, R() * 6.28); dd.scale.setScalar(c.s); dd.updateMatrix(); im.setMatrixAt(i, dd.matrix); im.setColorAt(i, tints[Math.floor(R() * 4)]); });
+    im.userData.noShadow = true; g.add(im);
+  }
+  // fallen petals (spring) and leaves (autumn); none on summer grass or winter snow
+  let fallen = [];
+  if (!green && !bare) {
+    const PN = 70, pim = new THREE.InstancedMesh(GEO.flatPetal, new THREE.MeshLambertMaterial({ color: 0xffffff, side: DS }), PN);
+    for (let i = 0; i < PN; i++) { const a = R() * 6.28, r = Math.sqrt(R()) * maxR * 1.05; dd.position.set(Math.cos(a) * r, 0.025, Math.sin(a) * r); dd.rotation.set(0, R() * 6.28, 0); dd.scale.setScalar((0.8 + R() * 0.6) * (aut ? 2.2 : 1)); dd.updateMatrix(); pim.setMatrixAt(i, dd.matrix); pim.setColorAt(i, pal[Math.floor(R() * 4)]); }
+    pim.userData.noShadow = true; pim.frustumCulled = false; g.add(pim);
+    fallen = [pim.material];
+  }
+  return { tips, canopy: { r: maxR * 0.85, top: sumY / tips.length + 0.2 }, h: maxY + 0.2, trunkTop: top, mid, extraMats: fallen };
 }
 

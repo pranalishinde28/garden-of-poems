@@ -1,7 +1,7 @@
 import { $, monthYear, uid } from '../core/util.js';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import type { Database, Json } from './database.types';
-import { KEY, SETTINGS, THEME, cleanSettings, flag, poems, replaceSettings, savePoems, setPoems, setThemeName } from '../settings/storage.js';
+import { cleanSettings, flag, KEY, poems, replaceSettings, resolveSeason, savePoems, setPoems, setThemeName, SETTINGS, THEME } from '../settings/storage.js';
 import { state as stateJS } from '../core/state.js';
 import { createPlant, plants, preparePoem, removePlant } from '../plants/registry.js';
 import { toast } from '../ui/helpers.js';
@@ -109,8 +109,8 @@ async function onAuthChanged() {
     if (!(rows || []).length && guest.length && !flag.get('imported:' + id)) { list = guest; flag.set('imported:' + id, '1'); toast('Your poems from this device were moved into your account.', 5000); }
     keepSync();
     const cloudS = gard && gard.settings && Object.keys(gard.settings).length ? gard.settings : null;
-    replaceSettings(cleanSettings(cloudS ? Object.assign({}, cloudS, { season: gard!.theme || (cloudS as { season?: string }).season }) : (late.localSettings('garden-of-poems:settings') || { season: (gard && gard.theme) || 'spring' })));
-    if (SETTINGS.season !== THEME) { setThemeName(SETTINGS.season); applyThemeMaterials(); setThemeUI(); }
+    replaceSettings(cleanSettings(cloudS ? Object.assign({}, cloudS, { season: (cloudS as { season?: string }).season || gard!.theme }) : (late.localSettings('garden-of-poems:settings') || { season: (gard && gard.theme) || 'spring' })));
+    if (resolveSeason(SETTINGS.season) !== THEME) { setThemeName(resolveSeason(SETTINGS.season)); applyThemeMaterials(); setThemeUI(); }
     late.swapPlants(list, true); late.applyAllSettings();
     if (!cloudS) late.persistSettings();
     savePoems();

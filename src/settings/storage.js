@@ -13,9 +13,9 @@ export const IDB = {
 };
 // poems, SETTINGS and THEME are replaced from other modules through setPoems, replaceSettings and setThemeName
 export let poems = loadPoems();
-const DEFAULT_SETTINGS = { season: 'spring', light: 'auto', weather: 'clear', tree: 'sakura', blossom: 'pink', music: 'piano', fuji: true, mist: true, drift: true, name: '', desc: '', links: [],
+const DEFAULT_SETTINGS = { season: 'auto', view: 'fuji', light: 'auto', weather: 'clear', tree: 'sakura', blossom: 'pink', music: 'piano', fuji: true, mist: true, drift: true, name: '', desc: '', links: [],
   show: { wisteria: true, tulips: true, roses: true, hydrangeas: true, lilies: true, orchids: true, lamps: true, swings: true, land: true, air: true, water: true } };
-const ENUMS = { season: ['spring', 'autumn'], light: ['auto', 'day', 'night'], weather: ['clear', 'showers', 'rain'], tree: ['sakura', 'maple', 'green'], blossom: ['pink', 'white'], music: ['piano', 'own', 'off'] };
+const ENUMS = { season: ['auto', 'spring', 'summer', 'autumn', 'winter'], view: ['fuji', 'sea'], light: ['auto', 'day', 'night'], weather: ['clear', 'showers', 'rain'], tree: ['sakura', 'maple', 'green'], blossom: ['pink', 'white'], music: ['piano', 'own', 'off'] };
 export function cleanSettings(s) {
   const d = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); if (!s || typeof s !== 'object') return d;
   for (const k in ENUMS) if (ENUMS[k].includes(s[k])) d[k] = s[k];
@@ -25,8 +25,13 @@ export function cleanSettings(s) {
   if (Array.isArray(s.links)) d.links = s.links.filter(l => l && typeof l.url === 'string' && /^https?:\/\/[^\s<>"]+$/i.test(l.url)).slice(0, 6).map(l => ({ label: String(l.label || '').slice(0, 40), url: l.url.slice(0, 200) }));
   return d;
 }
-export let SETTINGS = cleanSettings((() => { try { return JSON.parse(localStorage.getItem('garden-of-poems:settings') || 'null'); } catch (e) { return null; } })() || { season: flag.get('theme') === 'autumn' ? 'autumn' : 'spring', music: flag.get('muted') === '1' ? 'off' : 'piano' });
-export let THEME = SETTINGS.season;
+export let SETTINGS = cleanSettings((() => { try { return JSON.parse(localStorage.getItem('garden-of-poems:settings') || 'null'); } catch (e) { return null; } })() || { season: flag.get('theme') === 'autumn' ? 'autumn' : 'auto', music: flag.get('muted') === '1' ? 'off' : 'piano' });
+// the season the garden shows: the chosen one, or for 'auto' the calendar's (northern hemisphere)
+export function resolveSeason(s) {
+  if (s !== 'auto') return s;
+  const m = new Date().getMonth(); return m >= 2 && m <= 4 ? 'spring' : m >= 5 && m <= 7 ? 'summer' : m >= 8 && m <= 10 ? 'autumn' : 'winter';
+}
+export let THEME = resolveSeason(SETTINGS.season);
 export const POST = { on: flag.get('cine') !== '0' };
 
 export function setPoems(v) { return (poems = v); }

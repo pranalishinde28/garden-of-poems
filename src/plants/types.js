@@ -32,7 +32,7 @@ export const BUILD = {
     return { h: t.h, canopy: t.canopy, extraMats: t.extraMats };
   },
   orchard(g, R, p, season) {
-    const t = growSakura(g, R, { h: 1.9, r: 0.17, spread: 1.25, depth: 3, bloom: 0.72, season });
+    const t = growSakura(g, R, { h: 2.3, r: 0.2, spread: 1.3, depth: 3, bloom: 0.85, season });
     return { h: t.h, canopy: t.canopy, extraMats: t.extraMats };
   },
   bigtree(g, R, p, season) {
