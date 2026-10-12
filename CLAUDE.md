@@ -167,12 +167,12 @@ The modules are the old script's sections, and `src/main.js` imports them in the
 8. **Live Supabase verified at the API level (2026-10-07):** sign-up and the profile and garden triggers, poem upsert and read, private-garden isolation, the public garden listing with its poem count, private poems hidden from visitors, and every note rule all passed against the live project. Sign-up through the page UI and the password-reset email flow have not been checked yet. PostgREST rejects a bulk upsert whose rows have different keys (`PGRST102`); the app's `toRow` always emits every column, so keep it that way.
 9. **Supabase keys are baked in at build time.** Vite inlines `VITE_*` values when it builds, so changing `.env` needs a rebuild (or a restart of `npm run dev`). If the Gardens panel says accounts aren't connected, check `.env` and rebuild before debugging code.
 
-15. **Declare before an IIFE uses it, even inside one module:** `hedges` in decor.js had to move above the hedge-building IIFE (TDZ). Seasons and the horizon are applied through `applyVisibility()`, which runs `applyHorizon()` after the feature loop.
 10. **Docker Desktop on this kind of Mac:** image pulls failed until `/Applications/Docker.app/Contents/Resources/bin` was on PATH (`docker-credential-desktop`). A stuck `supabase start` once left a stale port binding and hung Docker until it was force-restarted; local Supabase now uses ports 553xx. Never run two `supabase start` at once.
 11. **Types are generated:** after any migration, `npm run db:types` and `npm run typecheck`. `cloud.ts` types `late` and `state` explicitly because they come from JavaScript modules.
 12. **`NOT VALID` constraints:** some validation checks only new writes on the live database until the owner validates them (docs/database.md, step 7). Local and CI databases start empty, so there they are fully enforced.
 13. **`npm run e2e:local` builds `dist/` with the local Supabase keys.** Run `npm run build` (or `npm run check`) afterwards before using `dist/` for anything else. CI always builds its own.
 14. **Sync signatures:** `sig()` covers the poem's content fields only, never the server's timestamps; including `updatedAt` would make every save look like a new change.
+15. **Declare before an IIFE uses it, even inside one module:** `hedges` in decor.js had to move above the hedge-building IIFE (TDZ). Seasons and the horizon are applied through `applyVisibility()`, which runs `applyHorizon()` after the feature loop.
 
 ## What the owner wants next (open threads)
 
