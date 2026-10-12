@@ -4,6 +4,7 @@ import { camera } from '../world/renderer.js';
 import { camTween, curLook, floorH, syncPlayerFromCamera } from '../player/camera.js';
 import { keys } from './input.js';
 import { setCue } from './helpers.js';
+import { closeSwingReader, toggleSwingReader } from './swingReader.js';
 import { late, provide } from '../core/late.js';
 
 // names other modules reach through late (see core/late.js)
@@ -22,12 +23,13 @@ function swingEye(sw) {
   return { pos: sw.pivot.localToWorld(eye.clone()), look: sw.pivot.localToWorld(eye.clone().add(dir)) };
 }
 function sitSwing(sw) {
-  late.closePops(); setCue(null); state.mode = 'cinematic'; state.swing = sw; sw.yaw = 0; sw.pitch = -0.04; sw.omega = 0; sw.theta = 0; sw.pivot.rotation.x = 0;
+  late.closePops(); setCue(null); state.mode = 'cinematic'; state.swing = sw; state.swingAuto = false; sw.yaw = 0; sw.pitch = -0.04; sw.omega = 0; sw.theta = 0; sw.pivot.rotation.x = 0;
   const e = swingEye(sw);
+  document.body.classList.add('on-swing');
   camTween(e.pos, e.look, 1.6, () => { state.mode = 'swing'; const el = $('#swingui'); el.hidden = false; requestAnimationFrame(() => el.classList.add('show')); });
 }
 export function leaveSwing() {
-  const sw = state.swing; if (!sw) return; hideSwingUI();
+  const sw = state.swing; if (!sw) return; closeSwingReader(); hideSwingUI(); document.body.classList.remove('on-swing');
   sw.g.updateMatrixWorld(true);
   const front = sw.g.localToWorld(new V3(0, 0, 1.6)); front.y = floorH(front.x, front.z) + 1.6;
   const look = sw.g.localToWorld(new V3(0, 0, 6)); look.y = front.y - 0.3;
@@ -39,11 +41,18 @@ export function updateSwing(dt) {
   const pump = keys.has('KeyW') || keys.has('Space') || keys.has('ArrowUp') || swingHold;
   let acc = -(9.8 / sw.Lw) * Math.sin(sw.theta) - 0.14 * sw.omega;
   if (pump) acc += Math.abs(sw.omega) < 0.08 ? 1.4 : 1.7 * Math.sign(sw.omega);
+  // swinging by itself: nudge toward a gentle sway of about 0.45 rad (26°), easing off above it
+  else if (state.swingAuto) {
+    const amp = Math.acos(clamp(Math.cos(sw.theta) - sw.omega * sw.omega * sw.Lw / (2 * 9.8), -1, 1));
+    if (amp < 0.42) acc += Math.abs(sw.omega) < 0.05 ? 0.6 : 0.6 * Math.sign(sw.omega);
+    else if (amp > 0.5) acc -= 0.45 * sw.omega;
+  }
   sw.omega += acc * dt; sw.theta = clamp(sw.theta + sw.omega * dt, -1.15, 1.15); if (Math.abs(sw.theta) >= 1.15) sw.omega *= -0.3;
   sw.pivot.rotation.x = sw.theta;
   const e = swingEye(sw); camera.position.copy(e.pos); curLook.copy(e.look); camera.lookAt(curLook);
 }
 $('#sw-off').onclick = () => leaveSwing();
+$('#sw-read').onclick = e => { toggleSwingReader(); e.currentTarget.blur(); };
 const swp = $('#sw-pump');
 swp.addEventListener('pointerdown', e => { swingHold = true; e.preventDefault(); });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => swp.addEventListener(ev, () => { swingHold = false; }));

@@ -7,7 +7,9 @@ import { openPoem } from './ui/reading.js';
 import { setSetting } from './settings/customize.js';
 import { SETTINGS, poems } from './settings/storage.js';
 import { Cloud } from './cloud/cloud.js';
+import { swings } from './world/swings.js';
+import { late } from './core/late.js';
 
 if (new URLSearchParams(location.search).has('debug')) {
-  window.__garden = { state, camera, curLook, plants, openPoem, setSetting, get SETTINGS() { return SETTINGS; }, get poems() { return poems; }, get cloudReady() { return Cloud.ready; } };
+  window.__garden = { state, camera, curLook, plants, openPoem, setSetting, get SETTINGS() { return SETTINGS; }, get poems() { return poems; }, get cloudReady() { return Cloud.ready; }, swings, sit: i => late.sitSwing(swings[i]) };
 }

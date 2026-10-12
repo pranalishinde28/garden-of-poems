@@ -26,7 +26,7 @@ provide({
 export const reader = $('#reader');
 export function openPanel(el) { el.hidden = false; requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open'))); }
 export function closePanel(el) { el.classList.remove('open'); clearTimeout(el._t); el._t = setTimeout(() => { if (!el.classList.contains('open')) el.hidden = true; }, 900); }
-function regionLabel(p) { const n = REGIONS[TYPE_REGION[p.plantType]].name; return 'Grows in ' + n.replace(/^The /, 'the '); }
+export function regionLabel(p) { const n = REGIONS[TYPE_REGION[p.plantType]].name; return 'Grows in ' + n.replace(/^The /, 'the '); }
 export function fillReader(p, reflection) {
   reader.classList.toggle('is-reflection', !!reflection);
   const k = $('#r-kicker'); k.hidden = !reflection; k.textContent = reflection ? 'A reflection from the water' : '';

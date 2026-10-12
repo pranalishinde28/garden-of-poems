@@ -70,7 +70,15 @@
   <button id="m-clear" class="danger">Clear the garden</button>
 </div></div>
 
-<div id="swingui" hidden><span>Hold <kbd>W</kbd> or <kbd>Space</kbd> to swing higher. Drag to look around.</span><button id="sw-pump">Swing</button><button id="sw-off">Stand up</button></div>
+<div id="swingui" hidden><span>Hold <kbd>W</kbd> or <kbd>Space</kbd> to swing higher. <kbd>R</kbd> to read.</span><button id="sw-read" aria-pressed="false" aria-controls="swreader">Read</button><button id="sw-pump">Swing</button><button id="sw-off">Stand up</button></div>
+<section id="swreader" class="panel" aria-label="Poems to read on the swing" hidden>
+  <div class="sr-head"><span>Reading on the swing</span><button id="sr-close" aria-label="Put the poems away">×</button></div>
+  <div class="scroll" aria-live="polite"><h2 id="sr-title"></h2><div id="sr-body"></div><div class="meta"><div class="d" id="sr-date"></div><div id="sr-where"></div></div></div>
+  <div class="sr-bar">
+    <div class="sr-nav"><button id="sr-prev">Earlier</button><span id="sr-pos"></span><button id="sr-next">Later</button></div>
+    <div class="sr-opts"><span class="seg" role="group" aria-label="Order"><button data-o="new">Newest first</button><button data-o="near">Near me</button></span><button id="sr-auto" aria-pressed="false">Swing by itself</button></div>
+  </div>
+</section>
 <div id="visitbar" hidden><span>Visiting <em id="visit-name"></em></span><button id="visit-home">Return to my garden</button></div>
 <section id="gardens" class="panel" role="dialog" aria-labelledby="g-title" hidden>
   <button id="g-close" aria-label="Close">×</button>
