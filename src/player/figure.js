@@ -8,7 +8,7 @@ import { decor, featOn } from '../world/paths.js';
 import { bench } from '../world/decor.js';
 import { plants } from '../plants/registry.js';
 import { curLook, floorH, lookDir, player } from './camera.js';
-import { animateAvatar, buildAvatar, cleanAvatar } from './avatar.js';
+import { HEAD_Y, HIP_SIT, animateAvatar, buildAvatar, cleanAvatar } from './avatar.js';
 
 /* ================= your figure in the garden, and the third-person camera ================= */
 // In first person the figure only appears where the camera is elsewhere (it never blocks your eyes).
@@ -35,7 +35,6 @@ export function setThirdPerson(on) { state.thirdPerson = !!on; flag.set('view', 
 
 // ---- third-person camera ----
 const cam = { pos: new V3(), ready: false }; let camD = 0;
-const HIP_SIT = 0.48;
 function obstacles() {
   const list = [];
   decor.forEach(o => { if (o.collide > 0 && (!o.key || featOn(o.key))) list.push([o.x, o.z, o.collide + 0.25]); });
@@ -96,9 +95,9 @@ export function updateFigure(dt) {
     placeAt(player.pos.x, player.pos.z, sp > 0.3 ? want : facing, dt, !r.visible);
     pose = 'walk'; a.speed = sp;
     if (third) {
-      const head = tmp.set(player.pos.x, floorH(player.pos.x, player.pos.z) + 1.5 * config.height, player.pos.z).clone();
+      const head = tmp.set(player.pos.x, floorH(player.pos.x, player.pos.z) + (HEAD_Y + 0.25) * config.height, player.pos.z).clone();
       const dir = lookDir(), right = new V3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
-      followCamera(dt, head, dir, right, 3.3);
+      followCamera(dt, head, dir, right, 2.7);
     }
   } else if (m === 'swing' && state.swing) {
     show = third; pose = 'swing'; const sw = state.swing; a.omega = sw.omega;
@@ -114,7 +113,7 @@ export function updateFigure(dt) {
     }
   } else if (m === 'writing') {
     show = third; pose = 'write';
-    const seat = bench.localToWorld(new V3(0, 0, 0.02)); r.position.set(seat.x, bench.position.y, seat.z);
+    const seat = bench.localToWorld(new V3(0, 0, 0.02)); r.position.set(seat.x, bench.position.y + 0.485 - HIP_SIT * config.height, seat.z); // sit on the slats, feet swinging
     facing = bench.rotation.y + Math.PI; r.quaternion.setFromAxisAngle(up.set(0, 1, 0), facing);
   } else if (m === 'focus') {
     show = third;

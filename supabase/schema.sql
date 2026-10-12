@@ -85,8 +85,8 @@ CREATE OR REPLACE FUNCTION "public"."valid_avatar"("a" "jsonb") RETURNS boolean
 begin
   if a is null then return true; end if;
   if jsonb_typeof(a) <> 'object' or not public.only_keys(a, array['skin','height','hairStyle','hairColor','outfit','cloth','accent','extra']) then return false; end if;
-  if a ? 'hairStyle' and not (a->>'hairStyle' = any(array['short','bob','long','bun','tail'])) then return false; end if;
-  if a ? 'outfit' and not (a->>'outfit' = any(array['casual','yukata','kimono','coat'])) then return false; end if;
+  if a ? 'hairStyle' and not (a->>'hairStyle' = any(array['short','bob','long','bun','tail','twintails'])) then return false; end if;
+  if a ? 'outfit' and not (a->>'outfit' = any(array['casual','yukata','kimono','coat','dress'])) then return false; end if;
   if a ? 'extra' and not (a->>'extra' = any(array['none','scarf','hat','parasol'])) then return false; end if;
   if exists (select 1 from unnest(array['skin','hairColor','cloth','accent']) k where a ? k and (a->>k) !~ '^#[0-9a-fA-F]{6}$') then return false; end if;
   if a ? 'height' and (jsonb_typeof(a->'height') <> 'number' or (a->>'height')::numeric not between 0.9 and 1.08) then return false; end if;
@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS "public"."gardens" (
     CONSTRAINT "gardens_description_check" CHECK (("char_length"("description") <= 280)),
     CONSTRAINT "gardens_name_check" CHECK ((("char_length"("name") >= 1) AND ("char_length"("name") <= 60))),
     CONSTRAINT "gardens_settings_check" CHECK (("pg_column_size"("settings") < 16000)),
-    CONSTRAINT "gardens_theme_check" CHECK (("theme" = ANY (ARRAY['spring'::"text", 'autumn'::"text"])))
+    CONSTRAINT "gardens_theme_check" CHECK (("theme" = ANY (ARRAY['spring'::"text", 'summer'::"text", 'autumn'::"text", 'winter'::"text"])))
 );
 
 
@@ -367,8 +367,9 @@ declare l jsonb;
 begin
   if s is null or s = '{}'::jsonb then return true; end if;
   if jsonb_typeof(s) <> 'object' then return false; end if;
-  if not public.only_keys(s, array['season','light','weather','tree','blossom','music','fuji','mist','drift','name','desc','links','show']) then return false; end if;
-  if s ? 'season'  and not (s->>'season'  = any(array['spring','autumn'])) then return false; end if;
+  if not public.only_keys(s, array['season','view','light','weather','tree','blossom','music','fuji','mist','drift','name','desc','links','show']) then return false; end if;
+  if s ? 'season'  and not (s->>'season'  = any(array['auto','spring','summer','autumn','winter'])) then return false; end if;
+  if s ? 'view'    and not (s->>'view'    = any(array['fuji','sea'])) then return false; end if;
   if s ? 'light'   and not (s->>'light'   = any(array['auto','day','night'])) then return false; end if;
   if s ? 'weather' and not (s->>'weather' = any(array['clear','showers','rain'])) then return false; end if;
   if s ? 'tree'    and not (s->>'tree'    = any(array['sakura','maple','green'])) then return false; end if;
