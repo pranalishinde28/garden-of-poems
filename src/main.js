@@ -27,6 +27,7 @@ import './world/tulips.js';
 import './world/swings.js';
 import './world/lamps.js';
 import './world/fuji.js';
+import './world/temples.js';
 import './animals/animals.js';
 import './plants/flowerGardens.js';
 import './world/particles.js';

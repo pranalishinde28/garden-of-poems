@@ -4,6 +4,7 @@ import { scene } from './renderer.js';
 import { regEnd } from './paths.js';
 
 /* ================= Mount Fuji ================= */
+export const fujiMesh = [];
 export const fujiU = { uLight: { value: new V3(0, 1, 0) }, uHor: { value: new THREE.Color() }, uNight: { value: 0 } };
 (function buildFuji() {
   const H = 400, rb = 980, rt = 52, rings = 96, seg = 260, pos = [], at = [], idx = [];
@@ -31,18 +32,19 @@ export const fujiU = { uLight: { value: new V3(0, 1, 0) }, uHor: { value: new TH
         float g=sin(a*37.+1.3)*0.6+sin(a*83.+.4)*0.3+sin(a*151.)*0.1;
         float n=fbm(vec2(a*16.,t*5.));
         float finger=smoothstep(0.1,0.9,-g)*smoothstep(0.18,0.6,t)*0.2*(0.6+0.8*fbm(vec2(a*60.,t*3.)));
-        float line=0.6+(n-0.5)*0.24+0.04*g;
+        float line=0.5+(n-0.5)*0.2+0.05*g; // a broad winter cap, as in the classic view
         float snow=smoothstep(line-0.025,line+0.012,t+finger);
         vec3 L=normalize(uLight),N=normalize(vN);float lam=max(dot(N,L),0.);
-        vec3 rock=mix(vec3(.19,.2,.28),vec3(.29,.25,.3),fbm(vec2(a*55.,t*45.)));
-        rock=mix(rock,vec3(.12,.19,.18),smoothstep(0.32,0.06,t));
-        vec3 snowC=mix(vec3(.74,.8,.93),vec3(1.,.99,.97),smoothstep(0.,0.7,lam));
+        vec3 rock=mix(vec3(.22,.29,.45),vec3(.3,.36,.52),fbm(vec2(a*55.,t*45.))); // blue-grey volcanic slopes
+        rock*=0.82+0.36*smoothstep(-0.6,0.6,g); // ridges catch the light, gullies keep shade
+        rock=mix(rock,vec3(.16,.24,.3),smoothstep(0.3,0.04,t));
+        vec3 snowC=mix(vec3(.66,.74,.9),vec3(.93,.94,.95),smoothstep(0.,0.6,lam))*(0.9+0.1*smoothstep(-0.5,0.5,g)); // bright, but under the bloom threshold
         vec3 c=mix(rock*(0.45+0.75*lam),snowC*(0.82+0.25*lam),snow);
         c*=mix(1.,0.2,uNight);
         vec3 haze=mix(uHor,vec3(.6,.7,.85)*mix(1.,0.25,uNight),0.35);
-        c=mix(c,haze,clamp(0.1+pow(1.-t,1.7)*0.8,0.,0.92));
+        c=mix(c,haze,clamp(0.04+pow(1.-t,2.4)*0.6,0.,0.85)); // clear air: only the foot fades
         gl_FragColor=vec4(c,1.);}` }));
-  m.position.set(-240, -45, -1180); scene.add(m);
+  m.position.set(-210, -40, -1000); m.scale.setScalar(1.08); scene.add(m); fujiMesh.push(m);
 })();
 regEnd();
 

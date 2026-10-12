@@ -43,6 +43,9 @@ const VIEWS = {
   'season-summer': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'summer', samples: true },
   'season-autumn': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'autumn', samples: true },
   'season-winter': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'winter', samples: true },
+  'fuji-view': { pos: [8, 2.6, 16], look: [-25, 14, -200], season: 'spring' },
+  'fuji-high': { pos: [4, 14, 44], look: [-20, 10, -200], season: 'spring' },
+  'fuji-winter': { pos: [8, 2.6, 16], look: [-25, 14, -200], season: 'winter' },
   'lineup': { lineup: true, pos: [3.1, 1.25, 25.2], look: [3.1, 0.95, 21.6] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
 };
