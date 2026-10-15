@@ -108,6 +108,42 @@ select is((select count(*) from public.notes where poem_id = 'open' and not hidd
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
 select is((select (restore_poem('open')).id), 'open', 'the owner restores it within 30 days');
 
+-- ---------- hearts: one each, on readable poems, never your own; counts for all, names for the poet ----------
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select lives_ok($$insert into public.poem_likes (garden_owner, poem_id, liker) values ('00000000-0000-0000-0000-0000000000a1', 'open', '00000000-0000-0000-0000-0000000000b2')$$, 'a visitor hearts a readable poem');
+select throws_ok($$insert into public.poem_likes (garden_owner, poem_id, liker) values ('00000000-0000-0000-0000-0000000000a1', 'open', '00000000-0000-0000-0000-0000000000b2')$$, '23505', null, 'one heart per person per poem');
+select throws_ok($$insert into public.poem_likes (garden_owner, poem_id, liker) values ('00000000-0000-0000-0000-0000000000a1', 'secret', '00000000-0000-0000-0000-0000000000b2')$$, '42501', null, 'no hearts on a private poem');
+select throws_ok($$insert into public.poem_likes (garden_owner, poem_id, liker) values ('00000000-0000-0000-0000-0000000000a1', 'open', '00000000-0000-0000-0000-0000000000c3')$$, '42501', null, 'no hearts in someone else''s name');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c3');
+insert into public.poem_likes (garden_owner, poem_id, liker) values ('00000000-0000-0000-0000-0000000000a1', 'open', '00000000-0000-0000-0000-0000000000c3');
+select is((select likes from poem_likes_for('00000000-0000-0000-0000-0000000000a1') where poem_id = 'open'), 2, 'the count covers everyone''s hearts');
+select is((select mine from poem_likes_for('00000000-0000-0000-0000-0000000000a1') where poem_id = 'open'), true, 'and says whether one is yours');
+select is((select count(*) from public.poem_likes), 1::bigint, 'a visitor sees only their own hearts in the table');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select throws_ok($$insert into public.poem_likes (garden_owner, poem_id, liker) values ('00000000-0000-0000-0000-0000000000a1', 'open', '00000000-0000-0000-0000-0000000000a1')$$, '42501', null, 'no hearts on your own poem');
+select is((select count(*) from public.poem_likes where garden_owner = auth.uid()), 2::bigint, 'the poet sees who hearted their poems');
+select pg_temp.as_anon();
+select is((select likes from poem_likes_for('00000000-0000-0000-0000-0000000000a1') where poem_id = 'open'), 2, 'anonymous visitors see the count');
+select throws_ok($$select count(*) from public.poem_likes$$, '42501', null, 'but not who');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c3');
+select lives_ok($$delete from public.poem_likes where poem_id = 'open'$$, 'take back your heart');
+select is((select likes from poem_likes_for('00000000-0000-0000-0000-0000000000a1') where poem_id = 'open'), 1, 'and the count drops');
+
+-- ---------- gardens suggested for you ----------
+select is((select count(*) from suggested_gardens(3) where owner = '00000000-0000-0000-0000-0000000000a1'), 1::bigint, 'a public garden is suggested');
+select isnt((select reason from suggested_gardens(3) where owner = '00000000-0000-0000-0000-0000000000a1'), null, 'with a reason');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select is((select count(*) from suggested_gardens(3) where owner = auth.uid()), 0::bigint, 'never your own garden');
+reset role;
+update public.gardens set is_public = false where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c3');
+select is((select count(*) from suggested_gardens(3) where owner = '00000000-0000-0000-0000-0000000000a1'), 0::bigint, 'never a private garden');
+reset role;
+update public.gardens set is_public = true where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_anon();
+select lives_ok($$select * from suggested_gardens(3)$$, 'anonymous visitors get suggestions too');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+
 -- ---------- validation ----------
 select throws_ok($$update public.gardens set settings = '{"links":[{"label":"x","url":"javascript:alert(1)"}]}' where owner = auth.uid()$$, '23514', null, 'links must be http(s)');
 select throws_ok($$update public.gardens set settings = '{"season":"monsoon"}' where owner = auth.uid()$$, '23514', null, 'settings use known values');

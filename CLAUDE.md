@@ -25,7 +25,8 @@ The owner's quality bar, in their words over the conversation: "everything shoul
 index.html            page markup only; loads src/main.js
 src/main.js           imports every module in run order, then starts the frame loop
 src/styles.css        all CSS
-src/core/             util, shared state (state, the clock T, tweens), late.js, loop.js (frame), updates
+src/core/             util, shared state (state, the clock T, tweens), late.js, loop.js (frame), updates,
+                      power.js (the frame-rate policy), things.js (touchable things: fountain, bells)
 src/world/            terrain, renderer, textures, sky, lights, wind, geometry, ground, paths, grass,
                       decor, arbors, tulips, swings, lamps, fuji, particles, atmosphere, post
 src/plants/           mapping (mood → plant), autumnLeaves, sakura, flowers, types, registry, flowerGardens, samples
@@ -38,7 +39,9 @@ src/cloud/            cloud.ts (typed Supabase client, the sync queue, conflicts
                       (generated: npm run db:types), gardensPanel, visiting, notes
 src/settings/         storage.js (poems, SETTINGS, THEME, localStorage/IDB), customize.js, avatarEditor.js, quality.js
 src/player/           also avatar.js (the figure) and figure.js (placing it, the third-person camera)
-src/ui/               also swingReader, map, guide (first steps, help)
+src/ui/               also swingReader, map, guide (first steps, help, shortcut keys)
+src/world/            also fountain.js, architecture.js (the temple carpentry kit), shrines.js (pagoda,
+                      bell tower, Shinto shrine inside the garden)
 src/debug.js          window.__garden for the test harness, only with ?debug in the URL
 dev/screenshot.mjs    headless Chrome (Puppeteer): --check smoke test, or screenshots of fixed views
 dev/compare.mjs       mean pixel difference between before-*/after-* screenshot pairs
@@ -134,10 +137,15 @@ The modules are the old script's sections, and `src/main.js` imports them in the
     **Help, panels and feedback (Phase 5):** the HUD is Write, Map, Sound, Customize, Gardens, ? and ⋯; the rarer controls (time, season, light, view, gate) are `.mrow` rows in ⋯ whose label follows their `data-tip`. `ui/guide.js` holds the three first steps (once, `seen-steps`) and the help sheet (? or H). `openPanel`/`closePanel` in `ui/reading.js` give every panel the same focus handling (in, trapped, returned) and close the settings-like ones on Esc or a click on the garden (`CLOSERS`); `body.panel-open` hides the joystick, corner map, hint and cue. `setSaveState()` (cloud.js) drives the quiet saving line. `settings/quality.js` (Auto/High/Medium/Low in ⋯) scales pixel ratio, grass instance counts, shadows, reflection frequency and post-processing; Auto samples frame times while walking and steps down when the median is over 22 ms. Writing keeps a draft in `garden-of-poems:draft`, counts words and lines, may suggest a mood from keywords, and a removed poem can be undone from the toast.
     **The map** (`ui/map.js`): M or the HUD button. `drawWorld()` draws from the real layout (`stones`, `RIVER`, `BRIDGES`, `TULIPS`, `swings`, `ROSE_GARDEN`, `sign`) and honours `featOn`; places and poems are HTML buttons over the canvas. Choosing one calls `glideTo()`: two camera tweens (lift and drift, then settle) to a free standing spot, then `openPoem` for poems. While open, `state.mode` is `'map'` (walking pauses). The corner map (`#minimap-btn`) redraws at about 9 fps from a cached world image; Customize can switch it off (`state.minimap`).
 14. **Accounts:** `Cloud` (Supabase) handles auth, sync, the Gardens panel, visiting other gardens, and notes. `cloudInit()` skips Supabase entirely if `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are missing or still contain `YOUR_`.
-15. **Customize:** settings UI, applying settings, autumn veils, and the **sign board** at the gate with name, byline, welcome line and links.
+15. **Customize:** settings UI, applying settings, autumn veils, the **great arch** at the gate (`GATE`, blossom cards that follow the season, the garden's name on a plaque that `drawBoard()` paints) and the **sign board** beside it with name, byline, welcome line and links. You arrive at `SPAWN` (0, 49), a few steps outside the arch, so the arch, its name and the board are the first view.
 16. **HUD wiring and startup.** Samples (12 original demo poems), init, intro screen, the frame loop and post-processing (`renderPost`: bloom, film grade, vignette, grain), then `cloudInit()`.
 
 ## Decisions and why
+
+- **Battery (October 2026):** `core/power.js` decides each frame whether to draw: 60 fps while anything moves, 20 fps after 2.5 s of stillness (24 while reading), 8 fps unfocused, none while the map is open, at most 30 on battery or with reduced motion. Animations that must stay smooth set `power.growing` or register a busy tick (`core/things.js`). The water reflection uses an oblique near plane instead of clipping planes (half the shader programs). Measured with `--flow battery` (headless CPU %): standing 45 → 19, reading 24 → 12, map 24 → 2.
+- **The poem card (October 2026):** the reader is an Instagram-style card: the poet and region on top, the poem on a paper page in a book (a cloth cover swings open; ← → turn pages over the spine; reduced motion skips both), then a heart, notes and the date. Hearts and notes appear only when the garden is public (visiting, or your own once open). Double tap or J hearts, K opens notes. `poem_likes` holds hearts; everyone sees counts through `poem_likes_for()`, only the poet sees who.
+- **Suggested gardens:** `suggested_gardens()` scores public gardens by recent hearts and notes, freshness, size and shared moods; the Gardens panel shows three, and once a session a quiet toast offers the best one. Before the database update the page scores the public list itself.
+- **Things to touch:** the fountain (toss a coin; coins stay on this device), the shrine bell, the temple bell, koi that come to where you touch the pond, petals shaken from a tree you brush past. Each registers through `regThing()`; the walk cue offers it within its `near` circle.
 
 - **Copyright:** music must stay original or user-supplied. The owner asked for a famous album's piano music; that was declined. Instead the app has an original generative piano plus "play my own files". Don't embed copyrighted songs, lyrics or recognisable melodies.
 - **Every poem is a cherry tree (October 2026).** The owner asked that poems never grow as flowers or bushes. `plantTypeFor` now gives `oldtree` (matters), `willow` (a weeping cherry, for sorrow), or `orchard` / `bigtree` by length; the mood picks the region (`regionKeyFor`). Older poems with other plant types are re-placed once (`preparePoem`). The old builders (flower, twin, thorn, mushrooms, treehouse) remain only for reference.
@@ -173,6 +181,11 @@ The modules are the old script's sections, and `src/main.js` imports them in the
 13. **`npm run e2e:local` builds `dist/` with the local Supabase keys.** Run `npm run build` (or `npm run check`) afterwards before using `dist/` for anything else. CI always builds its own.
 14. **Sync signatures:** `sig()` covers the poem's content fields only, never the server's timestamps; including `updatedAt` would make every save look like a new change.
 15. **Declare before an IIFE uses it, even inside one module:** `hedges` in decor.js had to move above the hedge-building IIFE (TDZ). Seasons and the horizon are applied through `applyVisibility()`, which runs `applyHorizon()` after the feature loop.
+16. **`plants` is a Map:** iterate it with `.forEach` or `.values()`; `for (const pl of plants)` yields `[id, plant]` pairs (a walk-time crash this round).
+17. **Frames are skipped on purpose (core/power.js):** reading the WebGL canvas back only works in a frame the garden drew; wait for `__garden.framesDrawn` to change (the smoke test does).
+18. **Map labels:** `#map-marks button` sets a transform, so the `.side-*` rules must be scoped under `#map-marks` or every label centres on its point. `settleLabels()` places them; a label never clashes with its own dot.
+19. **Things that block flower beds must load first:** `flowerGardens.js` places hydrangeas around `decor`, so modules adding obstacles (fountain, shrines) are imported before it.
+20. **The carpentry kit turns yaw first:** `Kit` uses Euler order `YXZ`, so a rafter yawed to its side still pitches along its length.
 
 ## What the owner wants next (open threads)
 
@@ -181,7 +194,8 @@ They said they want to "edit a lot of things in the garden". Expect many visual 
 - **Migrate the live database** (docs/database.md), then merge and deploy the Phase 6 app.
 - **Custom SMTP** for confirmation and reset emails before inviting real people (Supabase's built-in mail sends only a few an hour).
 - **Three.js upgrade:** r128 → current, as its own step: colour management (`outputColorSpace`, hex colours treated as sRGB), physically based light units, `WebGLMultisampleRenderTarget` → `samples`, and the shader chunks that `windify` and the water shader patch. Compare with `npm run shots` and `dev/compare.mjs`.
-- **Draw calls:** about 1,300 a frame at High (`--flow quality`). Merging more of the static scenery would help weaker devices more than any setting.
+- **Migrate the live database** now includes `20261012000000` and `20261016000000` (hearts and suggestions); until then the card leaves the heart out.
+- **Draw calls:** about 1,170 a frame at High (`--flow quality`), down from 1,400 after merging the temples. Merging more of the static scenery would help weaker devices more than any setting.
 - **Realtime presence** (the Phase 4 stretch goal, not built): other signed-in visitors as figures, movement only.
 - **Proposals in docs/ux-audit.md**, waiting for the owner's OK.
 - **Realism:** better trees, grass, water and sky; glTF models and PBR textures if procedural shapes stop being enough.

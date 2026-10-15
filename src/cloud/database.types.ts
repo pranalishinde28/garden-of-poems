@@ -95,6 +95,26 @@ isOneToOne: false
       referencedColumns: ["owner","id"]
     }
                   ]
+                },"poem_likes": {
+                  Row: {
+                    "created_at": string,"garden_owner": string,"liker": string,"poem_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"garden_owner": string,"liker": string,"poem_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"garden_owner"?: string,"liker"?: string,"poem_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "poem_likes_garden_owner_poem_id_fkey"
+      columns: ["garden_owner","poem_id"]
+isOneToOne: false
+      referencedRelation: "poems"
+      referencedColumns: ["owner","id"]
+    }
+                  ]
                 },"poems": {
                   Row: {
                     "content": string,"created_at": string,"deleted_at": string | null,"id": string,"important": boolean,"mood": string | null,"owner": string,"plant_type": string | null,"position": Json | null,"private": boolean,"theme": string | null,"title": string,"updated_at": string
@@ -176,6 +196,11 @@ isOneToOne: true
 "only_keys":
 { Args: { "allowed": (string)[],"obj": Json }; Returns: boolean
                            },
+"poem_likes_for":
+{ Args: { "p_owner": string }; Returns: {
+              "likes": number,"mine": boolean,"poem_id": string
+            }[]
+                           },
 "poem_visible":
 { Args: { "p_id": string,"p_owner": string }; Returns: boolean
                            },
@@ -231,6 +256,11 @@ isOneToOne: true
                            },
 "show_trgm":
 { Args: { "": string }; Returns: (string)[]
+                           },
+"suggested_gardens":
+{ Args: { "lim"?: number }; Returns: {
+              "description": string,"display_name": string,"name": string,"owner": string,"poem_count": number,"reason": string,"settings": Json,"theme": string,"updated_at": string,"username": string
+            }[]
                            },
 "username_available":
 { Args: { "name": string }; Returns: boolean

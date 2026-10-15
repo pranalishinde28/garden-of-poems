@@ -1,8 +1,8 @@
 import { $, V3, clamp, monthYear } from '../core/util.js';
 import { POND_R, WATER_Y } from '../world/terrain.js';
-import { poems, savePoems, setPoems } from '../settings/storage.js';
+import { SETTINGS, poems, savePoems, setPoems } from '../settings/storage.js';
 import { T, setTween, state } from '../core/state.js';
-import { REGIONS, regionKeyFor } from '../plants/mapping.js';
+import { MOOD_INK, REGIONS, regionKeyFor } from '../plants/mapping.js';
 import { camera } from '../world/renderer.js';
 import { decor, stoneNear } from '../world/paths.js';
 import { createPlant, plants, removePlant } from '../plants/registry.js';
@@ -11,6 +11,7 @@ import { rebuildConnections, rebuildPetals } from '../world/particles.js';
 import { Music } from '../audio/music.js';
 import { blocked, camTween, floorH, syncPlayerFromCamera } from '../player/camera.js';
 import { setCue, toast } from './helpers.js';
+import { isTyping } from './input.js';
 import { byDate, computeSeason, visiblePoems } from './filter.js';
 import { late, provide } from '../core/late.js';
 
@@ -56,8 +57,48 @@ addEventListener('pointerdown', e => {
   if (top && CLOSERS[top.id] && e.target.id === 'c' && !top.contains(e.target)) $(CLOSERS[top.id]).click();
 }, true);
 export function regionLabel(p) { const n = REGIONS[regionKeyFor(p)].name; return 'Grows in ' + n.replace(/^The /, 'the '); }
+// ---- the card as a book: pages turn over the spine, and the cover swings open ----
+const book = $('#r-book'), leaf = $('#r-leaf'), still = matchMedia('(prefers-reduced-motion: reduce)');
+const EASE = 'cubic-bezier(.45,.05,.3,1)';
+function copyOfPage() {
+  const c = leaf.cloneNode(true); c.removeAttribute('id'); c.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+  c.className = 'face leaf static'; c.setAttribute('aria-hidden', 'true');
+  return c;
+}
+function sheet(face) { const t = document.createElement('div'); t.className = 'leaf turning'; const back = document.createElement('div'); back.className = 'back'; t.append(face, back); return t; }
+function settle(scrollTop, nodes) { nodes.forEach(n => { const s = n.querySelector('.scroll'); if (s) s.scrollTop = scrollTop; }); }
+// next: the old page lifts away to the left; earlier: the previous page swings back over the old one
+function turnPage(dir, fill) {
+  if (still.matches || !reader.classList.contains('open')) { fill(); return; }
+  book.querySelectorAll('.leaf.turning,.leaf.under').forEach(n => n.remove());
+  const top = leaf.querySelector('.scroll').scrollTop, old = copyOfPage();
+  fill();
+  const fresh = copyOfPage(), dur = 760;
+  reader.classList.add('flipping');
+  let moving, under = null;
+  if (dir > 0) { moving = sheet(old); book.append(moving); settle(top, [moving]); }
+  else { under = old; under.className = 'leaf under static'; moving = sheet(fresh); book.append(under, moving); settle(top, [under]); }
+  moving.style.setProperty('--dur', dur + 'ms');
+  const frames = dir > 0 ? [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(-180deg)', opacity: 0.6 }] : [{ transform: 'rotateY(-180deg)', opacity: 0.6 }, { transform: 'rotateY(0deg)', opacity: 1 }];
+  moving.animate(frames, { duration: dur, easing: EASE, fill: 'forwards' }).finished.catch(() => {}).then(() => { moving.remove(); under && under.remove(); reader.classList.remove('flipping'); });
+}
+// opening: a cloth cover with the garden's name swings open on the first page
+function openCover() {
+  if (still.matches) return;
+  book.querySelectorAll('.leaf.cover').forEach(n => n.remove());
+  const c = document.createElement('div'); c.className = 'leaf cover'; c.setAttribute('aria-hidden', 'true');
+  const face = document.createElement('div'); face.className = 'face'; face.textContent = state.visiting ? state.visiting.name : (SETTINGS.name || 'The Garden of Poems');
+  const back = document.createElement('div'); back.className = 'back'; c.append(face, back); book.append(c);
+  reader.classList.add('flipping');
+  c.animate([{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(0deg)', offset: 0.2 }, { transform: 'rotateY(-180deg)', opacity: 0.5 }], { duration: 1250, easing: EASE, fill: 'forwards' })
+    .finished.catch(() => {}).then(() => { c.remove(); if (!book.querySelector('.leaf.turning')) reader.classList.remove('flipping'); });
+}
+
 export function fillReader(p, reflection) {
   reader.classList.toggle('is-reflection', !!reflection);
+  // the header: whose poem, and where it grows
+  const ink = MOOD_INK[p.mood] || MOOD_INK.reflection, poet = state.visiting ? state.visiting.by : 'Your garden';
+  $('#r-poet').textContent = poet; const av = $('#r-av'); av.textContent = (poet.trim()[0] || '·').toUpperCase(); av.style.setProperty('--c', ink);
   const k = $('#r-kicker'); k.hidden = !reflection; k.textContent = reflection ? 'A reflection from the water' : '';
   $('#r-title').textContent = p.title;
   const body = $('#r-body'); body.innerHTML = ''; let i = 0;
@@ -70,13 +111,14 @@ export function fillReader(p, reflection) {
   $('#r-where').textContent = regionLabel(p);
   const list = visiblePoems().sort(byDate), idx = list.findIndex(q => q.id === p.id);
   $('#r-prev').hidden = $('#r-next').hidden = !!reflection;
+  $('#r-prev').setAttribute('aria-label', 'Earlier poem (←)'); $('#r-next').setAttribute('aria-label', 'Later poem (→)');
   $('#r-prev').disabled = idx <= 0; $('#r-next').disabled = idx < 0 || idx >= list.length - 1;
   $('#r-again').hidden = $('#r-visit').hidden = !reflection;
   $('#r-again').disabled = visiblePoems().length < 2;
   $('#r-edit').hidden = $('#r-del').hidden = !!reflection || !!state.visiting;
-  late.loadNotes(p, reflection);
+  late.loadSocial(p, reflection);
   $('#r-confirm').hidden = true; $('#r-bar').hidden = false;
-  reader.querySelector('.scroll').scrollTop = 0;
+  leaf.querySelector('.scroll').scrollTop = 0;
 }
 function viewFor(plant) {
   const c = plant.root.position, toCam = new V3(camera.position.x - c.x, 0, camera.position.z - c.z);
@@ -96,14 +138,17 @@ function viewFor(plant) {
   if (innerWidth > 760) look.addScaledVector(right, dist * 0.42); else look.y -= dist * 0.3;
   return { pos, look };
 }
-export function openPoem(plant) {
+export function openPoem(plant, dir = 0) {
   late.hideSwingUI();
   late.closePops(); setCue(null);
   state.mode = 'focus'; state.reading = plant.poem.id; state.reflection = false;
   const v = viewFor(plant), d = camera.position.distanceTo(v.pos);
   camTween(v.pos, v.look, clamp(1.3 + d * 0.05, 1.5, 3.4));
   plant.pulse = 1; Music.ducked = true;
-  fillReader(plant.poem, false); openPanel(reader); reader.focus({ preventScroll: true });
+  const wasOpen = reader.classList.contains('open') && !reader.hidden;
+  if (wasOpen && dir) turnPage(dir, () => fillReader(plant.poem, false));
+  else { fillReader(plant.poem, false); if (!wasOpen) openCover(); }
+  openPanel(reader); reader.focus({ preventScroll: true });
 }
 export function closeReader() {
   if (state.mode !== 'focus') return;
@@ -113,7 +158,7 @@ export function closeReader() {
 function stepPoem(dir) {
   const list = visiblePoems().sort(byDate), idx = list.findIndex(q => q.id === state.reading);
   const next = list[idx + dir]; if (!next || !plants.has(next.id)) return;
-  openPoem(plants.get(next.id));
+  openPoem(plants.get(next.id), dir);
 }
 function reflect(point) {
   const vis = visiblePoems();
@@ -142,13 +187,27 @@ function reflect(point) {
     if (innerWidth > 760) look.addScaledVector(new V3(dir.z, 0, -dir.x), 3.2);
     camTween(pos, look, clamp(1.2 + camera.position.distanceTo(pos) * 0.05, 1.4, 3));
   }
+  const wasOpen = reader.classList.contains('open') && !reader.hidden;
   state.mode = 'focus'; state.reading = p.id; state.reflection = true; Music.ducked = true;
-  fillReader(p, true); openPanel(reader); reader.focus({ preventScroll: true });
+  if (wasOpen) turnPage(1, () => fillReader(p, true)); else { fillReader(p, true); openCover(); }
+  openPanel(reader); reader.focus({ preventScroll: true });
 }
 $('#r-close').onclick = closeReader;
 $('#r-prev').onclick = () => stepPoem(-1);
 $('#r-next').onclick = () => stepPoem(1);
-$('#r-again').onclick = () => { reader.classList.remove('open'); setTimeout(() => reflect(new V3((Math.random() - .5) * 8, WATER_Y, (Math.random() - .5) * 8)), 350); };
+$('#r-again').onclick = () => reflect(new V3((Math.random() - .5) * 8, WATER_Y, (Math.random() - .5) * 8));
+// a double tap on the page is a heart, as on a photo (two quick taps close together; dblclick is unreliable on phones)
+let lastTap = null;
+leaf.addEventListener('pointerup', e => {
+  const now = performance.now(), near = lastTap && now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30;
+  lastTap = near ? null : { t: now, x: e.clientX, y: e.clientY };
+  if (near && late.canHeart && late.canHeart()) { getSelection()?.removeAllRanges(); late.heartPoem(true); }
+});
+addEventListener('keydown', e => {
+  if (state.mode !== 'focus' || e.repeat || e.metaKey || e.ctrlKey || e.altKey || isTyping(e)) return;
+  if (e.code === 'KeyJ' && late.canHeart && late.canHeart()) { e.preventDefault(); late.heartPoem(); }
+  else if (e.code === 'KeyK' && !$('#r-talk').hidden) { e.preventDefault(); $('#r-talk').click(); }
+});
 $('#r-visit').onclick = () => { const pl = plants.get(state.reading); if (pl) openPoem(pl); };
 $('#r-edit').onclick = () => { const p = poems.find(q => q.id === state.reading); if (p) late.openEditor(p); };
 $('#r-del').onclick = () => {

@@ -238,6 +238,20 @@ $$;
 ALTER FUNCTION "public"."only_keys"("obj" "jsonb", "allowed" "text"[]) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."poem_likes_for"("p_owner" "uuid") RETURNS TABLE("poem_id" "text", "likes" integer, "mine" boolean)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select l.poem_id, count(*)::int, coalesce(bool_or(l.liker = auth.uid()), false)
+  from public.poem_likes l
+  where l.garden_owner = p_owner and public.poem_visible(p_owner, l.poem_id)
+  group by l.poem_id;
+$$;
+
+
+ALTER FUNCTION "public"."poem_likes_for"("p_owner" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."poem_visible"("p_owner" "uuid", "p_id" "text") RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -306,6 +320,37 @@ end $$;
 
 
 ALTER FUNCTION "public"."save_poem"("p" "jsonb", "base" timestamp with time zone) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."suggested_gardens"("lim" integer DEFAULT 3) RETURNS TABLE("owner" "uuid", "name" "text", "description" "text", "theme" "text", "updated_at" timestamp with time zone, "username" "text", "display_name" "text", "poem_count" bigint, "settings" "jsonb", "reason" "text")
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  with mine as (
+    select distinct p.mood from public.poems p where p.owner = auth.uid() and p.deleted_at is null and p.mood is not null
+  ), cand as (
+    select g.*,
+      (select count(*) from public.poem_likes l where l.garden_owner = g.owner and l.created_at > now() - interval '30 days') as likes30,
+      (select count(*) from public.notes n where n.garden_owner = g.owner and not n.hidden and n.created_at > now() - interval '30 days') as notes30,
+      (select count(*) from public.poems p where p.owner = g.owner and not p.private and p.deleted_at is null and p.mood in (select mood from mine)) as shared
+    from public.public_gardens g
+    where g.poem_count > 0 and g.owner is distinct from auth.uid()
+  )
+  select c.owner, c.name, c.description, c.theme, c.updated_at, c.username, c.display_name, c.poem_count, c.settings,
+    case when c.shared >= 2 and c.shared::float / greatest(c.poem_count, 1) >= 0.3 then 'Moods close to yours'
+         when c.likes30 + c.notes30 >= 3 then 'Much loved this month'
+         when c.updated_at > now() - interval '7 days' then 'Newly tended'
+         else 'A garden worth a walk' end
+  from cand c
+  order by ln(1 + c.poem_count) + 1.5 * ln(1 + c.likes30) + 1.2 * ln(1 + c.notes30)
+         + 2.0 * exp(-extract(epoch from now() - c.updated_at) / 86400.0 / 14.0)
+         + 2.5 * (c.shared::float / greatest(c.poem_count, 1)) desc,
+         c.updated_at desc
+  limit least(greatest(coalesce(lim, 3), 1), 12);
+$$;
+
+
+ALTER FUNCTION "public"."suggested_gardens"("lim" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."tidy_poem"() RETURNS "trigger"
@@ -425,6 +470,17 @@ CREATE TABLE IF NOT EXISTS "public"."notes" (
 ALTER TABLE "public"."notes" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."poem_likes" (
+    "garden_owner" "uuid" NOT NULL,
+    "poem_id" "text" NOT NULL,
+    "liker" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."poem_likes" OWNER TO "postgres";
+
+
 ALTER TABLE "public"."gardens"
     ADD CONSTRAINT "gardens_name_trim" CHECK ((("name" = "btrim"("name")) AND ("name" <> ''::"text"))) NOT VALID;
 
@@ -457,6 +513,11 @@ ALTER TABLE ONLY "public"."notes"
 
 ALTER TABLE "public"."notes"
     ADD CONSTRAINT "notes_text_trim" CHECK ((("text" = "btrim"("text")) AND ("text" <> ''::"text"))) NOT VALID;
+
+
+
+ALTER TABLE ONLY "public"."poem_likes"
+    ADD CONSTRAINT "poem_likes_pkey" PRIMARY KEY ("garden_owner", "poem_id", "liker");
 
 
 
@@ -511,6 +572,14 @@ CREATE INDEX "notes_poem_idx" ON "public"."notes" USING "btree" ("garden_owner",
 
 
 CREATE INDEX "notes_poem_time_idx" ON "public"."notes" USING "btree" ("garden_owner", "poem_id", "created_at");
+
+
+
+CREATE INDEX "poem_likes_liker_idx" ON "public"."poem_likes" USING "btree" ("liker");
+
+
+
+CREATE INDEX "poem_likes_recent_idx" ON "public"."poem_likes" USING "btree" ("garden_owner", "created_at");
 
 
 
@@ -575,6 +644,16 @@ ALTER TABLE ONLY "public"."notes"
 
 
 
+ALTER TABLE ONLY "public"."poem_likes"
+    ADD CONSTRAINT "poem_likes_garden_owner_poem_id_fkey" FOREIGN KEY ("garden_owner", "poem_id") REFERENCES "public"."poems"("owner", "id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."poem_likes"
+    ADD CONSTRAINT "poem_likes_liker_fkey" FOREIGN KEY ("liker") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."poems"
     ADD CONSTRAINT "poems_owner_fkey" FOREIGN KEY ("owner") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
@@ -600,6 +679,10 @@ CREATE POLICY "edit own profile" ON "public"."profiles" FOR UPDATE USING (("id" 
 ALTER TABLE "public"."gardens" ENABLE ROW LEVEL SECURITY;
 
 
+CREATE POLICY "heart a poem you can read, not your own" ON "public"."poem_likes" FOR INSERT WITH CHECK ((("liker" = "auth"."uid"()) AND ("garden_owner" <> "auth"."uid"()) AND "public"."poem_visible"("garden_owner", "poem_id")));
+
+
+
 CREATE POLICY "hide notes in my garden" ON "public"."notes" FOR UPDATE USING (("garden_owner" = "auth"."uid"())) WITH CHECK (("garden_owner" = "auth"."uid"()));
 
 
@@ -616,6 +699,9 @@ ALTER TABLE "public"."note_reports" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."notes" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."poem_likes" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."poems" ENABLE ROW LEVEL SECURITY;
@@ -642,6 +728,10 @@ CREATE POLICY "read public or own garden" ON "public"."gardens" FOR SELECT USING
 
 
 
+CREATE POLICY "read your hearts, or the hearts on your poems" ON "public"."poem_likes" FOR SELECT USING ((("liker" = "auth"."uid"()) OR ("garden_owner" = "auth"."uid"())));
+
+
+
 CREATE POLICY "remove notes" ON "public"."notes" FOR DELETE USING ((("author" = "auth"."uid"()) OR ("garden_owner" = "auth"."uid"())));
 
 
@@ -655,6 +745,10 @@ CREATE POLICY "report a readable note" ON "public"."note_reports" FOR INSERT WIT
 CREATE POLICY "see my reports and reports in my garden" ON "public"."note_reports" FOR SELECT USING ((("reporter" = "auth"."uid"()) OR (EXISTS ( SELECT 1
    FROM "public"."notes" "n"
   WHERE (("n"."id" = "note_reports"."note_id") AND ("n"."garden_owner" = "auth"."uid"()))))));
+
+
+
+CREATE POLICY "take back your own heart" ON "public"."poem_likes" FOR DELETE USING (("liker" = "auth"."uid"()));
 
 
 
@@ -741,6 +835,13 @@ GRANT ALL ON FUNCTION "public"."only_keys"("obj" "jsonb", "allowed" "text"[]) TO
 
 
 
+REVOKE ALL ON FUNCTION "public"."poem_likes_for"("p_owner" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."poem_likes_for"("p_owner" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."poem_likes_for"("p_owner" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."poem_likes_for"("p_owner" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."poem_visible"("p_owner" "uuid", "p_id" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."poem_visible"("p_owner" "uuid", "p_id" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."poem_visible"("p_owner" "uuid", "p_id" "text") TO "service_role";
@@ -762,6 +863,13 @@ GRANT ALL ON FUNCTION "public"."restore_poem"("poem_id" "text") TO "service_role
 REVOKE ALL ON FUNCTION "public"."save_poem"("p" "jsonb", "base" timestamp with time zone) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."save_poem"("p" "jsonb", "base" timestamp with time zone) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."save_poem"("p" "jsonb", "base" timestamp with time zone) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."suggested_gardens"("lim" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."suggested_gardens"("lim" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."suggested_gardens"("lim" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."suggested_gardens"("lim" integer) TO "service_role";
 
 
 
@@ -808,6 +916,11 @@ GRANT ALL ON TABLE "public"."notes" TO "service_role";
 
 
 GRANT UPDATE("hidden") ON TABLE "public"."notes" TO "authenticated";
+
+
+
+GRANT ALL ON TABLE "public"."poem_likes" TO "authenticated";
+GRANT ALL ON TABLE "public"."poem_likes" TO "service_role";
 
 
 

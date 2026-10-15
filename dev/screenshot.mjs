@@ -130,6 +130,7 @@ async function main() {
     else if (FLOW === 'programs') await programsFlow(page);
     else if (FLOW === 'refl') { await page.evaluate(() => { const g = window.__garden; g.state.mode = 'cinematic'; g.camera.position.set(7, 2.2, 9); g.curLook.set(0, -0.4, 0); g.camera.lookAt(g.curLook); }); await sleep(2500); console.log('  reflection pixels:', JSON.stringify(await page.evaluate(() => { const g = window.__garden, rt = g.reflRT, out = []; for (const [fx, fy] of [[.5, .5], [.5, .2], [.5, .8], [.2, .5]]) { const b = new Uint8Array(4); g.renderer.readRenderTargetPixels(rt, Math.floor(rt.width * fx), Math.floor(rt.height * fy), 1, 1, b); out.push([...b]); } return { size: [rt.width, rt.height], out }; }))); }
     else if (FLOW === 'quality') await qualityFlow(page);
+    else if (FLOW === 'card') await cardFlow(page, browser, url, errors);
     else if (FLOW === 'audit') await auditFlow(page, browser, url, errors);
     else if (FLOW === 'swing') { await swingFlow(page, 'desktop'); await swingFlowPhone(browser, url, errors); }
     else if (CHECK) await smoke(page);
@@ -385,6 +386,39 @@ async function mapFlow(page, browser, url, errors) {
     await ph.tap('#enter-sample'); await ph.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
     await ph.tap('#minimap-btn'); await sleep(900); await ph.screenshot({ path: join(root, 'dev/shots/map-phone.png') });
     await ph.tap('.map-poem'); await ph.waitForFunction(() => window.__garden.state.mode === 'focus', { timeout: 30000, polling: 200 }); return 'reading on the phone';
+  });
+}
+
+// ---- the poem card: the cover swings open, pages turn like a book ----
+async function cardFlow(page, browser, url, errors) {
+  const shot = async (n, p = page) => { await p.screenshot({ path: join(root, `dev/shots/card-${n}.png`) }); };
+  const title = (p = page) => p.$eval('#r-title', e => e.textContent);
+  await step('enter with the sample poems', async () => {
+    await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+    await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await sleep(800);
+  });
+  await step('open a poem: the cover swings open', async () => {
+    await page.evaluate(() => { const g = window.__garden; g.openPoem([...g.plants.values()][4]); });
+    await sleep(500); await shot('cover-1'); await sleep(300); await shot('cover-2'); await sleep(2400); await shot('open');
+    return title();
+  });
+  await step('→ turns the page forward', async () => {
+    const t0 = await title(); await page.keyboard.press('ArrowRight'); await sleep(240); await shot('turn-1'); await sleep(200); await shot('turn-2'); await sleep(1700); await shot('turned');
+    const t1 = await title(); if (t1 === t0) throw new Error('still on ' + t0); return `${t0} → ${t1}`;
+  });
+  await step('← turns it back', async () => { const t0 = await title(); await page.keyboard.press('ArrowLeft'); await sleep(330); await shot('back-1'); await sleep(1700); const t1 = await title(); if (t1 === t0) throw new Error('still on ' + t0); return `${t0} → ${t1}`; });
+  await step('a private garden shows no hearts or notes', async () => {
+    const v = await page.evaluate(() => ['#r-heart', '#r-talk', '#r-likes', '#r-notes'].map(s => document.querySelector(s).hidden));
+    if (v.some(x => !x)) throw new Error(JSON.stringify(v)); return 'none shown';
+  });
+  const ctx = await browser.createBrowserContext(), ph = await ctx.newPage(); ph.on('pageerror', e => errors.push('page error (phone): ' + e.message));
+  await ph.emulate({ viewport: { width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true }, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1' });
+  await ph.goto(url, { waitUntil: 'load', timeout: 180000 }); await ph.waitForFunction(() => window.__garden && document.querySelector('#loading')?.classList.contains('done'), { timeout: 120000, polling: 500 });
+  await ph.evaluate(() => window.__garden.setSetting('light', 'day'));
+  await step('phone: the card as a bottom sheet', async () => {
+    await ph.tap('#enter-sample'); await ph.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+    await ph.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden; g.openPoem([...g.plants.values()][2]); }); await sleep(3200); await shot('phone', ph);
+    await ph.tap('#r-next'); await sleep(2000); return title(ph);
   });
 }
 

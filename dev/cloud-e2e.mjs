@@ -30,7 +30,7 @@ const errors = [];
 async function person() {
   const ctx = await browser.createBrowserContext(), page = await ctx.newPage();
   await page.setViewport({ width: 1300, height: 800 });
-  page.on('pageerror', e => errors.push(e.message));
+  page.on('pageerror', e => errors.push(e.message)); page.on('response', async r => { if (r.status() >= 400 && /\/rest\/v1\//.test(r.url())) { let body = ''; try { body = (await r.text()).slice(0, 200); } catch (e) {} if (/"P0001"/.test(body)) return; /* a rate limit the test asks for */ if (LEGACY && /"(PGRST202|PGRST204|42703)"/.test(body)) return; /* the page probing for the update, then falling back */ errors.push(`${r.request().method()} ${r.url().replace(/^.*\/rest\/v1/, '')} → ${r.status()} ${body}`); } });
   await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
   await page.goto(url, { waitUntil: 'load', timeout: 180000 });
   await page.waitForFunction(() => window.__garden && document.querySelector('#loading')?.classList.contains('done'), { timeout: 180000, polling: 500 });
@@ -162,6 +162,42 @@ await step('leave notes; the fourth on one poem is kindly refused', async () => 
   const toast = await pb.$eval('#toast', e => e.textContent), n = sql(`select count(*) from public.notes where author = (select id from public.profiles where username = '${BOB}')`);
   if (LEGACY) return `${n} stored (no rate limit before the update)`;
   if (n !== '3') throw new Error(n + ' notes stored'); return `${n} stored; then: "${toast}"`;
+});
+let hearted = null;
+await step('heart the poem: the card counts it, a second press takes it back, a double tap gives it again', async () => {
+  if (LEGACY) { const shown = await pb.$eval('#r-heart', b => !b.hidden); if (shown) throw new Error('a heart shows before the update'); return 'no heart before the update (left out)'; }
+  await pb.waitForFunction(() => !document.querySelector('#r-heart').hidden, { timeout: 15000, polling: 200 });
+  hearted = await pb.evaluate(() => window.__garden.poems.find(p => p.id === window.__garden.state.reading)._oid);
+  const count = () => sql(`select count(*) from public.poem_likes where poem_id = '${hearted}'`);
+  const card = () => pb.evaluate(() => document.querySelector('#r-heart').getAttribute('aria-pressed') + ' "' + document.querySelector('#r-likes').textContent + '"');
+  await pb.click('#r-heart'); await sleep(1200); const on = count(), said = await card();
+  await pb.click('#r-heart'); await sleep(1200); const off = count(), said2 = await card();
+  await pb.click('#r-leaf', { count: 2 }); await sleep(1200); const again = count(), said3 = await card();
+  if (on !== '1' || off !== '0' || again !== '1') throw new Error(`hearts ${on} → ${off} → ${again}; the card: ${said} / ${said2} / ${said3}`);
+  await pb.click('#r-talk'); await sleep(900);
+  await pb.screenshot({ path: join(root, 'dev/shots/card-visiting.png') });
+  return `1 → 0 → 1; the card said "${said}"`;
+});
+await step('suggested for you: Ada\'s garden, with a reason', async () => {
+  // from home: the garden you are in is never suggested to you
+  await pb.evaluate(() => document.querySelector('#r-close')?.click()); await sleep(900);
+  await pb.click('#visit-home'); await pb.waitForFunction(() => !window.__garden.state.visiting, { timeout: 15000, polling: 200 }); await sleep(800);
+  await pb.click('#h-gardens'); await pb.waitForSelector('#gardens.open');
+  await pb.waitForFunction(() => !document.querySelector('#g-suggest').hidden, { timeout: 15000, polling: 300 });
+  const cards = await pb.$$eval('#g-suggest .g-card', c => c.map(x => x.getAttribute('aria-label')));
+  await pb.screenshot({ path: join(root, 'dev/shots/gardens-suggested.png') });
+  await pb.click('#g-close'); await sleep(900);
+  if (!cards.some(c => c.includes('Ada'))) throw new Error('suggested: ' + cards.join(' | '));
+  return cards.find(c => c.includes('Ada'));
+});
+await step('Ada sees the hearts and notes on her poem', async () => { if (LEGACY) return skip();
+  await pa.evaluate(id => { const g = window.__garden; g.openPoem(g.plants.get(id)); }, hearted); await sleep(2500);
+  await pa.waitForFunction(() => !document.querySelector('#r-likes').hidden, { timeout: 15000, polling: 200 });
+  const said = await pa.$eval('#r-likes', e => e.textContent), notes = await pa.$$eval('#r-notes-list .n-row', r => r.length);
+  if (!/1 person/.test(said)) throw new Error('said: ' + said);
+  await pa.screenshot({ path: join(root, 'dev/shots/card-poet.png') });
+  await pa.evaluate(() => document.querySelector('#r-close')?.click()); await sleep(900);
+  return `"${said}", ${notes} notes shown`;
 });
 await step('Ada hides a note from visitors', async () => { if (LEGACY) return skip();
   await pa.evaluate(id => { const g = window.__garden; g.openPoem(g.plants.get(id)); }, p2); await sleep(2500);

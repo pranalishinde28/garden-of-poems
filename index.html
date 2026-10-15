@@ -109,6 +109,7 @@
     <div id="g-acct"></div>
   </div>
   <div id="g-visit">
+    <div id="g-suggest" hidden><h3>Suggested for you</h3><div id="g-suggest-list"></div></div>
     <h3>Visit a garden</h3>
     <input type="search" id="g-search" placeholder="Search by garden or poet" aria-label="Search public gardens" autocomplete="off">
     <p id="g-empty" role="status"></p>
@@ -175,20 +176,33 @@
 <div id="joy" hidden><div id="knob"></div></div>
 
 <section id="reader" class="panel" role="dialog" aria-labelledby="r-title" tabindex="-1" hidden>
-  <button id="r-close" aria-label="Close poem">×</button>
-  <div class="scroll">
-    <p class="kicker" id="r-kicker" hidden></p>
-    <h2 id="r-title"></h2>
-    <div id="r-body"></div>
-    <div class="meta"><div class="d" id="r-date"></div><div id="r-where"></div></div>
-    <div id="r-notes" hidden><h3 id="r-notes-h">Kind words left here</h3><div id="r-notes-list"></div>
-      <div id="r-note-form"><textarea id="r-note" maxlength="280" placeholder="Leave a kind note for the poet"></textarea><button id="r-note-send">Leave note</button></div></div>
+  <header class="card-head">
+    <span class="card-av" id="r-av" aria-hidden="true"></span>
+    <div class="card-who"><div class="card-poet" id="r-poet"></div><div class="card-where" id="r-where"></div></div>
+    <button id="r-close" aria-label="Close poem">×</button>
+  </header>
+  <div class="book" id="r-book">
+    <div class="leaf" id="r-leaf"><div class="scroll">
+      <p class="kicker" id="r-kicker" hidden></p>
+      <h2 id="r-title"></h2>
+      <div id="r-body"></div>
+    </div></div>
+    <button class="turn prev" id="r-prev" aria-label="Earlier poem"><svg viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg></button>
+    <button class="turn next" id="r-next" aria-label="Later poem"><svg viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></svg></button>
+    <div class="big-heart" id="r-bigheart" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20.3s-7.6-4.5-7.6-10.2A4.4 4.4 0 0 1 12 7.2a4.4 4.4 0 0 1 7.6 2.9c0 5.7-7.6 10.2-7.6 10.2z"/></svg></div>
   </div>
+  <div class="card-acts">
+    <button id="r-heart" class="act" aria-pressed="false" aria-label="Love this poem (J)" hidden><svg viewBox="0 0 24 24"><path d="M12 20.3s-7.6-4.5-7.6-10.2A4.4 4.4 0 0 1 12 7.2a4.4 4.4 0 0 1 7.6 2.9c0 5.7-7.6 10.2-7.6 10.2z"/></svg></button>
+    <button id="r-talk" class="act" aria-label="Notes (K)" aria-expanded="false" hidden><svg viewBox="0 0 24 24"><path d="M20 11.3c0 4-3.6 7.1-8 7.1-1.2 0-2.3-.2-3.3-.6L4.3 19.2l1.3-3.6C4.6 14.4 4 12.9 4 11.3 4 7.3 7.6 4.2 12 4.2s8 3.1 8 7.1z"/></svg></button>
+    <span class="spacer"></span>
+    <span class="card-date" id="r-date"></span>
+  </div>
+  <p class="card-likes" id="r-likes" hidden></p>
+  <div id="r-notes" hidden><h3 id="r-notes-h">Kind words left here</h3><div id="r-notes-list"></div><button class="g-link" id="r-notes-all" hidden></button>
+    <div id="r-note-form"><textarea id="r-note" maxlength="280" rows="1" placeholder="Add a kind note for the poet…" aria-label="A kind note for the poet"></textarea><button id="r-note-send">Post</button></div></div>
   <div class="bar" id="r-bar">
-    <button id="r-prev">Earlier</button>
-    <button id="r-next">Later</button>
     <button id="r-again" hidden>Another reflection</button>
-    <button id="r-visit" hidden>Visit its plant</button>
+    <button id="r-visit" hidden>Visit its tree</button>
     <span class="spacer"></span>
     <button id="r-edit">Edit</button>
     <button id="r-del" class="del">Delete</button>

@@ -2,7 +2,8 @@ import { $, V3, clamp, isTouch } from '../core/util.js';
 import { BRIDGES, POND_R, RIVER, WORLD_R } from '../world/terrain.js';
 import { SETTINGS } from '../settings/storage.js';
 import { state } from '../core/state.js';
-import { REGIONS, MOODS } from '../plants/mapping.js';
+import { MOOD_INK, REGIONS, MOODS } from '../plants/mapping.js';
+export { MOOD_INK };
 import { camera } from '../world/renderer.js';
 import { BENCH, TULIPS, featOn, stones } from '../world/paths.js';
 import { plants } from '../plants/registry.js';
@@ -24,7 +25,6 @@ import { late, provide } from '../core/late.js';
 // hidden stay hidden. Choosing a place or a poem glides you there: a slow lift, a drift across, and
 // a settle at a spot to stand (it never teleports).
 
-export const MOOD_INK = { love: '#c97b93', joy: '#d6a838', sorrow: '#6f8fb4', anger: '#b8473f', childhood: '#d88a4a', dream: '#8a6fb8', reflection: '#5f8050' };
 const moodOf = p => (p.mood && MOOD_INK[p.mood]) ? p.mood : 'reflection';
 // on the map: growing or grown, and not hidden by 'Walk through time'
 const onMap = pl => !pl.dying && pl.target !== 0;

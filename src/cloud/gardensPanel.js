@@ -1,7 +1,8 @@
 import { $, siteURL } from '../core/util.js';
 import { toast } from '../ui/helpers.js';
 import { closePanel, openPanel } from '../ui/reading.js';
-import { Cloud, NEEDS_UPDATE, db, changeUsername, deleteAccount, exportGarden, listGardens, ownPoems, removedPoems, restoreRemoved, saveGardenSettings, syncNow, usernameAvailable } from './cloud.ts';
+import { Cloud, NEEDS_UPDATE, db, changeUsername, deleteAccount, exportGarden, listGardens, ownPoems, removedPoems, restoreRemoved, saveGardenSettings, suggestedGardens, syncNow, usernameAvailable } from './cloud.ts';
+import { state } from '../core/state.js';
 import { late, provide } from '../core/late.js';
 
 // names other modules reach through late (see core/late.js)
@@ -157,7 +158,38 @@ async function loadGardens(more) {
     row.append(t, b); list.appendChild(row);
   });
 }
-function openGardens() { late.closePops(); renderAccount(); openPanel(gardensPanel); loadGardens(); }
+// ---- suggested for you: loved, lately tended, and close to your own moods ----
+async function loadSuggestions() {
+  const box = $('#g-suggest'), list = $('#g-suggest-list');
+  if (!Cloud.ready) { box.hidden = true; return; }
+  let rows = [];
+  try { rows = (await suggestedGardens()).filter(g => !state.visiting || g.owner !== state.visiting.owner); } catch (e) { rows = []; }
+  list.innerHTML = ''; box.hidden = !rows.length; if (!rows.length) return;
+  const cards = el('div', 'g-cards');
+  rows.forEach(g => {
+    const b = el('button', 'g-card');
+    b.append(el('span', 'g-why', g.reason), el('span', 'g-n', g.name || 'A quiet garden'), el('span', 'g-m', `${g.display_name || 'A poet'} · ${g.poem_count} poem${g.poem_count === 1 ? '' : 's'}`));
+    b.setAttribute('aria-label', `Visit ${g.name || 'a quiet garden'} by ${g.display_name || 'a poet'}: ${g.reason}`);
+    b.onclick = () => late.visitGarden(g); cards.append(b);
+  });
+  list.append(cards);
+}
+// once a session, a while after you arrive, the best suggestion is offered quietly
+export function offerSuggestion() {
+  try { if (sessionStorage.getItem('garden-of-poems:offered')) return; sessionStorage.setItem('garden-of-poems:offered', '1'); } catch (e) { return; }
+  // only into a quiet moment: walking, nothing open, no other message showing (it would replace an Undo)
+  // signed in only: by then the page knows whether the database has suggested_gardens()
+  const quiet = () => Cloud.ready && Cloud.user && !state.visiting && state.mode === 'walk' && !document.body.classList.contains('panel-open') && !$('#toast').classList.contains('show');
+  let tries = 0;
+  const offer = async () => {
+    if (!quiet()) { if (++tries < 6) setTimeout(offer, 20000); return; }
+    let g; try { g = (await suggestedGardens())[0]; } catch (e) { return; }
+    if (!g || !quiet()) return;
+    toast(`A garden you might like: “${g.name || 'A quiet garden'}”, by ${g.display_name || 'a poet'}.`, 9000, { label: 'Visit', run: () => late.visitGarden(g) });
+  };
+  setTimeout(offer, 45000);
+}
+function openGardens() { late.closePops(); renderAccount(); openPanel(gardensPanel); loadSuggestions(); loadGardens(); }
 export function closeGardens() { closePanel(gardensPanel); }
 $('#h-gardens').onclick = () => gardensPanel.classList.contains('open') ? closeGardens() : openGardens();
 $('#g-close').onclick = closeGardens;
