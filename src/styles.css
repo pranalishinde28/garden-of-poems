@@ -294,13 +294,24 @@ body.on-swing #joy{opacity:0;pointer-events:none}
 #map-marks button{position:absolute;pointer-events:auto;transform:translate(-50%,-50%)}
 .map-place{display:flex;align-items:center;gap:.35rem;padding:.2rem;border-radius:999px;color:#2f3a28;font-family:var(--serif)}
 .map-place .dot{width:11px;height:11px;border-radius:50%;background:#2f3a28;box-shadow:0 0 0 3px rgba(250,246,234,.9);flex:none}
-.map-place .t{display:flex;flex-direction:column;align-items:flex-start;line-height:1.05;text-align:left;background:rgba(250,246,234,.78);padding:.1rem .45rem .2rem;border-radius:6px}
+.map-place .t{display:flex;flex-direction:column;align-items:flex-start;line-height:1.05;text-align:left;white-space:nowrap;background:rgba(250,246,234,.78);padding:.1rem .45rem .2rem;border-radius:6px}
 .map-place em{font-size:1.02rem}
 .map-place small{font-size:.86rem;font-style:italic;color:rgba(47,58,40,.68)}
-.map-place.side-l{flex-direction:row-reverse;transform:translate(calc(-100% + 9px),-50%)}
+#map-marks .map-place.side-c{transform:translate(-9px,-50%)}
+#map-marks .map-place.side-l{flex-direction:row-reverse;transform:translate(calc(-100% + 9px),-50%)}
 .map-place.side-l .t{align-items:flex-end;text-align:right}
-.map-place.side-r{transform:translate(-9px,-50%)}
+#map-marks .map-place.side-r{transform:translate(-9px,-50%)}
 .map-place.small em{font-size:.95rem}
+#map-marks .map-place.side-t{flex-direction:column-reverse;gap:.15rem;transform:translate(-50%,calc(-100% + 9px))}
+#map-marks .map-place.side-b{flex-direction:column;gap:.15rem;transform:translate(-50%,-9px)}
+.map-place.side-t .t,.map-place.side-b .t{align-items:center;text-align:center}
+/* the hint shows on hover or focus; a place without room for its name keeps only its dot until then */
+.map-place small{display:none}
+.map-place:hover small,.map-place:focus-visible small{display:block}
+.map-place:hover,.map-place:focus-visible{z-index:6}
+.map-place.quiet .t{opacity:0;transition:opacity .2s}
+.map-place.quiet:hover .t,.map-place.quiet:focus-visible .t{opacity:1}
+.map-region{position:absolute;transform:translate(-50%,-50%);font-style:italic;color:rgba(70,64,90,.55);white-space:nowrap;pointer-events:none}
 .map-place:hover .t,.map-place:focus-visible .t{background:rgba(250,246,234,1);box-shadow:0 2px 10px rgba(40,50,30,.18)}
 .map-poem{width:22px;height:22px;border-radius:50%;display:grid;place-items:center}
 .map-poem::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px rgba(250,246,234,.9)}

@@ -214,11 +214,18 @@ async function smoke(page) {
     await sleep(3000);
   });
   await step('check the canvas drew something', async () => {
-    const lit = await page.evaluate(() => new Promise(res => requestAnimationFrame(() => {
-      const c = document.querySelector('canvas'), x = document.createElement('canvas'); x.width = 32; x.height = 32;
-      const g = x.getContext('2d'); g.drawImage(c, 0, 0, 32, 32); const d = g.getImageData(0, 0, 32, 32).data;
-      let sum = 0; for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2]; res(sum / (32 * 32 * 3));
-    })));
+    // sample in a frame the garden actually drew: an idle garden skips frames (core/power.js), and a
+    // WebGL canvas reads back empty in a frame it didn't draw
+    const lit = await page.evaluate(() => new Promise(res => {
+      const G = window.__garden, last = G ? G.framesDrawn : -1;
+      const tick = () => {
+        if (G && G.framesDrawn === last) { requestAnimationFrame(tick); return; }
+        const c = document.querySelector('canvas'), x = document.createElement('canvas'); x.width = 32; x.height = 32;
+        const g = x.getContext('2d'); g.drawImage(c, 0, 0, 32, 32); const d = g.getImageData(0, 0, 32, 32).data;
+        let sum = 0; for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2]; res(sum / (32 * 32 * 3));
+      };
+      requestAnimationFrame(tick);
+    }));
     if (!(lit > 8)) throw new Error('The canvas looks blank (mean brightness ' + lit + ').');
   });
 }

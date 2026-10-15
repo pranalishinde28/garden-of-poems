@@ -21,7 +21,7 @@ provide({
 /* ================= input ================= */
 export const keys = new Set();
 // only text fields keep keys for themselves; buttons and toggles never take W, Space or the arrows
-const isTyping = e => !!(e.target.closest && e.target.closest('textarea, select, [contenteditable="true"], input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=range]):not([type=file])'));
+export const isTyping = e => !!(e.target.closest && e.target.closest('textarea, select, [contenteditable="true"], input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=range]):not([type=file])'));
 addEventListener('keydown', e => {
   if (isTyping(e)) { if (e.key === 'Escape') late.closeEditor(); return; }
   if (state.mode === 'swing') {
