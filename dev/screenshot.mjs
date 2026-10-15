@@ -131,6 +131,21 @@ async function main() {
     else if (FLOW === 'refl') { await page.evaluate(() => { const g = window.__garden; g.state.mode = 'cinematic'; g.camera.position.set(7, 2.2, 9); g.curLook.set(0, -0.4, 0); g.camera.lookAt(g.curLook); }); await sleep(2500); console.log('  reflection pixels:', JSON.stringify(await page.evaluate(() => { const g = window.__garden, rt = g.reflRT, out = []; for (const [fx, fy] of [[.5, .5], [.5, .2], [.5, .8], [.2, .5]]) { const b = new Uint8Array(4); g.renderer.readRenderTargetPixels(rt, Math.floor(rt.width * fx), Math.floor(rt.height * fy), 1, 1, b); out.push([...b]); } return { size: [rt.width, rt.height], out }; }))); }
     else if (FLOW === 'quality') await qualityFlow(page);
     else if (FLOW === 'card') await cardFlow(page, browser, url, errors);
+    else if (FLOW === 'autoq') { // Auto quality must not step down while you simply stand still (the garden rests at 20 fps on purpose)
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); window.__garden.chooseQuality('auto'); });
+      await sleep(15000); const still = await page.evaluate(() => window.__garden.quality.level);
+      await page.keyboard.down('KeyW'); await sleep(5000); await page.keyboard.up('KeyW'); const walked = await page.evaluate(() => window.__garden.quality.level);
+      console.log(`  Auto after standing 15 s: ${still}; after walking: ${walked}`); if (still !== 'high') errors.push('Auto stepped down while standing still');
+    }
+    else if (FLOW === 'parasol') { // your figure with a parasol, from behind, at the gate
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(1200); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden; g.setAvatar({ extra: 'parasol', outfit: 'kimono', cloth: '#2c3d6b', accent: '#f2c46a', hairStyle: 'bob' }); g.setThirdPerson(true); });
+      await sleep(2500); await page.screenshot({ path: join(root, 'dev/shots/parasol-back.png') });
+      await page.keyboard.down('KeyW'); await sleep(1200); await page.screenshot({ path: join(root, 'dev/shots/parasol-walk.png') }); await page.keyboard.up('KeyW');
+      await page.evaluate(() => { const g = window.__garden; g.setThirdPerson(false); g.state.mode = 'cinematic'; const p = g.player.pos; g.camera.position.set(p.x + 1.6, 1.3, p.z - 2.2); g.curLook.set(p.x, 1.0, p.z); g.camera.lookAt(g.curLook); }); await sleep(800);
+      await page.evaluate(() => { const g = window.__garden; g.setThirdPerson(true); }); await sleep(300); await page.screenshot({ path: join(root, 'dev/shots/parasol-front.png') });
+    }
     else if (FLOW === 'audit') await auditFlow(page, browser, url, errors);
     else if (FLOW === 'swing') { await swingFlow(page, 'desktop'); await swingFlowPhone(browser, url, errors); }
     else if (CHECK) await smoke(page);

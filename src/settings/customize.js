@@ -9,6 +9,7 @@ import { blossomTex, canvasTex, mapleTex, wisTexP, wisTexW } from '../world/text
 import { windify } from '../world/wind.js';
 import { DS, GEO, M, Merge, VC, part } from '../world/geometry.js';
 import { REG, decor, featOn } from '../world/paths.js';
+import { stoneLantern } from '../world/decor.js';
 import { createPlant, nightGlow, plants, removePlant, setShadowDirty } from '../plants/registry.js';
 import { koi } from '../water/water.js';
 import { wisMatP, wisMatW, wisGeoBase, arborLeaves } from '../world/arbors.js';
@@ -108,7 +109,7 @@ export function updateVeils() {
   // winter: the wisteria and the swing veils are bare
   [wisMatP, wisMatW, swingVeilMat].forEach(m => { m.needsUpdate = true; m.visible = THEME !== 'winter'; });
   arborLeaves.forEach(l => { l.visible = THEME !== 'winter'; });
-  setArchSeason(THEME);
+  setArchSeason(THEME); setAzaleaSeason(THEME);
 }
 
 /* the gate: a deep double arch heavy with blossom, the garden's name hanging from its crown */
@@ -190,6 +191,33 @@ export function setArchSeason(theme) {
   });
 }
 
+/* clipped azalea mounds and a tall lantern to the right of the gate, so the first view is balanced */
+const azalea = { leafMat: new THREE.MeshLambertMaterial({ vertexColors: true }), flowers: null, snow: null };
+(function buildAzaleas() {
+  const R = rng(57), leaf = new Merge(), fl = new Merge(), sn = new Merge();
+  const spots = [[5.2, 37.6, 0.85], [6.6, 36.6, 1.15], [8.3, 36.2, 1.3], [10.0, 35.4, 1.1], [7.4, 38.4, 0.75], [9.4, 37.6, 0.95], [11.4, 34.2, 1.2]];
+  spots.forEach(([x, z, s]) => {
+    const y = groundH(x, z);
+    // each mound: overlapping clipped domes, flattened like a pruned karikomi
+    for (let k = 0; k < 18; k++) {
+      const a = R() * 6.28, r = Math.sqrt(R()) * 0.6 * s, h = (0.5 + R() * 0.25) * s * (1 - r / (1.4 * s));
+      const p = new V3(x + Math.cos(a) * r, y + h * 0.45, z + Math.sin(a) * r), w = (0.32 + R() * 0.18) * s;
+      leaf.add(GEO.dode, p, new V3(w, h * 0.6, w), C(['#3f6a35', '#4a7a3c', '#365e30', '#557f40'][k % 4]));
+      for (let f = 0; f < 12; f++) { const u = new V3(R() - .5, R() * 0.8 + 0.2, R() - .5).normalize(); fl.add(GEO.ico, p.clone().add(new V3(u.x * w * 0.95, u.y * h * 0.6, u.z * w * 0.95)), new V3(0.07, 0.05, 0.07), C(['#f07aa6', '#f59ac0', '#e9628f', '#fbd3e2'][f % 4])); }
+      sn.add(GEO.ico, p.clone().add(new V3(0, h * 0.42, 0)), new V3(w * 0.85, h * 0.22, w * 0.85), C('#f2f6f9'));
+    }
+    decor.push({ x, z, r: 0.9 * s, collide: 0.75 * s });
+  });
+  const lm = new THREE.Mesh(leaf.build(), azalea.leafMat); lm.castShadow = true; lm.receiveShadow = true; scene.add(lm);
+  azalea.flowers = new THREE.Mesh(fl.build(), VC); scene.add(azalea.flowers);
+  azalea.snow = new THREE.Mesh(sn.build(), VC); azalea.snow.visible = false; scene.add(azalea.snow);
+  stoneLantern(10.9, 37.9, 1.45, -0.7);
+})();
+export function setAzaleaSeason(theme) {
+  azalea.flowers.visible = theme === 'spring'; azalea.snow.visible = theme === 'winter';
+  azalea.leafMat.color.set(theme === 'winter' ? '#c4cdcd' : '#ffffff'); // evergreen: only winter's frost dulls them
+}
+
 /* the sign at the gate: big enough to read from where you arrive */
 export const board = new THREE.Group();
 (function buildBoard() {
@@ -230,15 +258,16 @@ export function drawBoard() {
   woodGrain(g, W, H, 19, '#6f553f');
   g.strokeStyle = 'rgba(240,226,200,.55)'; g.lineWidth = 5; g.strokeRect(32, 32, W - 64, H - 64);
   g.fillStyle = '#f5ead6'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-  fitFont(g, info.name, W - 180, 600, 156, 84); g.fillText(info.name, W / 2, 200);
-  let y = 200;
-  if (info.by) { g.font = serif(400, 70, 'italic '); g.fillStyle = 'rgba(245,234,214,.88)'; y += 92; g.fillText('a garden by ' + info.by, W / 2, y); }
-  if (info.desc) { g.font = serif(400, 62, 'italic '); g.fillStyle = '#f5ead6'; wrapText(g, info.desc, W - 220).slice(0, 2).forEach(l => { y += 80; g.fillText(l, W / 2, y); }); }
-  const links = (info.links || []).filter(l => safeUrl(l.url)).slice(0, 4);
-  y += 52; g.strokeStyle = 'rgba(245,234,214,.4)'; g.lineWidth = 3; g.beginPath(); g.moveTo(W * 0.3, y); g.lineTo(W * 0.7, y); g.stroke();
+  fitFont(g, info.name, W - 180, 600, 150, 84); g.fillText(info.name, W / 2, 190);
+  let y = 190;
+  // everything under the name is large enough to read from the path (it used to be a third of this)
+  if (info.by) { fitFont(g, 'a garden by ' + info.by, W - 200, 400, 104, 64); g.font = 'italic ' + g.font; g.fillStyle = 'rgba(245,234,214,.92)'; y += 125; g.fillText('a garden by ' + info.by, W / 2, y); }
+  if (info.desc) { g.font = serif(400, 88, 'italic '); g.fillStyle = '#f5ead6'; wrapText(g, info.desc, W - 200).slice(0, 2).forEach(l => { y += 104; g.fillText(l, W / 2, y); }); }
+  const links = (info.links || []).filter(l => safeUrl(l.url)).slice(0, 3);
+  y += 58; g.strokeStyle = 'rgba(245,234,214,.45)'; g.lineWidth = 4; g.beginPath(); g.moveTo(W * 0.3, y); g.lineTo(W * 0.7, y); g.stroke();
   g.fillStyle = '#f5ead6';
-  if (links.length) { links.forEach(l => { y += 72; fitFont(g, `${l.label || hostOf(l.url)}  ·  ${hostOf(l.url)}`, W - 200, 500, 58, 36); g.fillText(`${l.label || hostOf(l.url)}  ·  ${hostOf(l.url)}`, W / 2, y); }); g.font = serif(400, 48, 'italic '); g.fillStyle = 'rgba(245,234,214,.75)'; g.fillText('Click the sign to open these links', W / 2, H - 70); }
-  else if (info.own) { g.font = serif(400, 64, 'italic '); g.fillStyle = 'rgba(245,234,214,.85)'; y += 92; g.fillText('Add your name, a welcome line and links', W / 2, y); y += 80; g.fillText('with Customize at the top of the screen.', W / 2, y); }
+  if (links.length) { links.forEach(l => { const t = `${l.label || hostOf(l.url)}  ·  ${hostOf(l.url)}`; y += 96; fitFont(g, t, W - 200, 500, 78, 44); g.fillText(t, W / 2, y); }); g.font = serif(400, 60, 'italic '); g.fillStyle = 'rgba(245,234,214,.8)'; g.fillText('Click the sign to open these links', W / 2, Math.min(H - 44, y + 90)); }
+  else if (info.own) { g.font = serif(400, 84, 'italic '); g.fillStyle = 'rgba(245,234,214,.88)'; wrapText(g, 'Add your name, a welcome line and links with Customize.', W - 200).slice(0, 2).forEach(l => { y += 100; g.fillText(l, W / 2, y); }); }
   board.userData.tex.needsUpdate = true;
   drawPlaque(info.name);
 }

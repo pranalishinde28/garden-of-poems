@@ -3,7 +3,7 @@ import { POND_R, RIVER, WORLD_R, groundH, riverDist } from './terrain.js';
 import { POINT_VS_HEAD, pointsMat, scene } from './renderer.js';
 import { glowTex } from './textures.js';
 import { GEO, M } from './geometry.js';
-import { TULIPS, decor, inTulip, regBegin, regEnd } from './paths.js';
+import { decor, inTulip, regBegin, regEnd } from './paths.js';
 import { nightGlow, nightSprites } from '../plants/registry.js';
 
 /* ================= garden lamps ================= */
@@ -11,12 +11,12 @@ export const lampGlowU = { uOpacity: { value: 0 } };
 regBegin('lamps');
 (function buildLamps() {
   const pts = [];
-  for (let z = 12; z <= 38; z += 5.5) { if (z > 19 && z < 34) continue; pts.push([2.1, z], [-2.1, z]); }
-  for (let z = 20.5; z <= 33; z += 4.2) pts.push([2.2, z], [-2.2, z]);
-  for (let a = 0.2; a < 6.28; a += Math.PI / 4) pts.push([Math.cos(a) * 11.8, Math.sin(a) * 11.8]);
-  for (let a = 0.1; a < 6.28; a += Math.PI / 10) pts.push([Math.cos(a) * 45.6, Math.sin(a) * 45.6]);
-  for (let i = 12; i < 80; i += 8) { const p = RIVER[i], q = RIVER[i + 1]; let tx = q.x - p.x, tz = q.z - p.z; const L = Math.hypot(tx, tz); pts.push([p.x + tz / L * 5.5, p.z - tx / L * 5.5]); }
-  TULIPS.forEach(t => { pts.push([t.x0 - 0.8, t.z0 - 0.8], [t.x1 + 0.8, t.z0 - 0.8], [t.x0 - 0.8, t.z1 + 0.8], [t.x1 + 0.8, t.z1 + 0.8]); });
+  // only where light is wanted: the path's two ends, around the pond, a ring at the edge, along the
+  // stream, and the bench. There used to be about seventy, and they read as a forest of poles.
+  pts.push([2.1, 12], [-2.1, 12], [2.4, 35], [-2.4, 35]);
+  for (let a = 0.2; a < 6.28; a += Math.PI / 2) pts.push([Math.cos(a) * 11.8, Math.sin(a) * 11.8]);
+  for (let a = 0.1; a < 6.28; a += Math.PI / 4) pts.push([Math.cos(a) * 45.6, Math.sin(a) * 45.6]);
+  for (let i = 12; i < 80; i += 16) { const p = RIVER[i], q = RIVER[i + 1]; let tx = q.x - p.x, tz = q.z - p.z; const L = Math.hypot(tx, tz); pts.push([p.x + tz / L * 5.5, p.z - tx / L * 5.5]); }
   pts.push([-6.8, 15.4]);
   const ok = pts.filter(([x, z]) => riverDist(x, z) > 3 && !inTulip(x, z, 0.3) && !decor.some(o => o.collide > 0 && Math.hypot(o.x - x, o.z - z) < 0.8) && Math.hypot(x, z) < WORLD_R && Math.hypot(x, z) > POND_R + 1);
   const N = ok.length, iron = M('#2c2925');

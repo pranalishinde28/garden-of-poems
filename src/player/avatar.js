@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { V3, clamp, lerp } from '../core/util.js';
+import { Merge } from '../world/geometry.js';
 
 /* ================= the walker's figure ================= */
 // An original, chibi-style figure built from simple shapes (no model files): a large round head with a
@@ -147,12 +148,20 @@ export function buildAvatar(cfg) {
     const band = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.16, 0.025, 24), mat(accent)); band.position.y = H * 1.76; J.head.add(band);
   }
   if (cfg.extra === 'parasol') {
-    const p = new THREE.Group(); p.position.set(0, -S.fore - 0.03, 0); J.rElbow.add(p); J.parasol = p;
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.8, 6), mat('#6b5440')); shaft.position.y = 0.34; p.add(shaft);
-    const cg = new THREE.ConeGeometry(0.46, 0.18, 16, 1, true), col = [], ca = new THREE.Color(accent), cb = new THREE.Color(accent).multiplyScalar(0.82);
-    for (let i = 0; i < cg.attributes.position.count; i++) { const c = (Math.floor(Math.atan2(cg.attributes.position.getZ(i), cg.attributes.position.getX(i)) / (Math.PI / 8) + 16) % 2) ? ca : cb; col.push(c.r, c.g, c.b); }
-    cg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-    const canopy = new THREE.Mesh(cg, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide })); canopy.position.y = 0.74; p.add(canopy);
+    // a wagasa: an oiled-paper dome on forty fine ribs with a coloured ring, carried over the shoulder on
+    // the side away from the camera (it sits behind and to the right), so your head and the path stay in view
+    const p = new THREE.Group(); p.position.set(-0.12, S.chest + 0.02, -0.03); J.chest.add(p); J.parasol = p;
+    const wood = new THREE.Color('#6b5440'), base = new THREE.Color(accent), ring = new THREE.Color(accent).lerp(new THREE.Color('#9b3b2c'), 0.75);
+    const m = new Merge();
+    m.limb(new V3(0, -0.1, 0), new V3(0, 1.08, 0), 0.009, 0.009, wood);
+    const dome = new THREE.LatheGeometry([[0.001, 0.17], [0.07, 0.165], [0.17, 0.14], [0.27, 0.105], [0.36, 0.055], [0.43, 0.0]].map(([r, y]) => new THREE.Vector2(r, y)), 40);
+    const col = [], P = dome.attributes.position;
+    for (let k = 0; k < P.count; k++) { const x = P.getX(k), z = P.getZ(k), r = Math.hypot(x, z), seg = Math.floor((Math.atan2(z, x) + Math.PI) / (Math.PI * 2) * 40 + 0.5) % 2; const c = (r > 0.13 && r < 0.2 ? ring : base).clone().multiplyScalar(seg ? 1 : 0.9); col.push(c.r, c.g, c.b); }
+    dome.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); dome.computeVertexNormals();
+    for (let k = 0; k < 20; k++) { const a = k / 20 * Math.PI * 2; m.limb(new V3(0, 0.74, 0), new V3(Math.cos(a) * 0.38, 0.93, Math.sin(a) * 0.38), 0.004, 0.003, wood); }
+    m.limb(new V3(0, 1.08, 0), new V3(0, 1.15, 0), 0.02, 0.012, ring);
+    const frame = new THREE.Mesh(m.build(), new THREE.MeshLambertMaterial({ vertexColors: true })); p.add(frame);
+    const canopy = new THREE.Mesh(dome, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: 0.94 })); canopy.position.y = 0.92; p.add(canopy);
   }
   root.traverse(m => { if (m.isMesh) { m.castShadow = false; m.userData.avatar = true; } });
   const fig = { root, J, cfg, pose: {}, phase: 0, blob: null };
@@ -218,7 +227,7 @@ function target(fig, kind, t, a) {
     p.spineX = 0.45; p.chestX = 0.15; p.neckX = 0.55; p.hipsY = 0.06; p.lHipX = p.rHipX = -0.2; p.lKnX = p.rKnX = -0.35;
     p.lShX = p.rShX = 0.55; p.lElX = p.rElX = 0.35; p.lShZ = 0.15; p.rShZ = -0.15;
   }
-  if (parasol && kind !== 'swing') { p.rShX = 0.55; p.rShZ = -0.25; p.rElX = 1.25; }
+  if (parasol && kind !== 'swing') { p.lShX = 0.35; p.lShZ = 0.55; p.lElX = 1.5; } // the left hand up at the shaft
   return p;
 }
 function applyPose(fig) {
@@ -230,7 +239,7 @@ function applyPose(fig) {
   J.lElbow.rotation.x = p.lElX; J.rElbow.rotation.x = p.rElX;
   J.lHip.rotation.set(p.lHipX, 0, p.lHipZ); J.rHip.rotation.set(p.rHipX, 0, p.rHipZ);
   J.lKnee.rotation.x = p.lKnX; J.rKnee.rotation.x = p.rKnX;
-  if (J.parasol) J.parasol.rotation.set(-1.25, 0, 0.25);
+  if (J.parasol) J.parasol.rotation.set(0.1, 0, 0.34); // tipped out over the left shoulder, a little back
   if (J.skirt) { // follow the thighs: hang straight when standing, fold forward over the lap when sitting
     const fold = clamp((p.lHipX + p.rHipX) / 2, -0.4, 1.6), sit = clamp(fold / 1.45, 0, 1);
     J.skirt.rotation.x = fold * 0.92; J.skirt.scale.set(1 + sit * 0.15, 1 - sit * 0.45, 1 + sit * 0.1);

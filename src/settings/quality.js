@@ -6,6 +6,7 @@ import { dirL } from '../world/lights.js';
 import { grassChunks } from '../world/grass.js';
 import { setShadowDirty } from '../plants/registry.js';
 import { toast } from '../ui/helpers.js';
+import { power } from '../core/power.js';
 
 /* ================= quality: how much the garden draws on this device ================= */
 // Low, Medium, High, or Auto (the default), which watches frame times for a few seconds after you
@@ -33,9 +34,11 @@ function setLabel() { $('#m-quality').textContent = quality.choice === 'auto' ? 
 
 // ---- Auto: sample frame times while walking, step down while the median is slow ----
 let samples = [], last = 0, settled = false;
+// Only frames drawn at the full rate count: when the garden rests on purpose (core/power.js draws 20 a
+// second standing still), the gaps are long by design, and counting them stepped Auto down to Low.
 export function noteFrame(now) {
   const d = now - last; last = now;
-  if (quality.choice !== 'auto' || settled || state.mode !== 'walk' || d > 250) return;
+  if (quality.choice !== 'auto' || settled || state.mode !== 'walk' || power.target < 60 || d > 250) return;
   samples.push(d); if (samples.length < 150) return;
   samples.sort((a, b) => a - b); const median = samples[samples.length >> 1]; samples = [];
   const i = ORDER.indexOf(quality.level);
@@ -51,5 +54,4 @@ $('#m-quality').onclick = () => {
   chooseQuality(next); toast(next === 'auto' ? 'Quality follows this device now.' : `Quality: ${next}.`, 2400);
 };
 chooseQuality(quality.choice);
-// on battery power, Auto starts gentler
-if (navigator.getBattery) navigator.getBattery().then(b => { if (!b.charging && quality.choice === 'auto' && quality.level === 'high') apply('medium'); }).catch(() => {});
+

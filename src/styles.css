@@ -191,6 +191,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 .book .prev{left:8px}.book .next{right:8px}
 /* the page turning: a copy of a page swings over the spine on its left edge */
 .leaf.turning,.leaf.under{position:absolute;inset:0;z-index:3}
+.page-shade{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(90deg,rgba(40,30,15,.55),rgba(40,30,15,.15) 45%,transparent 80%);opacity:0}
 .leaf.under{z-index:2}
 .leaf.turning{transform-origin:left center;transform-style:preserve-3d;background:none}
 .leaf.turning>.face,.leaf.turning>.back{position:absolute;inset:0;display:flex;backface-visibility:hidden;-webkit-backface-visibility:hidden}
