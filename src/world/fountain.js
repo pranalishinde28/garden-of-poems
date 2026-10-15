@@ -158,7 +158,7 @@ function tossCoin() {
 regThing(fountain, 'Toss a coin and make a wish', tossCoin, { x: FOUNTAIN.x, z: FOUNTAIN.z, r: 3.6 });
 
 /* ---------- the sound of water, nearer as you walk up ---------- */
-let amb = null;
+let amb = null, ambV = -1;
 addTick(() => {
   const M = late.Music; if (!M || !M.ctx) return true;
   if (!amb) {
@@ -170,7 +170,8 @@ addTick(() => {
     amb = g;
   }
   const d = Math.hypot(camera.position.x - FOUNTAIN.x, camera.position.z - FOUNTAIN.z);
-  const v = M.muted ? 0 : 0.11 * Math.pow(clamp(1 - (d - 2.5) / 16, 0, 1), 2);
-  amb.gain.setTargetAtTime(v, M.ctx.currentTime, 0.3);
+  // only when it changes: each setTargetAtTime adds an event to the gain's timeline
+  const v = M.muted ? 0 : Math.round(0.11 * Math.pow(clamp(1 - (d - 2.5) / 16, 0, 1), 2) * 400) / 400;
+  if (v !== ambV) { ambV = v; amb.gain.setTargetAtTime(v, M.ctx.currentTime, 0.3); }
   return true;
 }, true);
