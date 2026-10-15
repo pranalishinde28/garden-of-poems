@@ -1,15 +1,16 @@
 import * as THREE from 'three';
 import { $, clamp, isTouch } from '../core/util.js';
 import { groundH } from '../world/terrain.js';
-import { state } from '../core/state.js';
+import { T, state } from '../core/state.js';
 import { camera, canvas } from '../world/renderer.js';
 import { featOn } from '../world/paths.js';
 import { plants } from '../plants/registry.js';
-import { river, water } from '../water/water.js';
+import { koiLure, river, water } from '../water/water.js';
 import { bench, sign } from '../world/decor.js';
 import { swings } from '../world/swings.js';
 import { animals } from '../animals/animals.js';
 import { player } from '../player/camera.js';
+import { things } from '../core/things.js';
 import { late, provide } from '../core/late.js';
 
 // names other modules reach through late (see core/late.js)
@@ -75,6 +76,7 @@ export function pick(cx, cy) {
   plants.forEach(p => { if (p.root.visible && p.vis > 0.5 && !p.dying) targets.push(p.root); });
   if (sign.visible) targets.push(sign);
   targets.push(late.board);
+  things.forEach(t => { if (t.root.visible) targets.push(t.root); });
   if (featOn('swings')) swings.forEach(s => targets.push(s.g)); animals.forEach(a => { if (a.root.visible) targets.push(a.root); });
   const hits = ray.intersectObjects(targets, true);
   if (!hits.length) return null;
@@ -90,6 +92,7 @@ export function pick(cx, cy) {
     if (o.userData.board) return { kind: 'board' };
     if (o.userData.swing) return { kind: 'swing', sw: o.userData.swing };
     if (o.userData.animal) return { kind: 'animal', a: o.userData.animal };
+    if (o.userData.thing) return { kind: 'thing', it: o.userData.thing, point: h.point };
   }
   return null;
 }
@@ -99,10 +102,16 @@ function handleClick(x, y) {
 }
 export function interact(t) {
   if (t.kind === 'plant') late.openPoem(t.plant);
-  else if (t.kind === 'pond') late.reflect(t.point);
+  else if (t.kind === 'pond') {
+    // the koi come to where you touched the water (or the edge nearest you)
+    const p = t.point || player.pos, r = Math.hypot(p.x, p.z) || 1, k = t.point ? Math.min(1, 6.8 / r) : 6 / r;
+    Object.assign(koiLure, { x: p.x * k, z: p.z * k, until: T + 12 });
+    late.reflect(t.point);
+  }
   else if (t.kind === 'swing') late.sitSwing(t.sw);
   else if (t.kind === 'board') late.openBoard();
   else if (t.kind === 'animal') t.a.click();
+  else if (t.kind === 'thing') t.it.act(t.point);
   else late.openEditor(null);
 }
 export const joy = $('#joy'), knob = $('#knob'), jv = { x: 0, y: 0 }; let joyId = null;

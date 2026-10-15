@@ -25,6 +25,7 @@ import { trampleU } from '../world/grass.js';
 import { noteFrame, quality } from '../settings/quality.js';
 import { power, shouldDraw } from './power.js';
 import { late } from './late.js';
+import { thingsBusy, updateThings } from './things.js';
 
 let last = performance.now(), first = true, reflFrame = 0;
 export function frame(now) {
@@ -46,11 +47,12 @@ export function frame(now) {
   swings.forEach(sw => { if (sw !== (state.mode === 'swing' ? state.swing : null)) { sw.omega += (-(9.8 / sw.Lw) * Math.sin(sw.theta) - 0.6 * sw.omega) * dt; sw.theta += sw.omega * dt; sw.pivot.rotation.x = sw.theta; } });
   updateFigure(dt);
   updateAnimals(dt);
+  updateThings(dt);
   if (state.mode !== 'walk') { setCue(null); plants.forEach(pl => pl.glowT = 0); if (regionKey) showRegion(null); }
   if (hoverXY && !drag && !isTouch && (state.mode === 'walk' || state.mode === 'focus') && (Math.floor(T * 20) % 3 === 0)) {
     const t = pick(hoverXY[0], hoverXY[1]); late.hoverPlant = t && t.kind === 'plant' ? t.plant : null; canvas.style.cursor = t ? 'pointer' : 'grab';
   } else if (drag && state.mode === 'walk') canvas.style.cursor = 'grabbing';
-  const growing = updatePlants(dt); updateFx(dt); power.growing = growing;
+  const growing = updatePlants(dt); updateFx(dt); power.growing = growing || thingsBusy();
   setShadowClock(shadowClock + dt);
   if (shadowDirty || (growing && shadowClock > 0.25) || shadowClock > 3) { renderer.shadowMap.needsUpdate = true; setShadowClock(0); setShadowDirty(false); }
   airU.uCam.value.copy(camera.position); rainU.uCam.value.copy(camera.position);

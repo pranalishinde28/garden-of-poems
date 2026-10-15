@@ -108,6 +108,8 @@ export const river = new THREE.Mesh(riverGeo, waterMat(true)); river.position.y 
 
 /* koi */
 export const koi = [];
+// where the koi gather for a while: wherever you touch the water (ui/input.js)
+export const koiLure = { x: 0, z: 0, until: -1 };
 (function buildKoi() {
   const R = rng(61), looks = [['#f2ece4', '#e1572b'], ['#e8742c', '#f6d9b8'], ['#f5f0e8', '#1f1f1f'], ['#f0a33a', '#f0a33a'], ['#f2ece4', '#d43f2a'], ['#d8d2c8', '#e8742c'], ['#e8742c', '#2a2a2a']];
   looks.forEach((lk, i) => {

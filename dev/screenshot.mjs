@@ -55,6 +55,13 @@ const VIEWS = {
   'gate-close': { pos: [1.2, 2.2, 44], look: [0, 3, 39] },
   'gate-autumn': { pos: [1.2, 2.2, 44], look: [0, 3, 39], season: 'autumn' },
   'gate-winter': { pos: [1.2, 2.2, 44], look: [0, 3, 39], season: 'winter' },
+  'top': { pos: [0, 130, 0.01], look: [0, 0, 0] },
+  'fountain': { pos: [16.5, 2.4, -3.5], look: [11, 0.9, -10.2] },
+  'fountain-close': { pos: [13.6, 1.6, -7.2], look: [11, 1.0, -10.2] },
+  'shrine': { pos: [-29, 2.4, -2.5], look: [-47, 2.6, -4] },
+  'shrine-close': { pos: [-39.6, 1.7, -3.4], look: [-45.7, 2.3, -3.9] },
+  'pagoda': { pos: [25, 3, -19], look: [41, 7, -31] },
+  'bell': { pos: [24, 2.2, -35.6], look: [29, 3.2, -43] },
   'gate-back': { pos: [0, 1.7, 33], look: [0, 1.5, 50] },
   'entrance-high': { pos: [7, 7, 48], look: [0, 1.5, 30] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
@@ -104,7 +111,7 @@ async function main() {
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1400, height: 820 });
-    page.on('pageerror', e => errors.push('page error: ' + e.message));
+    page.on('pageerror', e => errors.push('page error: ' + e.message + (process.env.STACK ? '\n' + e.stack : '')));
     page.on('console', m => { if (m.type() === 'error') errors.push('console error: ' + m.text()); });
     page.on('requestfailed', r => { if (!/fonts\.g/.test(r.url())) errors.push('request failed: ' + r.url()); });
     page.on('response', r => { if (r.status() >= 400 && /^http:\/\/(127\.0\.0\.1|localhost)/.test(r.url())) errors.push(`HTTP ${r.status()}: ${r.url()}`); });

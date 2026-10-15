@@ -3,8 +3,8 @@ import { WATER_Y, groundH } from '../world/terrain.js';
 import { T, state } from './state.js';
 import { camera } from '../world/renderer.js';
 import { plants, removePlant } from '../plants/registry.js';
-import { koi } from '../water/water.js';
-import { burst, butterflies, trail } from '../world/particles.js';
+import { koi, koiLure } from '../water/water.js';
+import { burst, butterflies, flurry, trail } from '../world/particles.js';
 import { late } from './late.js';
 
 export function updatePlants(dt) {
@@ -35,6 +35,11 @@ export function updateFx(dt) {
     for (let i = 0; i < p.count; i++) { const v = burst.vel[i]; v.y -= dt * 1.6; v.multiplyScalar(1 - dt * 1.2); p.setXYZ(i, p.getX(i) + v.x * dt, p.getY(i) + v.y * dt, p.getZ(i) + v.z * dt); }
     p.needsUpdate = true; burst.u.uOpacity.value = Math.max(0, burst.life); if (burst.life <= 0) burst.pts.visible = false;
   }
+  if (flurry.life > 0) {
+    flurry.life -= dt * 0.3; const p = flurry.pts.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) { const v = flurry.vel[i]; p.setXYZ(i, p.getX(i) + (v.x + Math.sin(T * 2.6 + i) * 0.35) * dt, Math.max(p.getY(i) + v.y * dt, groundH(p.getX(i), p.getZ(i)) + 0.03), p.getZ(i) + (v.z + Math.cos(T * 2.1 + i * 1.7) * 0.3) * dt); }
+    p.needsUpdate = true; flurry.u.uOpacity.value = Math.min(1, flurry.life * 2.5); if (flurry.life <= 0) flurry.pts.visible = false;
+  }
   const day = 1 - state.night;
   butterflies.forEach(b => {
     b.g.visible = day > 0.35; if (!b.g.visible) return;
@@ -47,8 +52,12 @@ export function updateFx(dt) {
     const f = Math.sin(T * 15 + b.ph) * 0.95; b.l.rotation.z = f; b.r.rotation.z = -f;
     b.g.scale.setScalar(clamp(day, 0, 1));
   });
-  koi.forEach(k => {
-    const a = T * k.sp + k.ph, x = k.cx + Math.cos(a) * k.r + Math.sin(a * 2.7) * 0.4, z = k.cz + Math.sin(a) * k.r * 0.8;
+  const lure = T < koiLure.until ? 1 : 0;
+  koi.forEach((k, i) => {
+    const a = T * k.sp + k.ph; let x = k.cx + Math.cos(a) * k.r + Math.sin(a * 2.7) * 0.4, z = k.cz + Math.sin(a) * k.r * 0.8;
+    // drift over to the lure and circle it, then wander back to their own loops
+    k.mix = (k.mix || 0) + (lure - (k.mix || 0)) * Math.min(1, dt * (lure ? 0.7 : 0.35));
+    if (k.mix > 0.002) { const b = T * (0.9 + (i % 3) * 0.25) * (i % 2 ? 1 : -1) + k.ph, rr = 0.35 + (i % 4) * 0.2; x += (koiLure.x + Math.cos(b) * rr - x) * k.mix; z += (koiLure.z + Math.sin(b) * rr - z) * k.mix; }
     k.g.position.set(x, WATER_Y - k.d + Math.sin(T * 0.7 + k.ph) * 0.03, z);
     const dx = x - k.last.x, dz = z - k.last.z; if (dx * dx + dz * dz > 1e-7) k.g.rotation.y = Math.atan2(dx, dz);
     k.last.set(x, 0, z); k.tail.rotation.y = Math.sin(T * 6 + k.ph) * 0.35;

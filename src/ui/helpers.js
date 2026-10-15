@@ -30,7 +30,7 @@ export function showHint(ms = 9000) {
 const cueEl = $('#cue'); let cueTarget = null, cueKey = '';
 export function setCue(t) {
   cueTarget = t;
-  const label = !t ? '' : t.kind === 'plant' ? `Read “${t.plant.poem.title}”` : t.kind === 'pond' ? 'Look into the water' : t.kind === 'board' ? 'Read the garden sign' : t.kind === 'swing' ? 'Sit on the swing' : 'Sit and write';
+  const label = !t ? '' : t.kind === 'plant' ? `Read “${t.plant.poem.title}”` : t.kind === 'pond' ? 'Look into the water' : t.kind === 'board' ? 'Read the garden sign' : t.kind === 'swing' ? 'Sit on the swing' : t.kind === 'thing' ? t.it.label : t.kind === 'animal' ? '' : 'Sit and write';
   if (label !== cueKey) {
     cueKey = label; if (label) $('#cue-t').textContent = label; cueEl.classList.toggle('show', !!label);
     // only a prompt with words is offered to assistive technology

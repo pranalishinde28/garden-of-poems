@@ -164,4 +164,25 @@ export function fireBurst(at) {
   p.needsUpdate = true; burst.life = 1; burst.pts.visible = true;
 }
 
+// petals (or leaves, or snow) shaken loose when you brush past a tree
+export const flurry = { pts: null, vel: [], life: 0 };
+(function () {
+  const N = 56, g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(N * 3), 3));
+  const u = { uOpacity: { value: 0 }, uColor: { value: new THREE.Color('#ffd6e2') } };
+  flurry.pts = new THREE.Points(g, pointsMat(u, `${POINT_VS_HEAD}void main(){vec4 mv=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*mv;gl_PointSize=min(0.08*uScale/-mv.z,20.);}`,
+    'uniform float uOpacity;uniform vec3 uColor;void main(){vec2 q=gl_PointCoord-.5;float a=smoothstep(.5,.25,length(q*vec2(1.,1.8)));gl_FragColor=vec4(uColor,a*uOpacity);}'));
+  flurry.u = u; flurry.pts.frustumCulled = false; flurry.pts.visible = false; flurry.pts.layers.set(2); scene.add(flurry.pts);
+  for (let i = 0; i < N; i++) flurry.vel.push(new V3());
+})();
+const FLURRY = { spring: '#ffd3df', summer: '#86b45e', autumn: '#e7803a', winter: '#f5f8fb' };
+export function fireFlurry(x, y, z, spread) {
+  const p = flurry.pts.geometry.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * spread;
+    p.setXYZ(i, x + Math.cos(a) * r, y + (Math.random() - 0.3) * 1.2, z + Math.sin(a) * r);
+    flurry.vel[i].set((Math.random() - .5) * 0.5, -0.15 - Math.random() * 0.35, (Math.random() - .5) * 0.5);
+  }
+  p.needsUpdate = true; flurry.u.uColor.value.set(FLURRY[THEME] || FLURRY.spring); flurry.life = 1; flurry.pts.visible = true;
+}
+
 export function setTrailClock(v) { return (trailClock = v); }
