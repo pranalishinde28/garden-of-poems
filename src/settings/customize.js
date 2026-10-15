@@ -5,12 +5,15 @@ import { groundH } from '../world/terrain.js';
 import { cleanSettings, resolveSeason, SETTINGS, THEME } from './storage.js';
 import { T, state } from '../core/state.js';
 import { maxAniso, scene } from '../world/renderer.js';
-import { canvasTex, wisTexP, wisTexW } from '../world/textures.js';
-import { GEO, M, Merge, VC, part } from '../world/geometry.js';
+import { blossomTex, canvasTex, mapleTex, wisTexP, wisTexW } from '../world/textures.js';
+import { windify } from '../world/wind.js';
+import { DS, GEO, M, Merge, VC, part } from '../world/geometry.js';
 import { REG, decor, featOn } from '../world/paths.js';
 import { createPlant, nightGlow, plants, removePlant, setShadowDirty } from '../plants/registry.js';
 import { koi } from '../water/water.js';
-import { wisMatP, wisMatW, arborLeaves } from '../world/arbors.js';
+import { wisMatP, wisMatW, wisGeoBase, arborLeaves } from '../world/arbors.js';
+import { SPAWN } from '../player/camera.js';
+const SPAWN_Z = SPAWN.pos.z;
 import { swingVeilMat, swingVeilTex } from '../world/swings.js';
 import { animals } from '../animals/animals.js';
 import { mist } from '../plants/flowerGardens.js';
@@ -105,25 +108,105 @@ export function updateVeils() {
   // winter: the wisteria and the swing veils are bare
   [wisMatP, wisMatW, swingVeilMat].forEach(m => { m.needsUpdate = true; m.visible = THEME !== 'winter'; });
   arborLeaves.forEach(l => { l.visible = THEME !== 'winter'; });
+  setArchSeason(THEME);
 }
 
-/* the sign at the gate */
+/* the gate: a deep double arch heavy with blossom, the garden's name hanging from its crown */
+export const GATE = { z: 39.2, w: 3.0, post: 3.0, rise: 1.5 };
+const archBloom = []; // { cards, snow, base } changed with the season (setArchSeason)
+const archCardMat = windify(new THREE.MeshLambertMaterial({ map: blossomTex, alphaTest: 0.45, side: DS, emissive: '#2a1219' }), 0.03, 'const');
+export const archPlaque = new THREE.Group();
+(function buildArch() {
+  const g = new THREE.Group(), { z, w, post, rise } = GATE; g.position.set(0, groundH(0, z), z); scene.add(g);
+  const wood = M('#5e4634'), dark = M('#3e2e22'), R = rng(41);
+  // the frame: two hoops, a hand apart, joined by slats over the crown
+  const curve = t => { const a = Math.PI * (1 - t); return new V3(Math.cos(a) * w, post + Math.sin(a) * rise, 0); };
+  for (const dz of [-0.42, 0.42]) {
+    for (const sx of [-1, 1]) part(g, GEO.cylB, wood, [sx * w, 0, dz], [0.13, post, 0.13]);
+    const pts = []; for (let i = 0; i <= 24; i++) pts.push(curve(i / 24).setZ(dz));
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 48, 0.1, 8), wood));
+  }
+  for (let i = 1; i < 14; i++) { const p = curve(i / 14); part(g, GEO.box, dark, [p.x, p.y + 0.06, 0], [0.09, 0.08, 1.1]); }
+  for (const sx of [-1, 1]) for (const y of [0.9, 2.1]) part(g, GEO.box, dark, [sx * w, y, 0], [0.09, 0.08, 1.0]);
+  // the bloom: a few leaves underneath and blossom cards over every face, thickest over the crown and shoulders
+  const leaf = new Merge(), snow = new Merge(), cards = [];
+  const leafC = ['#5d7d45', '#6c8c4e', '#7c9a58', '#55743f'];
+  const puff = (m, p, s, c) => m.add(GEO.ico, p, new V3(s, s * (0.8 + R() * 0.3), s), C(c));
+  for (let i = 0; i < 460; i++) {
+    let p, n; const onPost = R() < 0.26;
+    if (onPost) { const sx = R() < 0.5 ? -1 : 1, y = Math.pow(R(), 0.7) * post; p = new V3(sx * w, y, (R() - 0.5) * 1.0); n = new V3(sx, 0, 0); if (y < 0.5 && R() < 0.6) continue; }
+    else { const t = R(), c = curve(t); p = c.clone().setZ((R() - 0.5) * 1.2); n = new V3(c.x / (w * w), (c.y - post) / (rise * rise), 0).normalize(); }
+    p.addScaledVector(n, (R() - 0.3) * 0.26);
+    if (R() < 0.35) puff(leaf, p.clone().add(new V3((R() - .5) * 0.2, (R() - .5) * 0.2, 0)), 0.1 + R() * 0.12, leafC[i % 4]);
+    const nb = onPost ? 2 + Math.floor(R() * 2) : 5 + Math.floor(R() * 3);
+    for (let k = 0; k < nb; k++) {
+      const q = p.clone().addScaledVector(n, 0.05 + R() * 0.22); q.z = (R() - 0.5) * 1.5; q.x += (R() - .5) * 0.3; q.y += (R() - .5) * 0.25;
+      cards.push({ p: q, s: (onPost ? 0.32 : 0.38) + R() * 0.26 });
+    }
+    // winter lays snow along the top of the frame instead
+    if (!onPost && n.y > 0.35 && R() < 0.5) { const k = 0.1 + R() * 0.1; snow.add(GEO.ico, p.clone().addScaledVector(n, 0.06).setZ((R() - 0.5) * 1.0), new V3(k * 1.6, k * 0.5, k * 1.3), C(R() < 0.5 ? '#f4f7fa' : '#e3eaf0')); }
+  }
+  const lm = new THREE.Mesh(leaf.build(), VC); g.add(lm); arborLeaves.push(lm);
+  const sm = new THREE.Mesh(snow.build(), VC); sm.visible = false; g.add(sm);
+  const cg = GEO.card.clone(); cg.boundingSphere = new THREE.Sphere(new V3(0, post, 0), w + 2);
+  const cm = new THREE.InstancedMesh(cg, archCardMat, cards.length), dd = new THREE.Object3D(), tints = ['#ffffff', '#fff0f4', '#fbe3ea', '#ffe8ee', '#f6d2de'].map(C);
+  cards.forEach((c, i) => { dd.position.copy(c.p); dd.rotation.set(R() * 6.28, R() * 6.28, R() * 6.28); dd.scale.setScalar(c.s); dd.updateMatrix(); cm.setMatrixAt(i, dd.matrix); cm.setColorAt(i, tints[Math.floor(R() * tints.length)]); });
+  g.add(cm); archBloom.push({ cards: cm, snow: sm, base: cm.instanceColor.array.slice() });
+  // wisteria hanging from the shoulders, short over the middle so the way stays open
+  const list = { P: [], W: [] };
+  for (let i = 0; i < 150; i++) {
+    const t = 0.04 + R() * 0.92, c = curve(t), mid = 1 - Math.abs(c.x) / w;
+    const h = mid > 0.55 ? 0.3 + R() * 0.25 : 0.6 + R() * 0.8 * (1 - mid);
+    (R() < 0.3 ? list.W : list.P).push({ x: c.x + (R() - .5) * 0.2, y: c.y - 0.05, z: (R() - 0.5) * 1.0, h });
+  }
+  const d = new THREE.Object3D();
+  [['P', wisMatP], ['W', wisMatW]].forEach(([k, mat]) => {
+    const arr = list[k], geo = wisGeoBase.clone(); geo.boundingSphere = new THREE.Sphere(new V3(0, post, 0), w + 2);
+    const im = new THREE.InstancedMesh(geo, mat, arr.length * 2);
+    arr.forEach((r, i) => { for (let c = 0; c < 2; c++) { d.position.set(r.x, r.y, r.z); d.rotation.set(0, R() * 3.14 + c * Math.PI / 2, 0); d.scale.set(r.h * 0.38, r.h, 1); d.updateMatrix(); im.setMatrixAt(i * 2 + c, d.matrix); im.setColorAt(i * 2 + c, C('#ffffff').lerp(C(k === 'P' ? '#e8dcff' : '#fff1f6'), R() * 0.6)); } });
+    g.add(im);
+  });
+  // the name plaque, hung from the crown and readable from both sides
+  archPlaque.position.set(0, post + 0.62, 0); g.add(archPlaque);
+  const cv = document.createElement('canvas'); cv.width = 2048; cv.height = 440; archPlaque.userData.cv = cv;
+  const tex = new THREE.CanvasTexture(cv); tex.anisotropy = Math.min(8, maxAniso); archPlaque.userData.tex = tex;
+  const fm = new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.15 }); nightGlow.push({ m: fm, day: 0.14, night: 0.6 });
+  part(archPlaque, GEO.box, dark, [0, -0.43, 0], [4.15, 1.0, 0.1]);
+  for (const dz of [0.052, -0.052]) { const f = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 0.86), fm); f.position.z = dz; if (dz < 0) f.rotation.y = Math.PI; f.position.y = 0.07 - 0.5; archPlaque.add(f); }
+  for (const sx of [-1.6, 1.6]) part(archPlaque, GEO.cylB, dark, [sx, 0.05, 0], [0.025, 0.42, 0.025]);
+  archPlaque.traverse(o => { o.userData.board = true; });
+  g.traverse(o => { if (o.isMesh && !o.isInstancedMesh) o.castShadow = true; });
+  for (const sx of [-1, 1]) decor.push({ x: sx * w, z, r: 0.7, collide: 0.32 });
+})();
+// the arch through the year: blossom in spring and summer, maple red and gold in autumn, snow in winter
+export function setArchSeason(theme) {
+  const aut = theme === 'autumn', pal = ['#d8452c', '#e9772f', '#f2b03a', '#c43a2a'].map(C), R = rng(5);
+  archCardMat.map = aut ? mapleTex : blossomTex; archCardMat.emissive.set(aut ? '#160d08' : '#2a1219'); archCardMat.needsUpdate = true;
+  archBloom.forEach(({ cards, snow, base }) => {
+    cards.visible = theme !== 'winter'; snow.visible = theme === 'winter';
+    const a = cards.instanceColor;
+    for (let i = 0; i < cards.count; i++) { if (aut) { const c = pal[Math.floor(R() * 4)]; a.setXYZ(i, c.r, c.g, c.b); } else a.setXYZ(i, base[i * 3], base[i * 3 + 1], base[i * 3 + 2]); }
+    a.needsUpdate = true;
+  });
+}
+
+/* the sign at the gate: big enough to read from where you arrive */
 export const board = new THREE.Group();
 (function buildBoard() {
-  const x = -4.6, z = 33.4; board.position.set(x, groundH(x, z), z); board.rotation.y = Math.atan2(0 - x, 35.5 - z);
+  const x = -6.3, z = 38.6; board.position.set(x, groundH(x, z), z); board.rotation.y = Math.atan2(0 - x, SPAWN_Z - z);
   const wood = M('#5a4535'), dark = M('#3f2f24');
-  for (const sx of [-1.12, 1.12]) part(board, GEO.cylB, wood, [sx, 0, 0], [0.075, 2.45, 0.075]);
-  part(board, GEO.box, dark, [0, 1.6, -0.04], [2.4, 1.5, 0.08]);
-  part(board, GEO.box, wood, [0, 2.42, 0], [2.65, 0.09, 0.32]);
-  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 640; board.userData.cv = cv;
+  for (const sx of [-1.72, 1.72]) part(board, GEO.cylB, wood, [sx, 0, 0], [0.1, 3.35, 0.1]);
+  part(board, GEO.box, dark, [0, 2.05, -0.05], [3.62, 2.3, 0.1]);
+  part(board, GEO.box, wood, [0, 3.28, 0], [3.95, 0.12, 0.4]);
+  const cv = document.createElement('canvas'); cv.width = 1536; cv.height = 960; board.userData.cv = cv;
   const tex = new THREE.CanvasTexture(cv); tex.anisotropy = Math.min(8, maxAniso); board.userData.tex = tex;
   const fm = new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.15 }); nightGlow.push({ m: fm, day: 0.12, night: 0.55 });
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 1.4375), fm); face.position.set(0, 1.6, 0.005); board.add(face);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 2.1875), fm); face.position.set(0, 2.05, 0.006); board.add(face);
   const vm = new Merge(), R = rng(808);
-  for (let i = 0; i < 40; i++) { const p = new V3(-1.25 + R() * 2.5, 2.48 + R() * 0.06, (R() - .5) * 0.3); vm.add(GEO.ico, p, new V3(0.07, 0.06, 0.07), C(['#567a3a', '#668c45'][i % 2])); if (i % 3 === 0) vm.add(GEO.ico, p.clone().add(new V3(0, 0.05, 0.06)), new V3(0.04, 0.04, 0.04), C(['#f4b6c8', '#ffffff'][i % 2])); }
+  for (let i = 0; i < 70; i++) { const p = new V3(-1.9 + R() * 3.8, 3.36 + R() * 0.08, (R() - .5) * 0.36); vm.add(GEO.ico, p, new V3(0.09, 0.075, 0.09), C(['#567a3a', '#668c45'][i % 2])); if (i % 3 === 0) vm.add(GEO.ico, p.clone().add(new V3(0, 0.06, 0.07)), new V3(0.055, 0.055, 0.055), C(['#f4b6c8', '#ffffff'][i % 2])); }
   board.add(new THREE.Mesh(vm.build(), VC));
   board.traverse(o => { o.userData.board = true; if (o.isMesh) o.castShadow = true; });
-  scene.add(board); decor.push({ x, z, r: 1.4, collide: 0.45 });
+  scene.add(board); decor.push({ x, z, r: 2.0, collide: 0.6 });
 })();
 const safeUrl = u => typeof u === 'string' && /^https?:\/\/[^\s<>"]+$/i.test(u) ? u : null;
 const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
@@ -133,25 +216,43 @@ function boardInfo() {
   return { name: (own ? Cloud.garden.name : SETTINGS.name) || 'The Garden of Poems', desc: (own ? Cloud.garden.description : SETTINGS.desc) || '', by: own && Cloud.profile ? (Cloud.profile.display_name || '') : '', links: SETTINGS.links || [], own: true };
 }
 function wrapText(g, text, maxW) { const words = String(text).split(/\s+/), lines = []; let line = ''; words.forEach(w => { const t = line ? line + ' ' + w : w; if (g.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; }); if (line) lines.push(line); return lines; }
+const serif = (w, px, it = '') => `${it}${w} ${px}px "Cormorant Garamond", Georgia, serif`;
+function fitFont(g, text, maxW, w, px, min) { g.font = serif(w, px); while (g.measureText(text).width > maxW && px > min) { px -= 6; g.font = serif(w, px); } return px; }
+function woodGrain(g, W, H, seed, base) {
+  const R = rng(seed); g.fillStyle = base; g.fillRect(0, 0, W, H);
+  g.strokeStyle = 'rgba(35,22,14,.22)'; g.lineWidth = 3;
+  for (let i = 0; i < 30; i++) { const y = R() * H; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(W * 0.3, y + (R() - .5) * 40, W * 0.7, y + (R() - .5) * 40, W, y + (R() - .5) * 18); g.stroke(); }
+}
+// five petals, for the plaque's corners
+function blossom(g, x, y, r, col) { g.fillStyle = col; for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2 - Math.PI / 2; g.beginPath(); g.ellipse(x + Math.cos(a) * r * 0.55, y + Math.sin(a) * r * 0.55, r * 0.5, r * 0.36, a, 0, Math.PI * 2); g.fill(); } g.fillStyle = '#e9b04a'; g.beginPath(); g.arc(x, y, r * 0.18, 0, Math.PI * 2); g.fill(); }
 export function drawBoard() {
-  const info = boardInfo(), cv = board.userData.cv, g = cv.getContext('2d'), W = cv.width, H = cv.height, R = rng(19);
-  g.fillStyle = '#6f553f'; g.fillRect(0, 0, W, H);
-  g.strokeStyle = 'rgba(35,22,14,.22)'; g.lineWidth = 2;
-  for (let i = 0; i < 26; i++) { const y = R() * H; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(W * 0.3, y + (R() - .5) * 30, W * 0.7, y + (R() - .5) * 30, W, y + (R() - .5) * 14); g.stroke(); }
-  g.strokeStyle = 'rgba(240,226,200,.55)'; g.lineWidth = 3; g.strokeRect(22, 22, W - 44, H - 44);
+  const info = boardInfo(), cv = board.userData.cv, g = cv.getContext('2d'), W = cv.width, H = cv.height;
+  woodGrain(g, W, H, 19, '#6f553f');
+  g.strokeStyle = 'rgba(240,226,200,.55)'; g.lineWidth = 5; g.strokeRect(32, 32, W - 64, H - 64);
   g.fillStyle = '#f5ead6'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-  let size = 86; g.font = `600 ${size}px "Cormorant Garamond", Georgia, serif`;
-  while (g.measureText(info.name).width > W - 120 && size > 44) { size -= 4; g.font = `600 ${size}px "Cormorant Garamond", Georgia, serif`; }
-  g.fillText(info.name, W / 2, 128);
-  let y = 128;
-  if (info.by) { g.font = 'italic 400 40px "Cormorant Garamond", Georgia, serif'; g.fillStyle = 'rgba(245,234,214,.85)'; y += 56; g.fillText('a garden by ' + info.by, W / 2, y); }
-  if (info.desc) { g.font = 'italic 400 36px "Cormorant Garamond", Georgia, serif'; g.fillStyle = '#f5ead6'; wrapText(g, info.desc, W - 160).slice(0, 2).forEach(l => { y += 50; g.fillText(l, W / 2, y); }); }
-  const links = (info.links || []).filter(l => safeUrl(l.url)).slice(0, 5);
-  y += 34; g.strokeStyle = 'rgba(245,234,214,.4)'; g.beginPath(); g.moveTo(W * 0.3, y); g.lineTo(W * 0.7, y); g.stroke();
-  g.font = '500 34px "Cormorant Garamond", Georgia, serif'; g.fillStyle = '#f5ead6';
-  if (links.length) { links.forEach(l => { y += 46; g.fillText(`${l.label || hostOf(l.url)}  ·  ${hostOf(l.url)}`, W / 2, y); }); g.font = 'italic 400 28px "Cormorant Garamond", Georgia, serif'; g.fillStyle = 'rgba(245,234,214,.7)'; g.fillText('Click the sign to open these links', W / 2, H - 46); }
-  else if (info.own) { g.font = 'italic 400 30px "Cormorant Garamond", Georgia, serif'; g.fillStyle = 'rgba(245,234,214,.75)'; y += 50; g.fillText('Add your name, a welcome line, socials or portfolio', W / 2, y); y += 40; g.fillText('with the Customize button at the top of the screen.', W / 2, y); }
+  fitFont(g, info.name, W - 180, 600, 156, 84); g.fillText(info.name, W / 2, 200);
+  let y = 200;
+  if (info.by) { g.font = serif(400, 70, 'italic '); g.fillStyle = 'rgba(245,234,214,.88)'; y += 92; g.fillText('a garden by ' + info.by, W / 2, y); }
+  if (info.desc) { g.font = serif(400, 62, 'italic '); g.fillStyle = '#f5ead6'; wrapText(g, info.desc, W - 220).slice(0, 2).forEach(l => { y += 80; g.fillText(l, W / 2, y); }); }
+  const links = (info.links || []).filter(l => safeUrl(l.url)).slice(0, 4);
+  y += 52; g.strokeStyle = 'rgba(245,234,214,.4)'; g.lineWidth = 3; g.beginPath(); g.moveTo(W * 0.3, y); g.lineTo(W * 0.7, y); g.stroke();
+  g.fillStyle = '#f5ead6';
+  if (links.length) { links.forEach(l => { y += 72; fitFont(g, `${l.label || hostOf(l.url)}  ·  ${hostOf(l.url)}`, W - 200, 500, 58, 36); g.fillText(`${l.label || hostOf(l.url)}  ·  ${hostOf(l.url)}`, W / 2, y); }); g.font = serif(400, 48, 'italic '); g.fillStyle = 'rgba(245,234,214,.75)'; g.fillText('Click the sign to open these links', W / 2, H - 70); }
+  else if (info.own) { g.font = serif(400, 64, 'italic '); g.fillStyle = 'rgba(245,234,214,.85)'; y += 92; g.fillText('Add your name, a welcome line and links', W / 2, y); y += 80; g.fillText('with Customize at the top of the screen.', W / 2, y); }
   board.userData.tex.needsUpdate = true;
+  drawPlaque(info.name);
+}
+function drawPlaque(name) {
+  const cv = archPlaque.userData.cv, g = cv.getContext('2d'), W = cv.width, H = cv.height;
+  woodGrain(g, W, H, 23, '#4a3526');
+  g.strokeStyle = 'rgba(226,190,120,.8)'; g.lineWidth = 8; g.strokeRect(22, 22, W - 44, H - 44);
+  g.strokeStyle = 'rgba(226,190,120,.45)'; g.lineWidth = 3; g.strokeRect(44, 44, W - 88, H - 88);
+  [[110, 110], [W - 110, 110], [110, H - 110], [W - 110, H - 110]].forEach(([x, y], i) => blossom(g, x, y, 46, i % 2 ? '#fbe4ec' : '#f7b9cd'));
+  g.fillStyle = '#f7ead2'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.shadowColor = 'rgba(0,0,0,.45)'; g.shadowBlur = 10; g.shadowOffsetY = 4;
+  fitFont(g, name, W - 420, 600, 230, 110); g.fillText(name, W / 2, H / 2 + 8);
+  g.shadowColor = 'transparent';
+  archPlaque.userData.tex.needsUpdate = true;
 }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawBoard);
 const signPanel = $('#signpanel');

@@ -1,6 +1,8 @@
 import { lineCount } from '../core/util.js';
 
 /* ================= poem → plant ================= */
+// each mood's ink, for the map and the poem card
+export const MOOD_INK = { love: '#c97b93', joy: '#d6a838', sorrow: '#6f8fb4', anger: '#b8473f', childhood: '#d88a4a', dream: '#8a6fb8', reflection: '#5f8050' };
 export const MOODS = [['love', 'Love'], ['joy', 'Joy'], ['sorrow', 'Sorrow'], ['anger', 'Anger'], ['childhood', 'Childhood'], ['dream', 'Dream'], ['reflection', 'Reflection']];
 const KW = {
   love: ['love', 'kiss', 'your hands', 'heart', 'beloved', 'together', 'darling', 'yours'],

@@ -1,6 +1,6 @@
 # The Garden of Poems
 
-A walkable 3D garden where every poem grows into a plant. Each person signs in to their own garden, keeps it private or opens it to visitors, and can wander other people's public gardens and leave them kind notes.
+A walkable 3D garden where every poem grows into a cherry tree. Each person signs in to their own garden, keeps it private or opens it to visitors, and can wander other people's public gardens, leave hearts and kind notes, and find gardens suggested for them.
 
 The app is a static site built with Vite and Three.js, with a Supabase database for accounts and storage. Without Supabase keys it still runs, saving one garden on the device.
 
@@ -78,7 +78,7 @@ The base path comes from the repository name (`GARDEN_BASE` in the workflow). El
 The sliders button at the top opens **Customize**. Everything there is saved with the garden (on the device for guests, in the account once signed in), and visitors see the same choices:
 
 - **The sign at the gate:** garden name, a welcome line, and up to six links (socials, portfolio). Visitors click the sign to open them. Only `https://` and `http://` links are accepted.
-- **Scenery:** season (spring or autumn), light (follow the clock, always day, always night), weather (clear, passing showers, or rain), Mount Fuji, mist, and drifting pollen, leaves or snow.
+- **Scenery:** season (follow the calendar, or spring, summer, autumn, winter), the horizon (Mount Fuji or the sea), light (follow the clock, always day, always night), weather (clear, passing showers, or rain), Mount Fuji, mist, and drifting pollen, leaves or snow.
 - **Poem trees:** cherry blossom (pink or white), red maple, or green leaves.
 - **What grows and lives here:** wisteria, tulips, roses, hydrangeas, lilies, orchids, lamps, the swing garden, and each group of animals can be switched on or off.
 - **Music:** soft piano, your own music files, or silence. Your own files stay on your device and are never uploaded.
@@ -87,11 +87,16 @@ For a quick change of weather, the **⋯** menu has **Let it rain** and **Let th
 
 In autumn, wisteria gives way to hanging veils of red and yellow leaves, including the pink veils over the swings.
 
+## Keys
+
+Walk with W A S D or the arrows, drag to look, E (or a click) for whatever glows. M the map, N write, V see yourself, B back to the gate, C customize, G public gardens, U music, L moonlight, P rain, Y next season, T walk through time, F full screen, ? help. Reading: ← → turn the page, J heart, K notes. On a swing: W or Space to swing, R to read.
+
 ## How privacy works
 
 - **New gardens are private.** Only the owner can read their poems.
 - **"Make my garden public"** lets anyone, signed in or not, walk through it and read its poems.
 - **Poems marked "Keep this poem private"** stay hidden even in a public garden. This is enforced by the database, not just the page.
+- **Hearts:** only signed-in visitors can leave one, one per poem, only on poems they can read and never on their own. Everyone sees how many; only the poet sees who.
 - **Notes:** only signed-in visitors can leave them, only on poems they can read, and never on their own poems. The poet sees every note left in their garden, and can remove notes from their own poems.
 - **Garden links:** each public garden has a shareable link, `?garden=username`, that opens straight into it.
 
@@ -103,6 +108,7 @@ In autumn, wisteria gives way to hanging veils of red and yellow leaves, includi
 | `gardens` | one per person: name, welcome line, season, settings, public or private |
 | `poems` | each poem, its mood, plant type and fixed position; `deleted_at` keeps a removed poem for 30 days |
 | `notes` | kind notes left beside a poem; the poet can hide one |
+| `poem_likes` | hearts on poems, one per person per poem |
 | `note_reports` | reports of unkind notes |
 | `public_gardens` (view) | the list visitors browse, with poem counts (searched and paged by `list_public_gardens()`) |
 

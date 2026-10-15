@@ -11,6 +11,9 @@ import { jv, keys } from '../ui/input.js';
 import { regionAt, setCue, showRegion } from '../ui/helpers.js';
 import { board } from '../settings/customize.js';
 import { tmpV } from '../world/atmosphere.js';
+import { fireFlurry } from '../world/particles.js';
+import { T } from '../core/state.js';
+import { things } from '../core/things.js';
 
 export function walk(dt) {
   let ix = 0, iz = 0;
@@ -51,7 +54,7 @@ export function walk(dt) {
     if (facing < 0.25 && d > 0.8) return;
     const score = d - facing; if (score < bd) { bd = score; best = pl; }
   });
-  let target = best ? { kind: 'plant', plant: best } : null;
+  let target = best ? { kind: 'plant', plant: best } : null, nearThing = null;
   if (!target) {
     const nearBoard = Math.hypot(player.pos.x - board.position.x, player.pos.z - board.position.z) < 2.6;
     const swn = featOn('swings') && !nearBoard && swings.find(sw => Math.hypot(player.pos.x - sw.g.position.x, player.pos.z - sw.g.position.z) < 2.9);
@@ -59,7 +62,14 @@ export function walk(dt) {
     else if (swn) target = { kind: 'swing', sw: swn };
     else if (Math.hypot(player.pos.x - BENCH.x, player.pos.z - BENCH.z) < 3.2) target = { kind: 'bench' };
     else if (sign.visible && Math.hypot(player.pos.x - sign.position.x, player.pos.z - sign.position.z) < 3) target = { kind: 'sign' };
+    else if ((nearThing = things.find(t => t.near && t.root.visible && Math.hypot(player.pos.x - t.near.x, player.pos.z - t.near.z) < t.near.r))) target = { kind: 'thing', it: nearThing };
     else if (r < 11.6 && tmpV.set(-player.pos.x, 0, -player.pos.z).normalize().dot(fwd) > 0.45 && poems.length) target = { kind: 'pond' };
+  }
+  // brushing through a tree's canopy shakes a few petals (or leaves, or snow) loose
+  if (Math.hypot(player.vel.x, player.vel.z) > 0.6) for (const pl of plants.values()) {
+    if (pl.vis < 0.9 || !pl.root.visible || T < (pl.brushT || 0)) continue;
+    const d = Math.hypot(pl.root.position.x - player.pos.x, pl.root.position.z - player.pos.z);
+    if (d < pl.radius * 0.8) { pl.brushT = T + 6; fireFlurry(pl.root.position.x + (player.pos.x - pl.root.position.x) * 0.5, pl.root.position.y + Math.min(3.2, (pl.h || 3) * 0.7), pl.root.position.z + (player.pos.z - pl.root.position.z) * 0.5, Math.min(2.2, pl.radius * 0.6)); break; }
   }
   plants.forEach(pl => { pl.glowT = 0; });
   if (target && target.kind === 'plant') target.plant.glowT = 1;

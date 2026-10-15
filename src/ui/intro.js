@@ -14,6 +14,7 @@ import { applyThemeMaterials, setThemeUI } from './themes.js';
 import { applyLight, applyVisibility, drawBoard, updateVeils } from '../settings/customize.js';
 import { setMusicMenu, setNightUI, setSoundUI } from './hud.js';
 import { plantSamples, updateSign } from '../plants/samples.js';
+import { offerSuggestion } from '../cloud/gardensPanel.js';
 import { late, provide } from '../core/late.js';
 
 // names other modules reach through late (see core/late.js)
@@ -42,7 +43,7 @@ function enterGarden(withSamples) {
     state.mode = 'walk'; syncPlayerFromCamera();
     $('#hud').hidden = false; if (isTouch) joy.hidden = false;
     if (withSamples) plantSamples(true);
-    late.maybeStartSteps();
+    late.maybeStartSteps(); offerSuggestion();
     if (!poems.length) setTimeout(() => toast('Nothing grows here yet. Find the bench under the wisteria to write your first poem.', 6000), 4000);
   });
 }

@@ -8,6 +8,7 @@ import { BENCH, inTulip, stoneNear } from './paths.js';
 
 /* ================= grass ================= */
 export const grassChunks = [];
+export const trampleU = { uPlayer: { value: new V3(0, 0, -999) } };
 export let grassMat;
 (function buildGrass() {
   const R0 = rng(5), pos = [], col = [], nrm = [], idx = [];
@@ -28,6 +29,13 @@ export let grassMat;
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
   g.setIndex(idx); g.boundingSphere = new THREE.Sphere(new V3(0, 0.5, 0), 17);
   grassMat = windify(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.12, 'blade');
+  // the grass bends down where you walk (trampleU.uPlayer follows you; core/loop.js)
+  const wind = grassMat.onBeforeCompile;
+  grassMat.onBeforeCompile = sh => {
+    wind(sh); sh.uniforms.uPlayer = trampleU.uPlayer;
+    sh.vertexShader = 'uniform vec3 uPlayer;\n' + sh.vertexShader.replace('transformed.z+=wv', 'float press=smoothstep(1.4,0.25,length(ip-uPlayer.xz));transformed.y*=1.0-press*0.7;transformed.z+=wv');
+  };
+  grassMat.customProgramCacheKey = () => 'grass-trample';
   const total = isTouch ? 8500 : 23000, CELL = 22, R = rng(3), chunks = new Map();
   const tints = ['#ffffff', '#eef3dd', '#dfe8cc', '#f6efcf', '#d9e4d4'].map(C);
   for (let i = 0; i < total; i++) {
@@ -38,7 +46,8 @@ export let grassMat;
     const key = Math.floor(x / CELL) + ',' + Math.floor(z / CELL);
     if (!chunks.has(key)) chunks.set(key, { cx: (Math.floor(x / CELL) + 0.5) * CELL, cz: (Math.floor(z / CELL) + 0.5) * CELL, items: [] });
     const meadow = Math.abs(Math.atan2(Math.sin(a - 0.25), Math.cos(a - 0.25))) < 0.7 && r > 14;
-    chunks.get(key).items.push({ x, z, h: (0.26 + R() * 0.24) * (meadow ? 1.25 : 1) * (r > 40 ? 1.25 : 1), w: 0.9 + R() * 0.6, ry: R() * 6.28, c: tints[Math.floor(R() * tints.length)] });
+    // ankle-high: it was knee-high and filled the view when walking
+    chunks.get(key).items.push({ x, z, h: (0.15 + R() * 0.13) * (meadow ? 1.15 : 1) * (r > 40 ? 1.15 : 1), w: 0.9 + R() * 0.6, ry: R() * 6.28, c: tints[Math.floor(R() * tints.length)] });
   }
   const d = new THREE.Object3D();
   chunks.forEach(ch => {

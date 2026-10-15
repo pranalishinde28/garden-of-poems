@@ -7,7 +7,6 @@ import { DS, GEO, M, part } from '../world/geometry.js';
 /* ================= water: reflective pond and river ================= */
 export const reflCam = new THREE.PerspectiveCamera();
 export const texMat = new THREE.Matrix4();
-export const clipPlane = new THREE.Plane(new V3(0, 1, 0), -WATER_Y + 0.02);
 export const waterU = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
   uTime: { value: 0 }, uNight: { value: 0 }, uRain: { value: 0 }, uDeep: { value: C('#1d3634') }, uShallow: { value: C('#4f5d40') },
   uLightDir: { value: new V3() }, uLightCol: { value: new THREE.Color() }, uRip: { value: new THREE.Vector4(0, 0, -100, 0) },
@@ -109,6 +108,8 @@ export const river = new THREE.Mesh(riverGeo, waterMat(true)); river.position.y 
 
 /* koi */
 export const koi = [];
+// where the koi gather for a while: wherever you touch the water (ui/input.js)
+export const koiLure = { x: 0, z: 0, until: -1 };
 (function buildKoi() {
   const R = rng(61), looks = [['#f2ece4', '#e1572b'], ['#e8742c', '#f6d9b8'], ['#f5f0e8', '#1f1f1f'], ['#f0a33a', '#f0a33a'], ['#f2ece4', '#d43f2a'], ['#d8d2c8', '#e8742c'], ['#e8742c', '#2a2a2a']];
   looks.forEach((lk, i) => {

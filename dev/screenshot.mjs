@@ -6,6 +6,7 @@
 //   node dev/screenshot.mjs --check --url http://localhost:8080/   test a running server (npm run dev)
 //   node dev/screenshot.mjs --flow swing        sit, swing, read five poems, stand up (desktop and phone)
 //   node dev/screenshot.mjs --flow avatar       third person: walk, bench, swing, kneel to read, pond
+//   node dev/screenshot.mjs --flow battery      frames drawn and CPU busy time per second: idle, walking, reading, map
 //   node dev/screenshot.mjs --flow audit        screens, axe accessibility results, tap targets and frame times into dev/shots/audit/
 //   node dev/screenshot.mjs --flow map          map: open, hover, two clicks to a poem, glide to a place, hidden features, phone
 //   options: --views intro,tunnel  --out dev/shots/after  --base /garden-of-poems/
@@ -50,6 +51,19 @@ const VIEWS = {
   'sea-high': { pos: [4, 26, 60], look: [-10, -2, -60], season: 'summer', view: 'sea' },
   'sea-gate': { pos: [30, 3, 55], look: [140, -4, 90], season: 'spring', view: 'sea' },
   'lineup': { lineup: true, pos: [0, 0.95, 40.2], look: [0, 0.62, 36.6] },
+  'spawn': { pos: [0, 1.7, 49], look: [0, 1.15, 20] },
+  'gate-close': { pos: [1.2, 2.2, 44], look: [0, 3, 39] },
+  'gate-autumn': { pos: [1.2, 2.2, 44], look: [0, 3, 39], season: 'autumn' },
+  'gate-winter': { pos: [1.2, 2.2, 44], look: [0, 3, 39], season: 'winter' },
+  'top': { pos: [0, 130, 0.01], look: [0, 0, 0] },
+  'fountain': { pos: [16.5, 2.4, -3.5], look: [11, 0.9, -10.2] },
+  'fountain-close': { pos: [13.6, 1.6, -7.2], look: [11, 1.0, -10.2] },
+  'shrine': { pos: [-29, 2.4, -2.5], look: [-47, 2.6, -4] },
+  'shrine-close': { pos: [-39.6, 1.7, -3.4], look: [-45.7, 2.3, -3.9] },
+  'pagoda': { pos: [25, 3, -19], look: [41, 7, -31] },
+  'bell': { pos: [24, 2.2, -35.6], look: [29, 3.2, -43] },
+  'gate-back': { pos: [0, 1.7, 33], look: [0, 1.5, 50] },
+  'entrance-high': { pos: [7, 7, 48], look: [0, 1.5, 30] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
 };
 const views = String(opt('views', Object.keys(VIEWS).join(','))).split(',');
@@ -97,7 +111,7 @@ async function main() {
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1400, height: 820 });
-    page.on('pageerror', e => errors.push('page error: ' + e.message));
+    page.on('pageerror', e => errors.push('page error: ' + e.message + (process.env.STACK ? '\n' + e.stack : '')));
     page.on('console', m => { if (m.type() === 'error') errors.push('console error: ' + m.text()); });
     page.on('requestfailed', r => { if (!/fonts\.g/.test(r.url())) errors.push('request failed: ' + r.url()); });
     page.on('response', r => { if (r.status() >= 400 && /^http:\/\/(127\.0\.0\.1|localhost)/.test(r.url())) errors.push(`HTTP ${r.status()}: ${r.url()}`); });
@@ -111,7 +125,12 @@ async function main() {
     if (FLOW === 'avatar') await avatarFlow(page);
     else if (FLOW === 'map') await mapFlow(page, browser, url, errors);
     else if (FLOW === 'ux') await uxFlow(page);
+    else if (FLOW === 'battery') await batteryFlow(page);
+    else if (FLOW === 'profile') await profileFlow(page);
+    else if (FLOW === 'programs') await programsFlow(page);
+    else if (FLOW === 'refl') { await page.evaluate(() => { const g = window.__garden; g.state.mode = 'cinematic'; g.camera.position.set(7, 2.2, 9); g.curLook.set(0, -0.4, 0); g.camera.lookAt(g.curLook); }); await sleep(2500); console.log('  reflection pixels:', JSON.stringify(await page.evaluate(() => { const g = window.__garden, rt = g.reflRT, out = []; for (const [fx, fy] of [[.5, .5], [.5, .2], [.5, .8], [.2, .5]]) { const b = new Uint8Array(4); g.renderer.readRenderTargetPixels(rt, Math.floor(rt.width * fx), Math.floor(rt.height * fy), 1, 1, b); out.push([...b]); } return { size: [rt.width, rt.height], out }; }))); }
     else if (FLOW === 'quality') await qualityFlow(page);
+    else if (FLOW === 'card') await cardFlow(page, browser, url, errors);
     else if (FLOW === 'audit') await auditFlow(page, browser, url, errors);
     else if (FLOW === 'swing') { await swingFlow(page, 'desktop'); await swingFlowPhone(browser, url, errors); }
     else if (CHECK) await smoke(page);
@@ -196,11 +215,18 @@ async function smoke(page) {
     await sleep(3000);
   });
   await step('check the canvas drew something', async () => {
-    const lit = await page.evaluate(() => new Promise(res => requestAnimationFrame(() => {
-      const c = document.querySelector('canvas'), x = document.createElement('canvas'); x.width = 32; x.height = 32;
-      const g = x.getContext('2d'); g.drawImage(c, 0, 0, 32, 32); const d = g.getImageData(0, 0, 32, 32).data;
-      let sum = 0; for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2]; res(sum / (32 * 32 * 3));
-    })));
+    // sample in a frame the garden actually drew: an idle garden skips frames (core/power.js), and a
+    // WebGL canvas reads back empty in a frame it didn't draw
+    const lit = await page.evaluate(() => new Promise(res => {
+      const G = window.__garden, last = G ? G.framesDrawn : -1;
+      const tick = () => {
+        if (G && G.framesDrawn === last) { requestAnimationFrame(tick); return; }
+        const c = document.querySelector('canvas'), x = document.createElement('canvas'); x.width = 32; x.height = 32;
+        const g = x.getContext('2d'); g.drawImage(c, 0, 0, 32, 32); const d = g.getImageData(0, 0, 32, 32).data;
+        let sum = 0; for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2]; res(sum / (32 * 32 * 3));
+      };
+      requestAnimationFrame(tick);
+    }));
     if (!(lit > 8)) throw new Error('The canvas looks blank (mean brightness ' + lit + ').');
   });
 }
@@ -363,6 +389,39 @@ async function mapFlow(page, browser, url, errors) {
   });
 }
 
+// ---- the poem card: the cover swings open, pages turn like a book ----
+async function cardFlow(page, browser, url, errors) {
+  const shot = async (n, p = page) => { await p.screenshot({ path: join(root, `dev/shots/card-${n}.png`) }); };
+  const title = (p = page) => p.$eval('#r-title', e => e.textContent);
+  await step('enter with the sample poems', async () => {
+    await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+    await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await sleep(800);
+  });
+  await step('open a poem: the cover swings open', async () => {
+    await page.evaluate(() => { const g = window.__garden; g.openPoem([...g.plants.values()][4]); });
+    await sleep(500); await shot('cover-1'); await sleep(300); await shot('cover-2'); await sleep(2400); await shot('open');
+    return title();
+  });
+  await step('→ turns the page forward', async () => {
+    const t0 = await title(); await page.keyboard.press('ArrowRight'); await sleep(240); await shot('turn-1'); await sleep(200); await shot('turn-2'); await sleep(1700); await shot('turned');
+    const t1 = await title(); if (t1 === t0) throw new Error('still on ' + t0); return `${t0} → ${t1}`;
+  });
+  await step('← turns it back', async () => { const t0 = await title(); await page.keyboard.press('ArrowLeft'); await sleep(330); await shot('back-1'); await sleep(1700); const t1 = await title(); if (t1 === t0) throw new Error('still on ' + t0); return `${t0} → ${t1}`; });
+  await step('a private garden shows no hearts or notes', async () => {
+    const v = await page.evaluate(() => ['#r-heart', '#r-talk', '#r-likes', '#r-notes'].map(s => document.querySelector(s).hidden));
+    if (v.some(x => !x)) throw new Error(JSON.stringify(v)); return 'none shown';
+  });
+  const ctx = await browser.createBrowserContext(), ph = await ctx.newPage(); ph.on('pageerror', e => errors.push('page error (phone): ' + e.message));
+  await ph.emulate({ viewport: { width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true }, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1' });
+  await ph.goto(url, { waitUntil: 'load', timeout: 180000 }); await ph.waitForFunction(() => window.__garden && document.querySelector('#loading')?.classList.contains('done'), { timeout: 120000, polling: 500 });
+  await ph.evaluate(() => window.__garden.setSetting('light', 'day'));
+  await step('phone: the card as a bottom sheet', async () => {
+    await ph.tap('#enter-sample'); await ph.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+    await ph.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden; g.openPoem([...g.plants.values()][2]); }); await sleep(3200); await shot('phone', ph);
+    await ph.tap('#r-next'); await sleep(2000); return title(ph);
+  });
+}
+
 // ---- UX audit: every screen, axe results, tap targets, frame times ----
 async function auditFlow(page, browser, url, errors) {
   const { readFile: rf, writeFile: wf, mkdir: mk } = await import('node:fs/promises');
@@ -468,4 +527,52 @@ async function uxFlow(page) {
     const after = await page.evaluate(() => window.__garden.poems.length), has = await page.evaluate(t => window.__garden.poems.some(p => p.title === t), title);
     if (mid !== before - 1 || after !== before || !has) throw new Error(`${before} → ${mid} → ${after}`); return `“${title}”: ${before} → ${mid} → ${after}`;
   });
+}
+
+// ---- battery: what the page costs per second in everyday moments ----
+// frames drawn per second (each one is GPU work) and main-thread busy time (CPU), from Chrome's own metrics
+async function batteryFlow(page) {
+  const results = {}; await page.bringToFront();
+  console.log('  window focused: ' + await page.evaluate(() => document.hasFocus()));
+  const measure = async (label, ms = 8000) => {
+    const d0 = await page.evaluate(() => window.__garden.framesDrawn ?? 0);
+    await page.evaluate(() => { window.__frames = 0; const f = () => { window.__frames++; window.__raf = requestAnimationFrame(f); }; cancelAnimationFrame(window.__raf); window.__raf = requestAnimationFrame(f); });
+    const a = await page.metrics(); const t0 = Date.now(); await sleep(ms); const b = await page.metrics(); const dt = (Date.now() - t0) / 1000;
+    const fr = await page.evaluate(() => window.__frames);
+    const drawn = (await page.evaluate(() => window.__garden.framesDrawn ?? null)) ?? null;
+    results[label] = { drawnPerSec: drawn === null ? +(fr / dt).toFixed(1) : +((drawn - d0) / dt).toFixed(1), cpuBusyPct: +(100 * (b.TaskDuration - a.TaskDuration) / dt).toFixed(1), scriptPct: +(100 * (b.ScriptDuration - a.ScriptDuration) / dt).toFixed(1) };
+    console.log('  ' + label.padEnd(26) + JSON.stringify(results[label]));
+  };
+  await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+  await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await sleep(25000); // past the first shader compiles
+  await measure('standing still');
+  await page.keyboard.down('KeyW'); await page.keyboard.down('KeyA'); await measure('walking'); await page.keyboard.up('KeyW'); await page.keyboard.up('KeyA');
+  await page.evaluate(() => { const g = window.__garden; g.openPoem([...g.plants.values()][1]); }); await sleep(3000); await measure('reading a poem'); await page.keyboard.press('Escape'); await sleep(1500);
+  await page.keyboard.press('KeyM'); await sleep(1200); await measure('map open'); await page.keyboard.press('Escape'); await sleep(800);
+  return results;
+}
+
+// ---- where the CPU goes while standing still: top functions by self time (build with --minify false) ----
+async function profileFlow(page) {
+  await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+  await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await page.bringToFront(); await sleep(28000);
+  const cdp = await page.createCDPSession(); await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 200 }); await cdp.send('Profiler.start');
+  await sleep(6000); const { profile } = await cdp.send('Profiler.stop');
+  const dt = new Map(); const byId = new Map(profile.nodes.map(n => [n.id, n]));
+  profile.samples.forEach((id, i) => { const n = byId.get(id), f = n.callFrame, key = `${f.functionName || '(anon)'} ${f.url.split('/').pop()}:${f.lineNumber}`; dt.set(key, (dt.get(key) || 0) + (profile.timeDeltas[i] || 0)); });
+  const total = [...dt.values()].reduce((a, b) => a + b, 0);
+  [...dt.entries()].sort((a, b) => b[1] - a[1]).slice(0, 18).forEach(([k, v]) => console.log('  ' + (100 * v / total).toFixed(1).padStart(5) + '%  ' + k));
+}
+
+// ---- are shader programs being created while nothing changes? ----
+async function programsFlow(page) {
+  await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+  await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await sleep(8000);
+  const snap = () => page.evaluate(() => { const R = window.__garden.renderer; return { programs: R.info.programs.length, names: R.info.programs.map(p => p.name + ':' + p.usedTimes) }; });
+  await sleep(25000); const a = await snap(); await sleep(5000); const b = await snap();
+  console.log(`  programs after settling: ${a.programs} → ${b.programs} over 5 s`);
+  const before = new Set(a.names.map(n => n.split(':')[0]));
+  console.log('  new or changed:', b.names.filter(n => !a.names.includes(n)).slice(0, 12).join(' | '));
+  const keys = await page.evaluate(() => window.__garden.renderer.info.programs.slice(-6).map(p => (p.cacheKey || '').split(',').filter(x => x && x !== 'false' && x !== '0' && x !== 'true').slice(-14).join(',')));
+  keys.forEach(k => console.log('  key: ' + k.slice(0, 300)));
 }

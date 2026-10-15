@@ -1,77 +1,41 @@
 import * as THREE from 'three';
-import { V3 } from '../core/util.js';
 import { groundH } from './terrain.js';
 import { scene } from './renderer.js';
+import { Kit, PAL, brackets, hipRoof, pagoda, railing, roofMat, setRoofSeason, storey, torii } from './architecture.js';
 
 /* ================= the view toward Fuji: a five-storey pagoda, a temple hall, a torii ================= */
 // Built on the hills beyond the hedge, outside the garden (nothing here is clickable). The pagoda
 // stands to the right of Fuji and the hall and torii to the left, as in the classic Chūreitō view.
 // Roofs turn white in winter (setTempleSeason).
 
-// out of the garden's fog (it would wash them to ghosts at this distance); a touch of distance is in the colours
-const lam = color => new THREE.MeshLambertMaterial({ color, fog: false });
-const red = lam('#b8452e'), white = lam('#d6d0c4'), stone = lam('#8a8984'), bronze = lam('#45443f'), roofMat = lam('#45504f');
+// out of the garden's fog (it would wash them to ghosts at this distance); a touch of distance is in the colours.
+// Built with the same carpentry as the garden's own pagoda and shrine (world/architecture.js).
+const body = new THREE.MeshLambertMaterial({ vertexColors: true, fog: false }), roofs = roofMat('#45504f', false);
 export const templeGroup = new THREE.Group(); scene.add(templeGroup);
+function place(x, z, s = 1, sink = 0.3) { const g = new THREE.Group(); g.position.set(x, groundH(x, z) - sink, z); g.rotation.y = Math.atan2(-x, -z); g.scale.setScalar(s); templeGroup.add(g); return g; }
 
-// a square hip roof with flared eaves whose corners turn up
-function roof(w, h, up, mat = roofMat) {
-  const g = new THREE.CylinderGeometry(w * 0.16, w * 0.75, h, 32, 1, false), p = g.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), z = p.getZ(i), a = Math.atan2(z, x), k = 1 / Math.max(Math.abs(Math.cos(a)), Math.abs(Math.sin(a)));
-    p.setX(i, x * k * 0.72); p.setZ(i, z * k * 0.72);
-    if (p.getY(i) < 0) p.setY(i, p.getY(i) + up * Math.pow((k - 1) / (Math.SQRT2 - 1), 2));
-  }
-  g.computeVertexNormals();
-  return new THREE.Mesh(g, mat);
-}
-const box = (w, h, d, m, x = 0, y = 0, z = 0) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); return b; };
-
-function pagoda(x, z, s = 1) {
-  const g = new THREE.Group(), y0 = groundH(x, z) - 0.3; g.position.set(x, y0, z); g.scale.setScalar(s);
-  g.add(box(10, 1.6, 10, stone, 0, 0.8, 0));
-  let y = 1.6, w = 7.2;
-  for (let i = 0; i < 5; i++) {
-    const bh = i === 0 ? 3.4 : 2.5;
-    g.add(box(w * 0.66, bh, w * 0.66, red, 0, y + bh / 2, 0));
-    g.add(box(w * 0.67, bh * 0.4, w * 0.67, white, 0, y + bh * 0.62, 0)); // white panels between the vermilion posts
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(box(0.32, bh, 0.32, red, sx * w * 0.33, y + bh / 2, sz * w * 0.33));
-    g.add(box(w * 0.7, 0.28, w * 0.7, red, 0, y + bh - 0.15, 0));
-    if (i > 0) g.add(box(w * 0.86, 0.22, w * 0.86, red, 0, y + 0.1, 0)); // the balcony rail
-    const r = roof(w * 1.55, 1.25, 0.75); r.position.y = y + bh + 0.55; g.add(r);
-    y += bh + 1.0; w *= 0.88;
-  }
-  // the spire: nine bronze rings and a jewel
-  const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 7, 8), bronze); sp.position.y = y + 3.4; g.add(sp);
-  for (let k = 0; k < 9; k++) { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42 - k * 0.018, 0.08, 6, 14), bronze); ring.rotation.x = Math.PI / 2; ring.position.y = y + 1.2 + k * 0.55; g.add(ring); }
-  const jewel = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), bronze); jewel.position.y = y + 7; g.add(jewel);
-  g.rotation.y = Math.atan2(-x, -z); templeGroup.add(g);
-}
+function bigPagoda(x, z, s) { const kit = new Kit(); pagoda(kit, 5, 4.8, { h0: 3.4, h: 2.5, shrink: 0.88, spire: 1.25 }); kit.build(place(x, z, s), body, roofs); }
 function hall(x, z) {
-  const g = new THREE.Group(); g.position.set(x, groundH(x, z) - 0.2, z);
-  g.add(box(19, 1.8, 13, stone, 0, 0.9, 0));
-  g.add(box(15, 5.5, 9.5, white, 0, 4.55, 0));
-  for (let i = 0; i <= 6; i++) for (const sz of [-1, 1]) g.add(box(0.45, 5.5, 0.45, red, -7.5 + i * 2.5, 4.55, sz * 4.75));
-  g.add(box(15.4, 0.5, 9.9, red, 0, 7.1, 0));
-  const r = roof(25, 3.6, 1.3); r.scale.z = 0.72; r.position.y = 9.1; g.add(r);
-  const r2 = roof(12, 2.4, 0.8); r2.scale.z = 0.65; r2.position.y = 11.5; g.add(r2);
-  g.add(box(10, 0.5, 0.6, roofMat, 0, 12.8, 0)); // the ridge
-  g.rotation.y = Math.atan2(-x, -z); templeGroup.add(g);
+  const kit = new Kit();
+  kit.box(19, 1.8, 13, 0, 0.9, 0, PAL.stone); kit.box(19.4, 0.16, 13.4, 0, 1.82, 0, PAL.stoneDark);
+  for (let st = 0; st < 4; st++) { const sh = 0.45 * (st + 1); kit.box(5, sh, 0.5, 0, sh / 2, 6.5 + 0.25 + (3 - st) * 0.5, PAL.stoneDark); }
+  railing(kit, 17.6, 11.8, 1.9);
+  const top = storey(kit, 15, 9.5, 1.9, 5.3, 23, 17.5, 3.0, 1.2);
+  // the upper roof of a two-tier hall, its own short walls and brackets beneath it
+  kit.box(10.5, 1.6, 6.4, 0, top + 2.2, 0, PAL.white);
+  brackets(kit, 10.5, 6.4, top + 2.9, 2);
+  kit.geo(hipRoof(14.5, 10.4, 2.6, 0.9), 0, top + 3.3, 0, '#ffffff', undefined, 0, 0, 0, true);
+  kit.rbox(6.5, 0.6, 0.7, 0, top + 5.9, 0, '#bdbdbd');
+  for (const sx of [-1, 1]) kit.rbox(0.9, 1.0, 0.8, sx * 3.4, top + 6.1, 0, '#b0b0b0'); // shibi at the ridge ends
+  kit.build(place(x, z, 1, 0.2), body, roofs);
 }
-function torii(x, z) {
-  const g = new THREE.Group(); g.position.set(x, groundH(x, z) - 0.2, z);
-  for (const sx of [-1, 1]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 9, 12), red); p.position.set(sx * 4.2, 4.5, 0); g.add(p); }
-  g.add(box(10.4, 0.6, 0.8, red, 0, 7.6, 0)); // nuki
-  const kasa = box(13.5, 0.75, 1.1, red, 0, 9.2, 0); g.add(kasa);
-  g.add(box(13.9, 0.32, 1.25, bronze, 0, 9.7, 0)); // the black cap
-  for (const sx of [-1, 1]) { const tip = box(1.4, 0.4, 1.25, bronze, sx * 7.3, 9.95, 0); tip.rotation.z = sx * 0.18; g.add(tip); }
-  g.add(box(0.7, 1.6, 0.5, red, 0, 8.4, 0)); // the plaque post
-  g.rotation.y = Math.atan2(-x, -z); templeGroup.add(g);
-}
+function gate(x, z) { const kit = new Kit(); torii(kit, 8.4, 9); kit.build(place(x, z, 1, 0.2), body, roofs); }
 
-pagoda(40, -96, 1.05);
+bigPagoda(40, -96, 1.05);
 hall(-66, -104);
-torii(-44, -86);
-pagoda(-92, -122, 0.62); // a smaller pagoda, further back on the left
+gate(-44, -86);
+bigPagoda(-92, -122, 0.62); // a smaller pagoda, further back on the left
 templeGroup.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
 
-export function setTempleSeason(season) { roofMat.color.set(season === 'winter' ? '#e4e9ee' : '#45504f'); }
+// every roof in the garden and on the hills whitens in winter
+export function setTempleSeason(season) { setRoofSeason(season); }

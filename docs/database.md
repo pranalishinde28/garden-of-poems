@@ -11,6 +11,8 @@ Supabase Postgres, changed only through migrations in `supabase/migrations/`. Pr
 | `20261011000200_notes_moderation.sql` | Rate limits (20 notes per author per day, 3 per poem per hour), `notes.hidden` (the poet can hide a note without deleting it), `note_reports` |
 | `20261011000300_sync_and_soft_delete.sql` | The server owns `updated_at`; `poems.deleted_at` (recently removed, 30 days, then a daily pg_cron purge); `save_poem()`, `remove_poem()`, `restore_poem()` |
 | `20261011000400_accounts_and_search.sql` | `username_available()`, `change_username()`, `delete_my_account()`, trigram indexes and `list_public_gardens()` (search plus pages) |
+| `20261012000000_seasons_horizon_figure.sql` | `gardens.theme` takes all four seasons; settings accept `season` (auto or a season) and `view` (fuji or sea); the chibi figure's dress, twintails and parasol |
+| `20261016000000_likes_and_suggestions.sql` | `poem_likes` (one heart per person per poem, only on poems you can read, never your own; you see your own hearts, the poet sees who), `poem_likes_for(owner)` (counts for everyone), `suggested_gardens(lim)` (loved, lately tended, close to your moods; never your own or a private garden) |
 
 `supabase/schema.sql` is a generated snapshot of the result (`npm run db:snapshot`). Don't edit it.
 
@@ -44,9 +46,9 @@ npx supabase stop
 
 ## Moving your live database onto migrations
 
-Your live project already has the baseline (you ran `schema.sql` by hand), so the plan is: tell Supabase the baseline is applied, then push the four new migrations.
+Your live project already has the baseline (you ran `schema.sql` by hand), so the plan is: tell Supabase the baseline is applied, then push the newer migrations (six of them).
 
-**The order doesn't matter.** The page notices a database still on the original schema (no `deleted_at`, no `save_poem()`) and saves the old way: upsert, delete, last write wins. It also leaves out what needs the update (recently removed, hiding and reporting notes, deleting an account) with a short note. Once you migrate, the new behaviour starts at the next sign-in, without a redeploy. `LEGACY=1 node dev/cloud-e2e.mjs` against a local database reset to the baseline (`npx supabase db reset --version 20261011000000`) tests that mode.
+**The order doesn't matter.** The page notices a database still on the original schema (no `deleted_at`, no `save_poem()`) and saves the old way: upsert, delete, last write wins. It also leaves out what needs the update (recently removed, hiding and reporting notes, deleting an account) with a short note, leaves the heart off the poem card, and scores suggested gardens itself from the public list. Once you migrate, the new behaviour starts at the next sign-in, without a redeploy. `LEGACY=1 node dev/cloud-e2e.mjs` against a local database reset to the baseline (`npx supabase db reset --version 20261011000000`) tests that mode.
 
 1. **Back up first.** Dashboard → Database → Backups (free plans keep daily backups), or after step 2: `npx supabase db dump --linked > backup-before-migrations.sql`.
 2. **Link the project** (each command opens a browser or asks for something only you have):

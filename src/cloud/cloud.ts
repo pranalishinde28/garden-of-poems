@@ -258,6 +258,43 @@ export async function listGardens(q: string, after?: PublicGarden): Promise<Publ
   const r2 = await req; if (r2.error) throw r2.error; return (r2.data || []) as PublicGarden[];
 }
 
+// ---------- hearts ----------
+// Counts for one garden's poems (and which hearts are yours). null means the database has no hearts yet
+// (before the update), and the card leaves the heart out.
+export type Hearts = Map<string, { likes: number; mine: boolean }>;
+export async function heartsFor(owner: string): Promise<Hearts | null> {
+  if (!Cloud.sb) return null;
+  const { data, error } = await Cloud.sb.rpc('poem_likes_for', { p_owner: owner });
+  if (missing(error)) return null;
+  if (error) throw error;
+  return new Map((data || []).map(r => [r.poem_id, { likes: r.likes, mine: r.mine }]));
+}
+export async function setHeart(owner: string, poemId: string, on: boolean) {
+  if (!Cloud.sb || !Cloud.user) return false;
+  const t = Cloud.sb.from('poem_likes');
+  const { error } = on ? await t.insert({ garden_owner: owner, poem_id: poemId, liker: Cloud.user.id }) : await t.delete().eq('garden_owner', owner).eq('poem_id', poemId).eq('liker', Cloud.user.id);
+  return !error || error.code === '23505';
+}
+
+// ---------- gardens suggested for you ----------
+export type Suggestion = PublicGarden & { reason: string };
+export async function suggestedGardens(): Promise<Suggestion[]> {
+  if (!Cloud.sb) return [];
+  if (!db.legacy) {
+    const { data, error } = await Cloud.sb.rpc('suggested_gardens', { lim: 3 });
+    if (!missing(error)) { if (error) throw error; return (data || []) as Suggestion[]; }
+  }
+  // before the update: the freshest, fullest public gardens, scored here
+  const r = await Cloud.sb.from('public_gardens').select('*').order('updated_at', { ascending: false }).limit(24);
+  if (r.error) throw r.error;
+  const now = Date.now(), days = (g: PublicGarden) => (now - new Date(g.updated_at || 0).getTime()) / 864e5;
+  return ((r.data || []) as PublicGarden[])
+    .filter(g => (g.poem_count || 0) > 0 && (!Cloud.user || g.owner !== Cloud.user.id))
+    .map(g => ({ g, score: Math.log(1 + (g.poem_count || 0)) + 2 * Math.exp(-days(g) / 14) }))
+    .sort((a, b) => b.score - a.score).slice(0, 3)
+    .map(({ g }) => ({ ...g, reason: days(g) < 7 ? 'Newly tended' : 'A garden worth a walk' }));
+}
+
 // ---------- your account ----------
 export async function usernameAvailable(name: string) {
   const { data, error } = await Cloud.sb!.rpc('username_available', { name });

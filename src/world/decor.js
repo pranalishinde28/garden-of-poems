@@ -41,20 +41,7 @@ export const benchSeat = () => {
 };
 export const lanternWorld = () => bench.localToWorld(bench.userData.glowBase.clone());
 
-(function buildGate() {
-  const g = new THREE.Group(), z = 39.2; g.position.set(0, groundH(0, z), z); scene.add(g);
-  const wood = M('#6b5440');
-  for (const x of [-1.7, 1.7]) part(g, GEO.cylB, wood, [x, 0, 0], [0.09, 2.5, 0.09]);
-  const arch = new THREE.Mesh(new THREE.TorusGeometry(1.7, 0.08, 6, 24, Math.PI), wood); arch.position.y = 2.5; g.add(arch);
-  const R = rng(5), vc = ['#4f6a3e', '#5c7a47', '#6d8a52'], vm = new Merge();
-  for (let i = 0; i < 60; i++) {
-    let p; if (R() < 0.6) { const a = R() * Math.PI; p = [Math.cos(a) * 1.7, 2.5 + Math.sin(a) * 1.7]; } else p = [R() < .5 ? -1.7 : 1.7, R() * 2.5];
-    const s = 0.09 + R() * 0.08; vm.add(GEO.ico, new V3(p[0] + (R() - .5) * 0.2, p[1], (R() - .5) * 0.2), new V3(s, s, s), C(vc[i % 3]));
-    if (i % 5 === 0) vm.add(GEO.ico, new V3(p[0], p[1] + 0.06, 0.13), new V3(0.05, 0.05, 0.05), C(i % 2 ? '#f6c9d5' : '#fbf6ef'));
-  }
-  g.add(new THREE.Mesh(vm.build(), VC));
-  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-})();
+// the gate itself is the great arch in settings/customize.js, next to the sign board that shares its name
 
 export function stoneLantern(x, z, s, ry) {
   const g = new THREE.Group(); g.position.set(x, groundH(x, z), z); g.rotation.y = ry; g.scale.setScalar(s);
@@ -80,7 +67,7 @@ function boulder(x, z, s, seed) {
 (function buildDecor() {
   stoneLantern(4.6, 11.8, 1, 0.4);
   stoneLantern(11.3, -3.6, 1.1, 1.2);
-  stoneLantern(-2.9, 37.2, 0.95, 0.2);
+  stoneLantern(-2.9, 36.4, 0.95, 0.2);
   BRIDGES.forEach((B, i) => stoneLantern(B.x + B.D.x * 4.8 + 1.2, B.z + B.D.z * 4.8, 0.9, 0.7 + i));
   const R = rng(73);
   [[0.4, 8.4], [1.5, 8.3], [2.3, 8.0], [3.6, 8.5], [-0.6, 8.2], [-2.6, 8.6]].forEach(([a, r], i) => { const x = Math.cos(a) * r, z = Math.sin(a) * r; if (riverDist(x, z) > 2.2 && !stoneNear(x, z, 1)) boulder(x, z, 0.45 + R() * 0.4, 100 + i); });
@@ -111,12 +98,13 @@ function boulder(x, z, s, seed) {
 
 export const sign = new THREE.Group();
 (function buildSign() {
-  const x = 2.7, z = 33.6; sign.position.set(x, groundH(x, z), z); sign.rotation.y = -0.45;
-  const wood = M('#6b5440'); part(sign, GEO.cylB, wood, [-0.7, 0, 0], [0.05, 1.2, 0.05]); part(sign, GEO.cylB, wood, [0.7, 0, 0], [0.05, 1.2, 0.05]);
-  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 220; sign.userData.canvas = cv;
+  // beside the path just outside the gate, turned toward where you arrive (0, 49)
+  const x = 6.1, z = 38.8; sign.position.set(x, groundH(x, z), z); sign.rotation.y = Math.atan2(0 - x, 49 - z);
+  const wood = M('#6b5440'); part(sign, GEO.cylB, wood, [-1.1, 0, 0], [0.07, 1.75, 0.07]); part(sign, GEO.cylB, wood, [1.1, 0, 0], [0.07, 1.75, 0.07]);
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 430; sign.userData.canvas = cv;
   const tex = new THREE.CanvasTexture(cv); sign.userData.tex = tex;
-  part(sign, GEO.box, M('#5d4838'), [0, 1.05, -0.01], [1.72, 0.76, 0.06]);
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(1.64, 0.7), new THREE.MeshLambertMaterial({ map: tex })); face.position.set(0, 1.05, 0.025); sign.add(face);
+  part(sign, GEO.box, M('#5d4838'), [0, 1.45, -0.02], [2.5, 1.1, 0.08]);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.0078), new THREE.MeshLambertMaterial({ map: tex })); face.position.set(0, 1.45, 0.03); sign.add(face);
   sign.traverse(o => { o.userData.sign = true; if (o.isMesh) o.castShadow = true; });
   scene.add(sign); drawSign();
 })();
@@ -124,10 +112,11 @@ function drawSign() {
   const cv = sign.userData.canvas, g = cv.getContext('2d');
   g.fillStyle = '#7b6049'; g.fillRect(0, 0, cv.width, cv.height);
   const R = rng(9); g.strokeStyle = 'rgba(40,26,16,.25)'; g.lineWidth = 2;
-  for (let i = 0; i < 14; i++) { g.beginPath(); const y = R() * cv.height; g.moveTo(0, y); g.bezierCurveTo(170, y + (R() - .5) * 20, 340, y + (R() - .5) * 20, 512, y + (R() - .5) * 10); g.stroke(); }
+  for (let i = 0; i < 18; i++) { g.beginPath(); const y = R() * cv.height; g.moveTo(0, y); g.bezierCurveTo(340, y + (R() - .5) * 40, 680, y + (R() - .5) * 40, 1024, y + (R() - .5) * 20); g.stroke(); }
+  g.strokeStyle = 'rgba(241,232,212,.5)'; g.lineWidth = 4; g.strokeRect(20, 20, 984, 390);
   g.fillStyle = '#f1e8d4'; g.textAlign = 'center';
-  g.font = '500 40px "Cormorant Garamond", Georgia, serif'; g.fillText('There is nothing growing here yet.', 256, 95);
-  g.font = 'italic 400 44px "Cormorant Garamond", Georgia, serif'; g.fillText('Write something.', 256, 160);
+  g.font = '500 76px "Cormorant Garamond", Georgia, serif'; g.fillText('Nothing is growing here yet.', 512, 175);
+  g.font = 'italic 400 92px "Cormorant Garamond", Georgia, serif'; g.fillText('Write something.', 512, 315);
   sign.userData.tex.needsUpdate = true;
 }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawSign);

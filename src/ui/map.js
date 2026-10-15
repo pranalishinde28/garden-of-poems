@@ -2,13 +2,17 @@ import { $, V3, clamp, isTouch } from '../core/util.js';
 import { BRIDGES, POND_R, RIVER, WORLD_R } from '../world/terrain.js';
 import { SETTINGS } from '../settings/storage.js';
 import { state } from '../core/state.js';
-import { REGIONS, MOODS } from '../plants/mapping.js';
+import { MOOD_INK, REGIONS, MOODS } from '../plants/mapping.js';
+export { MOOD_INK };
 import { camera } from '../world/renderer.js';
 import { BENCH, TULIPS, featOn, stones } from '../world/paths.js';
 import { plants } from '../plants/registry.js';
 import { sign } from '../world/decor.js';
 import { SWING_GARDEN, swings } from '../world/swings.js';
 import { ROSE_GARDEN } from '../plants/flowerGardens.js';
+import { FOUNTAIN } from '../world/fountain.js';
+import { LANDMARKS } from '../world/shrines.js';
+import { GATE } from '../settings/customize.js';
 import { blocked, camTween, floorH, player } from '../player/camera.js';
 import { keys } from './input.js';
 import { openPoem } from './reading.js';
@@ -21,7 +25,6 @@ import { late, provide } from '../core/late.js';
 // hidden stay hidden. Choosing a place or a poem glides you there: a slow lift, a drift across, and
 // a settle at a spot to stand (it never teleports).
 
-export const MOOD_INK = { love: '#c97b93', joy: '#d6a838', sorrow: '#6f8fb4', anger: '#b8473f', childhood: '#d88a4a', dream: '#8a6fb8', reflection: '#5f8050' };
 const moodOf = p => (p.mood && MOOD_INK[p.mood]) ? p.mood : 'reflection';
 // on the map: growing or grown, and not hidden by 'Walk through time'
 const onMap = pl => !pl.dying && pl.target !== 0;
@@ -63,8 +66,13 @@ function drawWorld(g, P, s, full) {
   if (featOn('swings')) { g.strokeStyle = 'rgba(110,84,64,.85)'; g.lineWidth = Math.max(1.2, 0.35 * s); swings.forEach(sw => { const p = sw.g.position, a = sw.g.rotation.y, w = 1.3 * 1.35, dx = Math.cos(a) * w, dz = -Math.sin(a) * w, [x0, y0] = at(p.x - dx, p.z - dz), [x1, y1] = at(p.x + dx, p.z + dz); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }); }
   // the bench, the gate, the sign
   g.save(); let [bx, by] = at(BENCH.x, BENCH.z); g.translate(bx, by); g.rotate(-Math.atan2(-BENCH.x, -BENCH.z)); g.fillStyle = 'rgba(110,80,56,.9)'; g.fillRect(-0.85 * s, -0.2 * s, 1.7 * s, Math.max(2, 0.4 * s)); g.restore();
-  { const [x, y] = at(0, 39.2); g.strokeStyle = 'rgba(150,52,40,.85)'; g.lineWidth = Math.max(1.5, 0.4 * s); g.beginPath(); g.moveTo(x - 2.2 * s, y); g.lineTo(x + 2.2 * s, y); g.stroke(); }
+  { const [x, y] = at(0, 39.2); g.strokeStyle = 'rgba(150,52,40,.85)'; g.lineWidth = Math.max(1.5, 0.5 * s); g.beginPath(); g.moveTo(x - 3.2 * s, y); g.lineTo(x + 3.2 * s, y); g.stroke(); }
   if (sign.visible) { const [x, y] = at(sign.position.x, sign.position.z); g.fillStyle = 'rgba(110,84,64,.9)'; g.fillRect(x - Math.max(2, 0.8 * s), y - 1, Math.max(4, 1.6 * s), 3); }
+  // the fountain, the pagoda, the bell tower and the shrine
+  { const [x, y] = at(FOUNTAIN.x, FOUNTAIN.z); g.fillStyle = WATER + '.7)'; g.strokeStyle = 'rgba(120,116,108,.8)'; g.lineWidth = Math.max(1, 0.3 * s); g.beginPath(); g.arc(x, y, Math.max(3, 2 * s), 0, 7); g.fill(); g.stroke(); }
+  const temple = (L, w, d) => { const [x, y] = at(L.x, L.z); g.save(); g.translate(x, y); g.rotate(-Math.atan2(-L.x, -L.z)); g.fillStyle = 'rgba(150,62,46,.55)'; g.strokeStyle = 'rgba(110,52,40,.85)'; g.lineWidth = 1; g.fillRect(-w * s / 2, -d * s / 2, w * s, d * s); g.strokeRect(-w * s / 2, -d * s / 2, w * s, d * s); g.restore(); };
+  temple(LANDMARKS.pagoda, 7.5, 7.5); temple(LANDMARKS.bell, 5.2, 5.2);
+  { const L = LANDMARKS.shrine; temple(L, 6.6, 9); const a = Math.atan2(-L.x, -L.z), [x, y] = at(L.x + Math.sin(a) * 12.4, L.z + Math.cos(a) * 12.4); g.save(); g.translate(x, y); g.rotate(-a); g.strokeStyle = 'rgba(170,58,40,.9)'; g.lineWidth = Math.max(1.5, 0.35 * s); g.beginPath(); g.moveTo(-2.2 * s, 0); g.lineTo(2.2 * s, 0); g.stroke(); g.restore(); }
 }
 
 // ---- the full map ----
@@ -76,23 +84,23 @@ function layout() {
   P = (x, z) => [cx + x * S, cy + (z - 2) * S];
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, r.width, r.height);
   drawWorld(g, P, S, true);
-  // region names, softly
-  g.font = `italic ${Math.max(11, Math.min(15, S * 3.2))}px "Cormorant Garamond", Georgia, serif`; g.textAlign = 'center'; g.fillStyle = 'rgba(70,64,90,.55)';
-  for (const k in REGIONS) { const rg = REGIONS[k], rr = (rg.r0 + rg.r1) / 2, [x, y] = P(Math.cos(rg.a) * rr, Math.sin(rg.a) * rr); g.fillText(rg.name.replace(/^The /, ''), x, y); }
 }
 // places to do something, each with a short hint and where to stand
 function places() {
   const L = [];
   const toPond = (x, z) => { const d = Math.hypot(x, z) || 1; return [-x / d, -z / d]; };
   { const [dx, dz] = toPond(BENCH.x, BENCH.z); L.push({ name: 'Writing bench', hint: 'write a poem', x: BENCH.x, z: BENCH.z, stand: [BENCH.x + dx * 1.9, BENCH.z + dz * 1.9], face: [BENCH.x, BENCH.z], side: 'l' }); }
-  { const a = Math.atan2(player.pos.z, player.pos.x), r = POND_R + 2.3; L.push({ name: 'The pond', hint: 'see an older poem', x: 0, z: -POND_R * 0.2, stand: [Math.cos(a) * r, Math.sin(a) * r], face: [0, 0], side: 'c' }); }
+  { const a = Math.atan2(player.pos.z, player.pos.x), r = POND_R + 2.3; L.push({ name: 'The pond', hint: 'see an older poem', x: 0, z: 0, stand: [Math.cos(a) * r, Math.sin(a) * r], face: [0, 0], side: 'r' }); }
   if (featOn('swings')) { const [dx, dz] = toPond(SWING_GARDEN.x, SWING_GARDEN.z); L.push({ name: 'Swing Garden', hint: 'swing and read', x: SWING_GARDEN.x - 1, z: SWING_GARDEN.z + 2.5, stand: [SWING_GARDEN.x + dx * 2.6, SWING_GARDEN.z + dz * 2.6], face: [SWING_GARDEN.x, SWING_GARDEN.z], side: 'l' }); }
-  if (sign.visible) { const a = sign.rotation.y, nx = Math.sin(a), nz = Math.cos(a); L.push({ name: 'The sign at the gate', hint: 'about this garden', x: sign.position.x, z: sign.position.z, stand: [sign.position.x + nx * 2.4, sign.position.z + nz * 2.4], face: [sign.position.x, sign.position.z], side: 'r' }); }
-  if (featOn('wisteria')) L.push({ name: 'Wisteria walk', hint: 'under the hanging flowers', x: 0, z: 26.6, stand: [0, 35.5], face: [0, 20], side: 'l', small: true });
+  { const z = GATE.z; L.push({ name: 'The gate', hint: 'the wisteria walk begins here', x: 0, z, stand: [0, z + 4.5], face: [0, z - 10], side: 'r' }); }
   if (featOn('tulips')) { const t = TULIPS[2]; L.push({ name: 'Tulip fields', hint: 'walk among flowers', x: (t.x0 + t.x1) / 2, z: (t.z0 + t.z1) / 2, stand: [(t.x0 + t.x1) / 2, t.z0 - 1.5], face: [(t.x0 + t.x1) / 2, t.z1], side: 'r' }); }
   if (featOn('roses')) { const [dx, dz] = toPond(ROSE_GARDEN.x, ROSE_GARDEN.z); L.push({ name: 'Rose garden', hint: 'walk among flowers', x: ROSE_GARDEN.x, z: ROSE_GARDEN.z, stand: [ROSE_GARDEN.x + dx * 9.5, ROSE_GARDEN.z + dz * 9.5], face: [ROSE_GARDEN.x, ROSE_GARDEN.z], side: 'l' }); }
-  { const b = BRIDGES[0]; L.push({ name: 'Bridges', hint: 'cross the water', x: b.x, z: b.z, stand: [b.x - b.D.x * (b.half + 1.6), b.z - b.D.z * (b.half + 1.6)], face: [b.x, b.z], side: 'r' }); }
-  { const i = 50, p = RIVER[i], q = RIVER[i + 1], tx = q.x - p.x, tz = q.z - p.z, l = Math.hypot(tx, tz); L.push({ name: 'The stream walk', hint: 'follow the water', x: p.x, z: p.z, stand: [p.x + tz / l * 4.2, p.z - tx / l * 4.2], face: [RIVER[i + 6].x + tz / l * 4.2, RIVER[i + 6].z - tx / l * 4.2], side: 'r' }); }
+  { const i = 50, p = RIVER[i], q = RIVER[i + 1], tx = q.x - p.x, tz = q.z - p.z, l = Math.hypot(tx, tz); L.push({ name: 'The stream', hint: 'bridges and running water', x: p.x, z: p.z, stand: [p.x + tz / l * 4.2, p.z - tx / l * 4.2], face: [RIVER[i + 6].x + tz / l * 4.2, RIVER[i + 6].z - tx / l * 4.2], side: 'l' }); }
+  { const [dx, dz] = toPond(FOUNTAIN.x, FOUNTAIN.z); L.push({ name: 'The fountain', hint: 'toss a coin, make a wish', x: FOUNTAIN.x, z: FOUNTAIN.z, stand: [FOUNTAIN.x - dx * 4, FOUNTAIN.z - dz * 4], face: [FOUNTAIN.x, FOUNTAIN.z], side: 'r' }); }
+  const before = (Lm, d, name, hint, side) => { const a = Math.atan2(-Lm.x, -Lm.z); L.push({ name, hint, x: Lm.x, z: Lm.z, stand: [Lm.x + Math.sin(a) * d, Lm.z + Math.cos(a) * d], face: [Lm.x, Lm.z], side }); };
+  before(LANDMARKS.shrine, 15, 'The shrine', 'ring the bell, make a wish', 'r');
+  before(LANDMARKS.pagoda, 9, 'The pagoda', 'three storeys, and a lantern each side', 'r');
+  before(LANDMARKS.bell, 5.5, 'The bell tower', 'strike the temple bell', 'l');
   return L;
 }
 function standNear(x, z, fx, fz) {
@@ -106,7 +114,7 @@ function buildMarks() {
   const add = (cls, x, z, attrs, html) => { const [sx, sy] = P(x, z), b = document.createElement('button'); b.className = cls; b.style.left = sx + 'px'; b.style.top = sy + 'px'; Object.entries(attrs).forEach(([k, v]) => b.setAttribute(k, v)); if (html) b.innerHTML = html; marks.appendChild(b); return b; };
   places().forEach(pl => {
     const go = () => { const [x, z] = standNear(pl.stand[0], pl.stand[1], pl.face[0], pl.face[1]); closeMap(false); glideTo(x, z, pl.face[0], pl.face[1]); };
-    const b = add('map-place side-' + pl.side + (pl.small ? ' small' : ''), pl.x, pl.z, { 'aria-label': `${pl.name}: ${pl.hint}` }, `<span class="dot"></span><span class="t"><em>${pl.name}</em><small>${pl.hint}</small></span>`);
+    const b = add('map-place side-' + pl.side + (pl.small ? ' small' : ''), pl.x, pl.z, { 'aria-label': `${pl.name}: ${pl.hint}`, 'data-side': pl.side }, `<span class="dot"></span><span class="t"><em>${pl.name}</em><small>${pl.hint}</small></span>`);
     b.onclick = go;
     // on narrow screens the hints live in a row under the map instead of crowding it
     const li = document.createElement('button'); li.setAttribute('role', 'listitem'); li.innerHTML = `<em>${pl.name}</em> <small>${pl.hint}</small>`; li.onclick = go; list.appendChild(li);
@@ -121,6 +129,40 @@ function buildMarks() {
     };
   });
   const [mx, my] = P(player.pos.x, player.pos.z); me.style.left = mx + 'px'; me.style.top = my + 'px'; me.style.transform = `translate(-50%,-50%) rotate(${-player.yaw}rad)`;
+  // region names, softly, with a few spots to try inside their sector
+  for (const k in REGIONS) {
+    const rg = REGIONS[k], el = document.createElement('span'), spots = [];
+    for (const [f, da] of [[0.5, 0], [0.5, 0.45], [0.5, -0.45], [0.25, 0], [0.8, 0], [0.8, 0.4], [0.8, -0.4]]) { const r = rg.r0 + (rg.r1 - rg.r0) * f, a = rg.a + rg.sa * da; spots.push(P(Math.cos(a) * r, Math.sin(a) * r)); }
+    el.className = 'map-region'; el.textContent = rg.name.replace(/^The /, ''); el.dataset.spots = JSON.stringify(spots); el.style.fontSize = Math.max(12, Math.min(16, S * 3.3)) + 'px'; marks.appendChild(el);
+  }
+  settleLabels();
+}
+// ---- keeping the words apart ----
+// Each place tries its own side, then the others; region names try a few spots in their sector. One
+// that still finds no room keeps only its dot and shows its words on hover. Poem dots, your marker and
+// every place's dot are kept clear.
+function settleLabels() {
+  const box = stage.getBoundingClientRect(), taken = [];
+  const pad = (r, p) => ({ left: r.left - p, right: r.right + p, top: r.top - p, bottom: r.bottom + p });
+  // a label never clashes with its own dot
+  const clash = (r, self) => r.left < box.left + 4 || r.right > box.right - 4 || r.top < box.top + 2 || r.bottom > box.bottom - 2 ||
+    taken.some(t => !(self && t.own === self) && r.left < t.right && r.right > t.left && r.top < t.bottom && r.bottom > t.top);
+  marks.querySelectorAll('.map-poem').forEach(b => { const r = b.getBoundingClientRect(), x = (r.left + r.right) / 2, y = (r.top + r.bottom) / 2; taken.push({ left: x - 9, right: x + 9, top: y - 9, bottom: y + 9 }); });
+  taken.push(pad(me.getBoundingClientRect(), 3));
+  const placeEls = [...marks.querySelectorAll('.map-place')];
+  placeEls.forEach(b => taken.push(Object.assign(pad(b.querySelector('.dot').getBoundingClientRect(), 2), { own: b })));
+  placeEls.forEach(b => {
+    const pref = b.dataset.side, order = [pref, ...['r', 'l', 'b', 't'].filter(s => s !== pref)];
+    for (const s of order) {
+      b.classList.remove('side-l', 'side-r', 'side-c', 'side-t', 'side-b'); b.classList.add('side-' + s);
+      const r = pad(b.querySelector('.t').getBoundingClientRect(), 3); if (!clash(r, b)) { taken.push(r); return; }
+    }
+    b.classList.remove('side-l', 'side-c', 'side-t', 'side-b'); b.classList.add('side-r', 'quiet');
+  });
+  marks.querySelectorAll('.map-region').forEach(el => {
+    for (const [x, y] of JSON.parse(el.dataset.spots)) { el.style.left = x + 'px'; el.style.top = y + 'px'; const r = pad(el.getBoundingClientRect(), 2); if (!clash(r)) { taken.push(r); return; } }
+    el.hidden = true;
+  });
 }
 function legend() {
   $('#map-legend').innerHTML = MOODS.map(([k, label]) => `<span><i style="background:${MOOD_INK[k]}"></i>${label}</span>`).join('') + '<span class="me-key"><b>▲</b>You</span>';
