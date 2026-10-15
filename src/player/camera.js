@@ -5,8 +5,9 @@ import { camera } from '../world/renderer.js';
 import { decor, featOn } from '../world/paths.js';
 
 /* ================= player & camera: position, tweens, collision ================= */
-export const player = { pos: new V3(0, 0, 35.5), yaw: 0, pitch: -0.06, vel: new V3(), eyeY: 0 };
-export const SPAWN = { pos: new V3(0, 0, 35.5), yaw: 0 };
+export const player = { pos: new V3(0, 0, 49), yaw: 0, pitch: -0.06, vel: new V3(), eyeY: 0 };
+// a few steps outside the gate, so the arch, its name and the sign are the first things you see
+export const SPAWN = { pos: new V3(0, 0, 49), yaw: 0 };
 export const curLook = new V3(0, 0, 0);
 export function camTween(toPos, toLook, dur, done) {
   setTween({ fp: camera.position.clone(), tp: toPos.clone(), fl: curLook.clone(), tl: toLook.clone(), t: 0, dur: reduceMotion ? Math.min(dur, 0.6) : dur, done });

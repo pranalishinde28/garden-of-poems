@@ -63,7 +63,7 @@ function drawWorld(g, P, s, full) {
   if (featOn('swings')) { g.strokeStyle = 'rgba(110,84,64,.85)'; g.lineWidth = Math.max(1.2, 0.35 * s); swings.forEach(sw => { const p = sw.g.position, a = sw.g.rotation.y, w = 1.3 * 1.35, dx = Math.cos(a) * w, dz = -Math.sin(a) * w, [x0, y0] = at(p.x - dx, p.z - dz), [x1, y1] = at(p.x + dx, p.z + dz); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }); }
   // the bench, the gate, the sign
   g.save(); let [bx, by] = at(BENCH.x, BENCH.z); g.translate(bx, by); g.rotate(-Math.atan2(-BENCH.x, -BENCH.z)); g.fillStyle = 'rgba(110,80,56,.9)'; g.fillRect(-0.85 * s, -0.2 * s, 1.7 * s, Math.max(2, 0.4 * s)); g.restore();
-  { const [x, y] = at(0, 39.2); g.strokeStyle = 'rgba(150,52,40,.85)'; g.lineWidth = Math.max(1.5, 0.4 * s); g.beginPath(); g.moveTo(x - 2.2 * s, y); g.lineTo(x + 2.2 * s, y); g.stroke(); }
+  { const [x, y] = at(0, 39.2); g.strokeStyle = 'rgba(150,52,40,.85)'; g.lineWidth = Math.max(1.5, 0.5 * s); g.beginPath(); g.moveTo(x - 3.2 * s, y); g.lineTo(x + 3.2 * s, y); g.stroke(); }
   if (sign.visible) { const [x, y] = at(sign.position.x, sign.position.z); g.fillStyle = 'rgba(110,84,64,.9)'; g.fillRect(x - Math.max(2, 0.8 * s), y - 1, Math.max(4, 1.6 * s), 3); }
 }
 

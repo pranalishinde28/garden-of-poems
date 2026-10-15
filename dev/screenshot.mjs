@@ -51,6 +51,12 @@ const VIEWS = {
   'sea-high': { pos: [4, 26, 60], look: [-10, -2, -60], season: 'summer', view: 'sea' },
   'sea-gate': { pos: [30, 3, 55], look: [140, -4, 90], season: 'spring', view: 'sea' },
   'lineup': { lineup: true, pos: [0, 0.95, 40.2], look: [0, 0.62, 36.6] },
+  'spawn': { pos: [0, 1.7, 49], look: [0, 1.15, 20] },
+  'gate-close': { pos: [1.2, 2.2, 44], look: [0, 3, 39] },
+  'gate-autumn': { pos: [1.2, 2.2, 44], look: [0, 3, 39], season: 'autumn' },
+  'gate-winter': { pos: [1.2, 2.2, 44], look: [0, 3, 39], season: 'winter' },
+  'gate-back': { pos: [0, 1.7, 33], look: [0, 1.5, 50] },
+  'entrance-high': { pos: [7, 7, 48], look: [0, 1.5, 30] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
 };
 const views = String(opt('views', Object.keys(VIEWS).join(','))).split(',');
