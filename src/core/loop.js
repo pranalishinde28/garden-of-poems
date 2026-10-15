@@ -10,7 +10,7 @@ import { swings } from '../world/swings.js';
 import { updateAnimals } from '../animals/animals.js';
 import { airU, rainU } from '../world/particles.js';
 import { Music } from '../audio/music.js';
-import { curLook } from '../player/camera.js';
+import { curLook, player } from '../player/camera.js';
 import { drag, hoverXY, pick } from '../ui/input.js';
 import { regionKey, setCue, showRegion } from '../ui/helpers.js';
 import { updateSeed } from '../ui/writing.js';
@@ -21,11 +21,14 @@ import { updateFx, updatePlants } from './updates.js';
 import { renderReflection } from '../water/reflection.js';
 import { renderPost } from '../world/post.js';
 import { updateFigure } from '../player/figure.js';
+import { trampleU } from '../world/grass.js';
 import { noteFrame, quality } from '../settings/quality.js';
+import { power, shouldDraw } from './power.js';
 import { late } from './late.js';
 
 let last = performance.now(), first = true, reflFrame = 0;
 export function frame(now) {
+  if (!shouldDraw(now)) { requestAnimationFrame(frame); return; } // see core/power.js
   const dt = Math.min(0.05, (now - last) / 1000); last = now; setTime(T + dt);
   windU.uTime.value = T; waterU.uTime.value = T;
   atmosphere(dt);
@@ -47,10 +50,11 @@ export function frame(now) {
   if (hoverXY && !drag && !isTouch && (state.mode === 'walk' || state.mode === 'focus') && (Math.floor(T * 20) % 3 === 0)) {
     const t = pick(hoverXY[0], hoverXY[1]); late.hoverPlant = t && t.kind === 'plant' ? t.plant : null; canvas.style.cursor = t ? 'pointer' : 'grab';
   } else if (drag && state.mode === 'walk') canvas.style.cursor = 'grabbing';
-  const growing = updatePlants(dt); updateFx(dt);
+  const growing = updatePlants(dt); updateFx(dt); power.growing = growing;
   setShadowClock(shadowClock + dt);
   if (shadowDirty || (growing && shadowClock > 0.25) || shadowClock > 3) { renderer.shadowMap.needsUpdate = true; setShadowClock(0); setShadowDirty(false); }
   airU.uCam.value.copy(camera.position); rainU.uCam.value.copy(camera.position);
+  trampleU.uPlayer.value.set(player.pos.x, 0, player.pos.z);
   sky.position.copy(camera.position);
   Music.update(state.rain);
   camera.updateMatrixWorld();

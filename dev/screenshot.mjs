@@ -6,6 +6,7 @@
 //   node dev/screenshot.mjs --check --url http://localhost:8080/   test a running server (npm run dev)
 //   node dev/screenshot.mjs --flow swing        sit, swing, read five poems, stand up (desktop and phone)
 //   node dev/screenshot.mjs --flow avatar       third person: walk, bench, swing, kneel to read, pond
+//   node dev/screenshot.mjs --flow battery      frames drawn and CPU busy time per second: idle, walking, reading, map
 //   node dev/screenshot.mjs --flow audit        screens, axe accessibility results, tap targets and frame times into dev/shots/audit/
 //   node dev/screenshot.mjs --flow map          map: open, hover, two clicks to a poem, glide to a place, hidden features, phone
 //   options: --views intro,tunnel  --out dev/shots/after  --base /garden-of-poems/
@@ -111,6 +112,10 @@ async function main() {
     if (FLOW === 'avatar') await avatarFlow(page);
     else if (FLOW === 'map') await mapFlow(page, browser, url, errors);
     else if (FLOW === 'ux') await uxFlow(page);
+    else if (FLOW === 'battery') await batteryFlow(page);
+    else if (FLOW === 'profile') await profileFlow(page);
+    else if (FLOW === 'programs') await programsFlow(page);
+    else if (FLOW === 'refl') { await page.evaluate(() => { const g = window.__garden; g.state.mode = 'cinematic'; g.camera.position.set(7, 2.2, 9); g.curLook.set(0, -0.4, 0); g.camera.lookAt(g.curLook); }); await sleep(2500); console.log('  reflection pixels:', JSON.stringify(await page.evaluate(() => { const g = window.__garden, rt = g.reflRT, out = []; for (const [fx, fy] of [[.5, .5], [.5, .2], [.5, .8], [.2, .5]]) { const b = new Uint8Array(4); g.renderer.readRenderTargetPixels(rt, Math.floor(rt.width * fx), Math.floor(rt.height * fy), 1, 1, b); out.push([...b]); } return { size: [rt.width, rt.height], out }; }))); }
     else if (FLOW === 'quality') await qualityFlow(page);
     else if (FLOW === 'audit') await auditFlow(page, browser, url, errors);
     else if (FLOW === 'swing') { await swingFlow(page, 'desktop'); await swingFlowPhone(browser, url, errors); }
@@ -468,4 +473,52 @@ async function uxFlow(page) {
     const after = await page.evaluate(() => window.__garden.poems.length), has = await page.evaluate(t => window.__garden.poems.some(p => p.title === t), title);
     if (mid !== before - 1 || after !== before || !has) throw new Error(`${before} → ${mid} → ${after}`); return `“${title}”: ${before} → ${mid} → ${after}`;
   });
+}
+
+// ---- battery: what the page costs per second in everyday moments ----
+// frames drawn per second (each one is GPU work) and main-thread busy time (CPU), from Chrome's own metrics
+async function batteryFlow(page) {
+  const results = {}; await page.bringToFront();
+  console.log('  window focused: ' + await page.evaluate(() => document.hasFocus()));
+  const measure = async (label, ms = 8000) => {
+    const d0 = await page.evaluate(() => window.__garden.framesDrawn ?? 0);
+    await page.evaluate(() => { window.__frames = 0; const f = () => { window.__frames++; window.__raf = requestAnimationFrame(f); }; cancelAnimationFrame(window.__raf); window.__raf = requestAnimationFrame(f); });
+    const a = await page.metrics(); const t0 = Date.now(); await sleep(ms); const b = await page.metrics(); const dt = (Date.now() - t0) / 1000;
+    const fr = await page.evaluate(() => window.__frames);
+    const drawn = (await page.evaluate(() => window.__garden.framesDrawn ?? null)) ?? null;
+    results[label] = { drawnPerSec: drawn === null ? +(fr / dt).toFixed(1) : +((drawn - d0) / dt).toFixed(1), cpuBusyPct: +(100 * (b.TaskDuration - a.TaskDuration) / dt).toFixed(1), scriptPct: +(100 * (b.ScriptDuration - a.ScriptDuration) / dt).toFixed(1) };
+    console.log('  ' + label.padEnd(26) + JSON.stringify(results[label]));
+  };
+  await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+  await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await sleep(25000); // past the first shader compiles
+  await measure('standing still');
+  await page.keyboard.down('KeyW'); await page.keyboard.down('KeyA'); await measure('walking'); await page.keyboard.up('KeyW'); await page.keyboard.up('KeyA');
+  await page.evaluate(() => { const g = window.__garden; g.openPoem([...g.plants.values()][1]); }); await sleep(3000); await measure('reading a poem'); await page.keyboard.press('Escape'); await sleep(1500);
+  await page.keyboard.press('KeyM'); await sleep(1200); await measure('map open'); await page.keyboard.press('Escape'); await sleep(800);
+  return results;
+}
+
+// ---- where the CPU goes while standing still: top functions by self time (build with --minify false) ----
+async function profileFlow(page) {
+  await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+  await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await page.bringToFront(); await sleep(28000);
+  const cdp = await page.createCDPSession(); await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 200 }); await cdp.send('Profiler.start');
+  await sleep(6000); const { profile } = await cdp.send('Profiler.stop');
+  const dt = new Map(); const byId = new Map(profile.nodes.map(n => [n.id, n]));
+  profile.samples.forEach((id, i) => { const n = byId.get(id), f = n.callFrame, key = `${f.functionName || '(anon)'} ${f.url.split('/').pop()}:${f.lineNumber}`; dt.set(key, (dt.get(key) || 0) + (profile.timeDeltas[i] || 0)); });
+  const total = [...dt.values()].reduce((a, b) => a + b, 0);
+  [...dt.entries()].sort((a, b) => b[1] - a[1]).slice(0, 18).forEach(([k, v]) => console.log('  ' + (100 * v / total).toFixed(1).padStart(5) + '%  ' + k));
+}
+
+// ---- are shader programs being created while nothing changes? ----
+async function programsFlow(page) {
+  await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
+  await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await sleep(8000);
+  const snap = () => page.evaluate(() => { const R = window.__garden.renderer; return { programs: R.info.programs.length, names: R.info.programs.map(p => p.name + ':' + p.usedTimes) }; });
+  await sleep(25000); const a = await snap(); await sleep(5000); const b = await snap();
+  console.log(`  programs after settling: ${a.programs} → ${b.programs} over 5 s`);
+  const before = new Set(a.names.map(n => n.split(':')[0]));
+  console.log('  new or changed:', b.names.filter(n => !a.names.includes(n)).slice(0, 12).join(' | '));
+  const keys = await page.evaluate(() => window.__garden.renderer.info.programs.slice(-6).map(p => (p.cacheKey || '').split(',').filter(x => x && x !== 'false' && x !== '0' && x !== 'true').slice(-14).join(',')));
+  keys.forEach(k => console.log('  key: ' + k.slice(0, 300)));
 }

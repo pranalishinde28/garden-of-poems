@@ -61,6 +61,7 @@ import './core/updates.js';
 import './water/reflection.js';
 import './world/post.js';
 import './settings/quality.js';
+import './core/power.js';
 import './core/loop.js';
 import './debug.js';
 import './styles.css';

@@ -51,3 +51,5 @@ $('#m-quality').onclick = () => {
   chooseQuality(next); toast(next === 'auto' ? 'Quality follows this device now.' : `Quality: ${next}.`, 2400);
 };
 chooseQuality(quality.choice);
+// on battery power, Auto starts gentler
+if (navigator.getBattery) navigator.getBattery().then(b => { if (!b.charging && quality.choice === 'auto' && quality.level === 'high') apply('medium'); }).catch(() => {});

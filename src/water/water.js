@@ -7,7 +7,6 @@ import { DS, GEO, M, part } from '../world/geometry.js';
 /* ================= water: reflective pond and river ================= */
 export const reflCam = new THREE.PerspectiveCamera();
 export const texMat = new THREE.Matrix4();
-export const clipPlane = new THREE.Plane(new V3(0, 1, 0), -WATER_Y + 0.02);
 export const waterU = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
   uTime: { value: 0 }, uNight: { value: 0 }, uRain: { value: 0 }, uDeep: { value: C('#1d3634') }, uShallow: { value: C('#4f5d40') },
   uLightDir: { value: new V3() }, uLightCol: { value: new THREE.Color() }, uRip: { value: new THREE.Vector4(0, 0, -100, 0) },
