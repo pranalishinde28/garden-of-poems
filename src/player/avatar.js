@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { V3, clamp, lerp } from '../core/util.js';
 import { Merge } from '../world/geometry.js';
+import { animateCreature, buildBird, buildCat } from './creatures.js';
 
 /* ================= the walker's figure ================= */
 // An original, chibi-style figure built from simple shapes (no model files): a large round head with a
@@ -9,20 +10,30 @@ import { Merge } from '../world/geometry.js';
 // sitting, swinging and kneeling blend into one another.
 
 export const AVATAR_OPTIONS = {
+  kind: [['girl', 'Girl'], ['boy', 'Boy'], ['cat', 'Cat'], ['bird', 'Bird']],
+  coat: [['siamese', 'Siamese'], ['tabby', 'Tabby'], ['black', 'Black'], ['white', 'White'], ['grey', 'Grey']],
+  plumage: [['cream', 'Cockatiel'], ['grey', 'Grey'], ['blue', 'Blue']],
   skin: ['#fbe3d3', '#f3cfb5', '#e2b393', '#c99573', '#a8744f', '#86593b', '#64402b', '#45302a'],
-  hairStyle: [['bun', 'Twin buns'], ['twintails', 'Twintails'], ['bob', 'Bob'], ['long', 'Long'], ['tail', 'Ponytail'], ['short', 'Short']],
+  hairStyle: [['bun', 'Twin buns'], ['twintails', 'Twintails'], ['bob', 'Bob'], ['long', 'Long'], ['tail', 'Ponytail'], ['short', 'Short'], ['messy', 'Messy']],
   hairColor: ['#1d1a19', '#3a2a20', '#5c3f2b', '#8a4f2e', '#c49a62', '#e2cfa6', '#9c9893', '#f1eee8'],
-  outfit: [['dress', 'Dress'], ['casual', 'Casual'], ['yukata', 'Yukata'], ['kimono', 'Kimono'], ['coat', 'Coat']],
+  outfit: [['dress', 'Dress'], ['casual', 'Casual'], ['jacket', 'Jacket and shorts'], ['yukata', 'Yukata'], ['kimono', 'Kimono'], ['coat', 'Coat']],
   cloth: ['#9cc0d6', '#e7b7c4', '#3d4a6b', '#6f8a5a', '#efe6d4', '#b5603d', '#3b3a38', '#7b5a86'],
   accent: ['#f3efe6', '#e9c46a', '#c9474a', '#2f3f5c', '#d98fa6', '#5d7a4a'],
-  extra: [['none', 'Nothing'], ['scarf', 'Scarf'], ['hat', 'Straw hat'], ['parasol', 'Parasol']],
+  extra: [['none', 'Nothing'], ['scarf', 'Scarf'], ['bow', 'Pink bow'], ['hat', 'Straw hat'], ['parasol', 'Parasol']],
 };
-export const DEFAULT_AVATAR = { skin: '#f3cfb5', height: 1, hairStyle: 'bun', hairColor: '#1d1a19', outfit: 'dress', cloth: '#9cc0d6', accent: '#f3efe6', extra: 'none' };
+export const DEFAULT_AVATAR = { kind: 'girl', coat: 'siamese', plumage: 'cream', skin: '#f3cfb5', height: 1, hairStyle: 'bun', hairColor: '#1d1a19', outfit: 'dress', cloth: '#9cc0d6', accent: '#f3efe6', extra: 'none' };
 
+// choosing a kind in the editor starts from a look that suits it (any of it can be changed after)
+export const KIND_PRESETS = {
+  girl: { hairStyle: 'bun', outfit: 'dress', cloth: '#9cc0d6', accent: '#f3efe6', extra: 'none' },
+  boy: { hairStyle: 'messy', outfit: 'jacket', cloth: '#3b3a38', accent: '#c9474a', extra: 'scarf', skin: '#a8744f', hairColor: '#1d1a19' },
+  cat: {}, bird: {},
+};
 // keep only known keys and values, so a stored or shared config can never break the figure
 export function cleanAvatar(a) {
   const d = { ...DEFAULT_AVATAR }; if (!a || typeof a !== 'object') return d;
   const pick = (k, list) => { const vals = list.map(x => Array.isArray(x) ? x[0] : x); if (vals.includes(a[k])) d[k] = a[k]; };
+  pick('kind', AVATAR_OPTIONS.kind); pick('coat', AVATAR_OPTIONS.coat); pick('plumage', AVATAR_OPTIONS.plumage);
   pick('skin', AVATAR_OPTIONS.skin); pick('hairStyle', AVATAR_OPTIONS.hairStyle); pick('hairColor', AVATAR_OPTIONS.hairColor);
   pick('outfit', AVATAR_OPTIONS.outfit); pick('cloth', AVATAR_OPTIONS.cloth); pick('accent', AVATAR_OPTIONS.accent); pick('extra', AVATAR_OPTIONS.extra);
   if (typeof a.height === 'number' && isFinite(a.height)) d.height = clamp(Math.round(a.height * 100) / 100, 0.9, 1.08);
@@ -52,8 +63,8 @@ export const HIP_SIT = S.hip - S.thigh * 0.98;                       // hips abo
 
 // the painted face: big glossy eyes with two highlights, lashes, soft brows, rosy cheeks, a small smile
 const faces = new Map();
-function faceTexture(skin, hair) {
-  const key = skin + hair; if (faces.has(key)) return faces.get(key);
+function faceTexture(skin, hair, boy) {
+  const key = skin + hair + (boy ? 'b' : ''); if (faces.has(key)) return faces.get(key);
   const c = document.createElement('canvas'); c.width = 512; c.height = 256; const g = c.getContext('2d');
   g.fillStyle = skin; g.fillRect(0, 0, 512, 256);
   for (const x of [190, 322]) {
@@ -65,8 +76,9 @@ function faceTexture(skin, hair) {
     g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(x - 10, y - 13, 11, 14, 0, 0, 7); g.fill();
     g.beginPath(); g.ellipse(x + 12, y + 20, 6, 6.5, 0, 0, 7); g.fill();
     g.strokeStyle = '#1b1210'; g.lineWidth = 6; g.lineCap = 'round'; g.beginPath(); g.ellipse(x, y + 2, 36, 48, 0, Math.PI * 1.08, Math.PI * 1.92); g.stroke();
-    g.lineWidth = 4; g.beginPath(); g.moveTo(x + (x < 256 ? -32 : 32), y - 28); g.lineTo(x + (x < 256 ? -44 : 44), y - 38); g.stroke(); // a flick of lash
-    g.strokeStyle = darker(hair, 1.15); g.lineWidth = 5; g.beginPath(); g.arc(x, y - 26, 40, Math.PI * 1.3, Math.PI * 1.7); g.stroke(); // a soft brow
+    if (!boy) { g.lineWidth = 4; g.beginPath(); g.moveTo(x + (x < 256 ? -32 : 32), y - 28); g.lineTo(x + (x < 256 ? -44 : 44), y - 38); g.stroke(); } // a flick of lash
+    g.strokeStyle = darker(hair, 1.15); g.lineWidth = boy ? 8 : 5; g.beginPath(); if (boy) { g.moveTo(x - 30, y - 62); g.lineTo(x + 30, y - 58 - (x < 256 ? 4 : -4)); } else g.arc(x, y - 26, 40, Math.PI * 1.3, Math.PI * 1.7); g.stroke(); // a brow: straight and firmer for a boy
+    if (boy) continue;
     const blush = g.createRadialGradient(x + (x < 256 ? -14 : 14), y + 58, 2, x + (x < 256 ? -14 : 14), y + 58, 28);
     blush.addColorStop(0, 'rgba(240,120,130,.55)'); blush.addColorStop(1, 'rgba(240,120,130,0)'); g.fillStyle = blush; g.fillRect(x - 60, y + 20, 100, 80);
   }
@@ -76,9 +88,13 @@ function faceTexture(skin, hair) {
 
 export function buildAvatar(cfg) {
   cfg = cleanAvatar(cfg);
-  const o = cfg.outfit, robe = o === 'yukata' || o === 'kimono', coat = o === 'coat', dress = o === 'dress';
+  if (cfg.kind === 'cat') return buildCat(cfg);
+  if (cfg.kind === 'bird') return buildBird(cfg);
+  const boy = cfg.kind === 'boy';
+  const o = cfg.outfit, robe = o === 'yukata' || o === 'kimono', coat = o === 'coat', dress = o === 'dress', jacket = o === 'jacket';
   const skin = cfg.skin, cloth = cfg.cloth, accent = cfg.accent;
-  const legColor = robe ? cloth : coat ? '#2f2d2b' : o === 'casual' ? darker(cloth, 0.55) : skin;
+  const legColor = robe ? cloth : coat ? '#2f2d2b' : o === 'casual' ? darker(cloth, 0.55) : jacket ? darker(cloth, 0.85) : skin;
+  const bareShin = dress || o === 'casual' || jacket;
   const root = new THREE.Group(), body = joint(root, 0, 0, 0); body.scale.setScalar(cfg.height);
   const J = {};
   J.hips = joint(body, 0, S.hip, 0);
@@ -97,13 +113,18 @@ export function buildAvatar(cfg) {
     const col = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.014, 6, 16, Math.PI * 1.25), mat(robe ? '#f4efe4' : darker(cloth, 0.8)));
     col.position.set(0, S.chest - 0.01, 0); col.rotation.set(Math.PI / 2 + 0.5, 0, Math.PI * 0.62); J.chest.add(col);
   }
+  if (jacket) { // a zip jacket: a stand collar, a silver zip down the front, a darker hem
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.066, 0.04, 20, 1, true), mat(darker(cloth, 0.75))); col.material = col.material.clone(); col.material.side = THREE.DoubleSide; col.position.y = S.chest + 0.005; J.chest.add(col);
+    const zip = new THREE.Mesh(new THREE.BoxGeometry(0.006, S.chest + S.spine * 0.9, 0.006), mat('#c9c9c6')); zip.position.set(0, S.chest / 2 - 0.06, -0.107); J.chest.add(zip);
+    const hem = new THREE.Mesh(new THREE.CylinderGeometry(0.107, 0.107, 0.025, 24), mat(darker(cloth, 0.7))); hem.position.y = -0.03; J.spine.add(hem);
+  }
   if (robe) {
     const w = o === 'kimono' ? 0.07 : 0.045;
     const obi = new THREE.Mesh(new THREE.CylinderGeometry(0.106, 0.105, w, 24), mat(accent)); obi.position.y = 0.02; J.spine.add(obi);
     if (o === 'kimono') { const bow = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.05), mat(accent)); bow.position.set(0, 0.025, 0.1); J.spine.add(bow); }
   }
   // the skirt: a dress to mid-thigh, a robe to the ankle, a coat to the knee; it folds forward when sitting
-  if (dress || robe || coat || o === 'casual') {
+  if (dress || robe || coat || o === 'casual') { // (a jacket comes with shorts instead, below)
     const L = robe ? S.hip - 0.05 : coat ? 0.3 : dress ? 0.19 : 0.11, flare = dress ? 0.2 : robe ? 0.15 : coat ? 0.16 : 0.12;
     const c = o === 'casual' ? darker(cloth, 0.55) : cloth;
     const sk = lathe([[0.001, 0.02], [0.105, 0.02], [0.12 + (flare - 0.12) * 0.3, -L * 0.35], [flare, -L]], c, 28);
@@ -114,7 +135,7 @@ export function buildAvatar(cfg) {
   const H = S.head;
   const head = ball(H, skin, 1.04, 0.96, 0.98); head.position.y = H * 0.9; J.head.add(head);
   const faceGeo = new THREE.SphereGeometry(H * 1.004, 32, 20, Math.PI * 0.18, Math.PI * 0.64, Math.PI * 0.32, Math.PI * 0.42); // front patch
-  const face = new THREE.Mesh(faceGeo, new THREE.MeshLambertMaterial({ map: faceTexture(skin, cfg.hairColor), polygonOffset: true, polygonOffsetFactor: -1 }));
+  const face = new THREE.Mesh(faceGeo, new THREE.MeshLambertMaterial({ map: faceTexture(skin, cfg.hairColor, boy), polygonOffset: true, polygonOffsetFactor: -1 }));
   face.scale.set(1.04, 0.96, 0.98); face.position.y = H * 0.9; face.rotation.y = Math.PI; J.head.add(face); // the patch faces -z, the figure's front
   const ear = side => { const e = ball(0.03, skin, 0.7, 1, 0.5); e.position.set(side * H * 1.02, H * 0.86, 0.01); J.head.add(e); };
   ear(-1); ear(1);
@@ -126,6 +147,7 @@ export function buildAvatar(cfg) {
     if (dress) { const puff = ball(0.05, cloth, 1, 0.8, 1); puff.position.y = -0.01; sh.add(puff); } // a little puffed shoulder
     const el = joint(sh, 0, -S.upper, 0); J[side < 0 ? 'lElbow' : 'rElbow'] = el;
     el.add(limb(S.fore, 0.033, 0.028, dress || o === 'casual' ? skin : cloth));
+    if (jacket) { const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.031, 0.031, 0.022, 12), mat(darker(cloth, 0.7))); cuff.position.y = -S.fore + 0.01; el.add(cuff); }
     const hand = ball(0.034, skin, 0.85, 1.1, 0.9); hand.position.y = -S.fore - 0.03; el.add(hand);
     if (robe) { const L = o === 'kimono' ? 0.13 : 0.08; const sl = ball(1, cloth, 0.035, L, 0.08); sl.position.set(0, -0.04 - L * 0.55, 0.01); el.add(sl); }
   }
@@ -133,15 +155,32 @@ export function buildAvatar(cfg) {
   for (const side of [-1, 1]) {
     const hp = joint(J.hips, side * 0.055, -0.02, 0); J[side < 0 ? 'lHip' : 'rHip'] = hp;
     if (!robe) hp.add(limb(S.thigh, 0.05, 0.042, legColor));
+    if (jacket) { // cargo shorts to the knee, with a pocket on the side
+      const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.055, S.thigh * 0.95, 14), mat(legColor)); sh.position.y = -S.thigh * 0.45; hp.add(sh);
+      const pk = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.06, 0.05), mat(darker(legColor, 0.85))); pk.position.set(side * 0.058, -S.thigh * 0.55, 0); hp.add(pk);
+    }
     const kn = joint(hp, 0, -S.thigh, 0); J[side < 0 ? 'lKnee' : 'rKnee'] = kn;
-    kn.add(limb(S.shin, robe ? 0.048 : 0.04, robe ? 0.044 : 0.034, dress || o === 'casual' ? skin : legColor));
-    if (dress || o === 'casual') { const sock = limb(0.08, 0.037, 0.035, '#fbfaf7'); sock.position.y = -S.shin + 0.08; kn.add(sock); }
-    const shoe = ball(0.05, robe ? '#efe8da' : dress ? darker(cloth, 0.8) : '#3a2f28', 0.8, 0.55, 1.25); shoe.position.set(0, -S.shin - 0.02, -0.02); kn.add(shoe);
+    kn.add(limb(S.shin, robe ? 0.048 : 0.04, robe ? 0.044 : 0.034, bareShin ? skin : legColor));
+    if (bareShin) { const sock = limb(0.08, 0.037, 0.035, '#fbfaf7'); sock.position.y = -S.shin + 0.08; kn.add(sock); }
+    const shoe = ball(0.05, robe ? '#efe8da' : dress ? darker(cloth, 0.8) : jacket ? '#f4f2ee' : '#3a2f28', 0.8, 0.55, 1.25);
+    if (jacket) { const sole = ball(0.051, '#b9b6b0', 0.82, 0.25, 1.27); sole.position.set(0, -S.shin - 0.04, -0.02); kn.add(sole); } // white sneakers on a grey sole shoe.position.set(0, -S.shin - 0.02, -0.02); kn.add(shoe);
   }
   // extras
-  if (cfg.extra === 'scarf') {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.022, 8, 18), mat(accent)); ring.rotation.x = Math.PI / 2; ring.position.y = S.chest; J.chest.add(ring);
-    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.16, 0.02), mat(accent)); tail.position.set(0.04, S.chest - 0.08, -0.1); J.chest.add(tail); J.scarf = tail;
+  if (cfg.extra === 'scarf') { // a thick knitted wrap, its two ends hanging in front with a fringe
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.056, 0.03, 10, 20), mat(accent)); ring.rotation.x = Math.PI / 2; ring.scale.set(1, 1, 1.2); ring.position.y = S.chest + 0.005; J.chest.add(ring);
+    for (const [x, l, rz] of [[0.03, 0.17, 0.08], [0.065, 0.13, -0.05]]) {
+      const end = new THREE.Mesh(new THREE.BoxGeometry(0.05, l, 0.022), mat(accent)); end.position.set(x, S.chest - l / 2 - 0.01, -0.1); end.rotation.z = rz; J.chest.add(end);
+      const fr = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.02, 0.012), mat(darker(accent, 0.8))); fr.position.set(x + Math.sin(rz) * l / 2, S.chest - l - 0.01, -0.1); J.chest.add(fr);
+    }
+    J.scarf = ring;
+  }
+  if (cfg.extra === 'bow') { // a pink bow at the collar: two soft loops, two short tails and a knot
+    const pink = '#f39ab8', deep = '#e2789c';
+    for (const s of [-1, 1]) {
+      const loop = ball(0.04, pink, 1.1, 0.75, 0.45); loop.position.set(s * 0.042, S.chest - 0.02, -0.105); loop.rotation.z = s * 0.25; J.chest.add(loop);
+      const t = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.06, 0.008), mat(deep)); t.position.set(s * 0.018, S.chest - 0.065, -0.105); t.rotation.z = s * 0.3; J.chest.add(t);
+    }
+    const knot = ball(0.018, deep, 1, 1, 0.8); knot.position.set(0, S.chest - 0.02, -0.112); J.chest.add(knot);
   }
   if (cfg.extra === 'hat') {
     const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.3, 0.06, 28), mat('#d8c08a')); brim.position.y = H * 1.82; J.head.add(brim);
@@ -186,6 +225,16 @@ function buildHair(headJ, cfg, H) {
     const l = ball(1, c, H * 0.16, H * 0.55, H * 0.14); l.position.set(side * H * 0.92, y0 - H * 0.2, -H * 0.3); l.rotation.z = side * 0.08; headJ.add(l);
   }
   const st = cfg.hairStyle;
+  if (st === 'messy') { // tousled tufts all over the crown and a few falling over the brow
+    const R = (s => () => (s = (s * 16807) % 2147483647) / 2147483647)(7);
+    for (let i = 0; i < 26; i++) {
+      const a = R() * Math.PI * 2, el = 0.15 + R() * 0.95, dir = new V3(Math.cos(a) * Math.sin(el), Math.cos(el), Math.sin(a) * Math.sin(el));
+      if (dir.z < -0.55 && dir.y < 0.5) continue; // keep the face clear
+      const t = new THREE.Mesh(new THREE.ConeGeometry(H * 0.2, H * (0.55 + R() * 0.35), 7), mat(c));
+      t.position.set(dir.x * H * 0.92, y0 + dir.y * H * 0.9, dir.z * H * 0.92); t.quaternion.setFromUnitVectors(new V3(0, 1, 0), dir.clone().add(new V3((R() - .5) * 0.6, 0.25, (R() - .5) * 0.6)).normalize()); headJ.add(t);
+    }
+    for (let i = 0; i < 5; i++) { const x = (i - 2) * H * 0.3, t = new THREE.Mesh(new THREE.ConeGeometry(H * 0.13, H * 0.5, 6), mat(c)); t.position.set(x, y0 + H * 0.42, -H * 0.9); t.rotation.set(Math.PI - 0.35, 0, (i - 2) * 0.18); headJ.add(t); }
+  }
   if (st === 'bun' || st === 'twintails') for (const side of [-1, 1]) {
     const b = ball(H * 0.36, c); b.position.set(side * H * 0.78, y0 + H * 0.78, H * 0.22); headJ.add(b);
     if (st === 'twintails') { const t = new THREE.Mesh(new THREE.ConeGeometry(H * 0.26, H * 1.9, 14), mat(c)); t.position.set(side * H * 1.32, y0 - H * 0.2, H * 0.12); t.rotation.set(Math.PI, 0, -side * 0.28); headJ.add(t); }
@@ -248,8 +297,17 @@ function applyPose(fig) {
 }
 // ease the figure toward a pose; speed is in m/s for the walk cycle
 export function animateAvatar(fig, kind, dt, t, a = {}) {
+  if (fig.creature) { animateCreature(fig, kind, dt, t, a); return; }
   if (kind === 'walk') { fig.phase += dt * a.speed / 0.4; if (a.speed < 0.25) kind = 'idle'; } // short legs, quicker steps
   const tp = target(fig, kind, t, a), k = 1 - Math.exp(-dt * (kind === 'walk' || kind === 'swing' ? 14 : 6));
   for (const key in tp) fig.pose[key] += (tp[key] - fig.pose[key]) * k;
   applyPose(fig);
+}
+
+// how each kind stands in the world: eye height (first person), the point the camera follows, how far
+// behind it sits, and how far the root drops when sitting on a seat
+export function figureMetrics(cfg) {
+  if (cfg.kind === 'cat') return { eye: 0.6, head: 0.5, cam: 2.0, sit: 0 };
+  if (cfg.kind === 'bird') return { eye: 0.5, head: 0.45, cam: 1.8, sit: 0 };
+  return { eye: 1.6, head: HEAD_Y * cfg.height, cam: 2.7, sit: HIP_SIT * cfg.height };
 }

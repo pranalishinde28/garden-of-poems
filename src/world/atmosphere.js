@@ -42,7 +42,7 @@ export function atmosphere(dt) {
   scene.fog.near = lerp(lerp(55, 14, n), 9, r * 0.7); scene.fog.far = lerp(lerp(300, 115, n), 85, r * 0.7); // clear air by day
   mountainU.forEach(u => { u.uHor.value.copy(hor); u.uNight.value = n; });
   hemi.color.copy(hemiD.s).lerp(hemiN.s, n); hemi.groundColor.copy(hemiD.g).lerp(hemiN.g, n); hemi.intensity = lerp(0.5, 0.42, n) * (1 - r * 0.12) + r * 0.08;
-  dirL.color.copy(dirD).lerp(dirN, n).multiply(seasonTint); dirL.intensity = lerp(1.6, 0.36, n) * (1 - r * 0.7);
+  dirL.color.copy(dirD).lerp(dirN, n).multiply(seasonTint); dirL.intensity = lerp(1.45, 0.36, n) * (1 - r * 0.7);
   sunDir.set(0.6 + Math.sin(T * 0.008) * 0.1, 0.44 + Math.sin(T * 0.011) * 0.03, 0.64).normalize(); // a morning sun: long, soft shadows
   skyU.uSunDir.value.copy(sunDir); skyU.uMoonDir.value.copy(moonDir);
   lightDir.copy(n < 0.5 ? sunDir : moonDir);

@@ -82,6 +82,7 @@
   <button id="m-clear" class="danger">Clear the garden</button>
 </div></div>
 
+<button id="act-btn" hidden aria-label="Fly (hold)">Fly</button>
 <div id="fview" hidden role="region" aria-label="Looking into the fountain"><span>The koi come up to see you.</span><button id="fv-coin">Toss a coin</button><button id="fv-back">Step back</button></div>
 <div id="swingui" hidden><span>Hold <kbd>W</kbd> or <kbd>Space</kbd> to swing higher. <kbd>R</kbd> to read.</span><button id="sw-read" aria-pressed="false" aria-controls="swreader">Read</button><button id="sw-pump">Swing</button><button id="sw-off">Stand up</button></div>
 <section id="swreader" class="panel" aria-label="Poems to read on the swing" hidden>
@@ -127,14 +128,17 @@
     <div class="av-wrap">
       <canvas id="av-preview" width="320" height="440" aria-label="A preview of your figure"></canvas>
       <div class="av-ctl">
-        <div class="av-row"><span>Skin</span><div class="sw" data-av="skin" role="group" aria-label="Skin tone"></div></div>
-        <div class="av-row"><label for="av-height">Height</label><input type="range" id="av-height" min="0.9" max="1.08" step="0.01"></div>
-        <div class="av-row"><span>Hair</span><div class="seg" data-av="hairStyle" role="group" aria-label="Hair style"></div></div>
-        <div class="av-row"><span></span><div class="sw" data-av="hairColor" role="group" aria-label="Hair colour"></div></div>
-        <div class="av-row"><span>Wearing</span><div class="seg" data-av="outfit" role="group" aria-label="Clothing"></div></div>
-        <div class="av-row"><span></span><div class="sw" data-av="cloth" role="group" aria-label="Clothing colour"></div></div>
-        <div class="av-row"><span>Sash, scarf</span><div class="sw" data-av="accent" role="group" aria-label="Sash, scarf and parasol colour"></div></div>
-        <div class="av-row"><span>Carrying</span><div class="seg" data-av="extra" role="group" aria-label="Something extra"></div></div>
+        <div class="av-row"><span>You are</span><div class="seg" data-av="kind" role="group" aria-label="You are"></div></div>
+        <div class="av-row" data-for="cat"><span>Coat</span><div class="seg" data-av="coat" role="group" aria-label="The cat's coat"></div></div>
+        <div class="av-row" data-for="bird"><span>Feathers</span><div class="seg" data-av="plumage" role="group" aria-label="The bird's feathers"></div></div>
+        <div class="av-row" data-for="person"><span>Skin</span><div class="sw" data-av="skin" role="group" aria-label="Skin tone"></div></div>
+        <div class="av-row" data-for="person"><label for="av-height">Height</label><input type="range" id="av-height" min="0.9" max="1.08" step="0.01"></div>
+        <div class="av-row" data-for="person"><span>Hair</span><div class="seg" data-av="hairStyle" role="group" aria-label="Hair style"></div></div>
+        <div class="av-row" data-for="person"><span></span><div class="sw" data-av="hairColor" role="group" aria-label="Hair colour"></div></div>
+        <div class="av-row" data-for="person"><span>Wearing</span><div class="seg" data-av="outfit" role="group" aria-label="Clothing"></div></div>
+        <div class="av-row" data-for="person"><span></span><div class="sw" data-av="cloth" role="group" aria-label="Clothing colour"></div></div>
+        <div class="av-row" data-for="person"><span>Sash, scarf</span><div class="sw" data-av="accent" role="group" aria-label="Sash, scarf and parasol colour"></div></div>
+        <div class="av-row" data-for="person"><span>Wearing too</span><div class="seg" data-av="extra" role="group" aria-label="Something extra"></div></div>
       </div>
     </div>
     <div class="c-row"><span>Camera</span><div class="seg" data-av-view role="group" aria-label="Camera"><button data-v="first">Through my eyes</button><button data-v="third">Behind me</button></div></div>
@@ -256,7 +260,7 @@
       <dl class="keys"><dt><kbd class="only-fine">E</kbd><span class="only-fine"> or click</span><span class="only-coarse">Tap</span></dt><dd>when something glows: read a poem, sit at the bench, swing</dd><dt>The bench under the wisteria</dt><dd>write a poem</dd><dt>The pond</dt><dd>an older poem rises as a reflection, and the koi come to you</dd><dt>The fountain</dt><dd>toss a coin and make a wish</dd><dt>The shrine and the bell tower</dt><dd>ring the bells</dd></dl>
     </div>
     <div class="only-fine"><h3>Keys</h3>
-      <dl class="keys"><dt><kbd>M</kbd></dt><dd>the map</dd><dt><kbd>N</kbd></dt><dd>write a poem</dd><dt><kbd>V</kbd></dt><dd>see yourself, or look through your eyes</dd><dt><kbd>B</kbd></dt><dd>back to the gate</dd><dt><kbd>C</kbd> · <kbd>G</kbd></dt><dd>customize · public gardens</dd><dt><kbd>U</kbd> · <kbd>L</kbd> · <kbd>P</kbd></dt><dd>music · moonlight · rain</dd><dt><kbd>Y</kbd> · <kbd>T</kbd></dt><dd>next season · walk through time</dd><dt><kbd>F</kbd></dt><dd>full screen</dd></dl>
+      <dl class="keys"><dt><kbd>M</kbd></dt><dd>the map</dd><dt><kbd>N</kbd></dt><dd>write a poem</dd><dt><kbd>V</kbd></dt><dd>see yourself, or look through your eyes</dd><dt><kbd>B</kbd></dt><dd>back to the gate</dd><dt><kbd>C</kbd> · <kbd>G</kbd></dt><dd>customize · public gardens</dd><dt><kbd>U</kbd> · <kbd>L</kbd> · <kbd>P</kbd></dt><dd>music · moonlight · rain</dd><dt><kbd>Y</kbd> · <kbd>T</kbd></dt><dd>next season · walk through time</dd><dt><kbd>F</kbd></dt><dd>full screen</dd><dt><kbd>Space</kbd></dt><dd>as a bird, hold to fly (let go to glide down); as a cat, pounce</dd></dl>
       <h3>Reading and swinging</h3>
       <dl class="keys"><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>earlier or later poem</dd><dt><kbd>J</kbd> · <kbd>K</kbd></dt><dd>like · leave a note (in a public garden)</dd><dt><kbd>R</kbd></dt><dd>read while on a swing</dd><dt><kbd>W</kbd> or <kbd>Space</kbd></dt><dd>swing higher</dd><dt><kbd>Esc</kbd></dt><dd>close, or stand up</dd><dt><kbd>?</kbd></dt><dd>this page</dd></dl>
     </div>

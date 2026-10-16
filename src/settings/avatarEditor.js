@@ -4,7 +4,7 @@ import { state } from '../core/state.js';
 import { flag } from './storage.js';
 import { renderer } from '../world/renderer.js';
 import { Cloud } from '../cloud/cloud.ts';
-import { AVATAR_OPTIONS, animateAvatar, buildAvatar, cleanAvatar } from '../player/avatar.js';
+import { AVATAR_OPTIONS, KIND_PRESETS, animateAvatar, buildAvatar, cleanAvatar } from '../player/avatar.js';
 import { getAvatar, setAvatar, setThirdPerson } from '../player/figure.js';
 import { setViewUI } from '../ui/hud.js';
 import { provide } from '../core/late.js';
@@ -29,7 +29,9 @@ function ensurePreview() {
 function refreshPreview() {
   ensurePreview();
   if (pFig) pScene.remove(pFig.root);
-  pFig = buildAvatar(getAvatar()); pFig.root.rotation.y = Math.PI * 0.85; pScene.add(pFig.root);
+  const a = getAvatar(); pFig = buildAvatar(a); pFig.root.rotation.y = Math.PI * 0.85; pScene.add(pFig.root);
+  // a small creature is framed closer
+  if (a.kind === 'cat') { pCam.position.set(0, 0.55, 2.1); pCam.lookAt(0, 0.3, 0); } else if (a.kind === 'bird') { pCam.position.set(0, 0.45, 1.6); pCam.lookAt(0, 0.25, 0); } else { pCam.position.set(0, 1.05, 4.4); pCam.lookAt(0, 0.86, 0); }
 }
 function loop(now) {
   if (!panel.classList.contains('open') || panel.hidden) { raf = 0; return; }
@@ -50,7 +52,7 @@ function build() {
       b.dataset.v = v; b.type = 'button';
       if (box.classList.contains('sw')) { b.style.background = v; b.setAttribute('aria-label', `${box.getAttribute('aria-label')} ${i + 1}`); }
       else b.textContent = text;
-      b.onclick = () => change({ [k]: v });
+      b.onclick = () => change(k === 'kind' && v !== getAvatar().kind ? { kind: v, ...KIND_PRESETS[v] } : { [k]: v });
       box.appendChild(b);
     });
   });
@@ -62,6 +64,9 @@ function render() {
   const a = getAvatar();
   document.querySelectorAll('#c-you [data-av]').forEach(box => box.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', a[box.dataset.av] === b.dataset.v ? 'true' : 'false')));
   $('#av-height').value = a.height;
+  // only the choices that belong to what you are
+  const person = a.kind === 'girl' || a.kind === 'boy';
+  document.querySelectorAll('#c-you [data-for]').forEach(r => { r.hidden = r.dataset.for === 'person' ? !person : r.dataset.for !== a.kind; });
   document.querySelectorAll('[data-av-view] button').forEach(b => b.setAttribute('aria-pressed', (b.dataset.v === 'third') === !!state.thirdPerson ? 'true' : 'false'));
   $('#av-minimap').checked = !!state.minimap;
 }

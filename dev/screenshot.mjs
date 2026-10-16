@@ -51,6 +51,8 @@ const VIEWS = {
   'sea-high': { pos: [4, 26, 60], look: [-10, -2, -60], season: 'summer', view: 'sea' },
   'sea-gate': { pos: [30, 3, 55], look: [140, -4, 90], season: 'spring', view: 'sea' },
   'lineup': { lineup: true, pos: [0, 0.95, 40.2], look: [0, 0.62, 36.6] },
+  'kinds': { kinds: true, pos: [0.2, 0.75, 38.6], look: [0.2, 0.4, 36.6] },
+  'kinds-walk': { kinds: 'walk', pos: [0.2, 0.75, 38.6], look: [0.2, 0.4, 36.6] },
   'spawn': { pos: [0, 1.7, 49], look: [0, 1.15, 20] },
   'gate-close': { pos: [1.2, 2.2, 44], look: [0, 3, 39] },
   'gate-autumn': { pos: [1.2, 2.2, 44], look: [0, 3, 39], season: 'autumn' },
@@ -149,6 +151,16 @@ async function main() {
       console.log(`  cue "${cue}", looking: ${mode}, after stepping back: ${after}`); if (mode !== 'fountain' || after !== 'walk') errors.push('fountain view did not open or close');
       await page.evaluate(() => { const g = window.__garden; g.state.mode = 'cinematic'; g.camera.position.set(4.2, 1.6, 4.8); g.curLook.set(0, -0.4, 0); g.camera.lookAt(g.curLook); }); await sleep(1200); await page.screenshot({ path: join(root, 'dev/shots/pond-koi.png') });
     }
+    else if (FLOW === 'creatures') { // be a bird: take off over the garden; be a cat: trot and pounce
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden; g.setAvatar({ kind: 'bird', plumage: 'cream' }); g.setThirdPerson(true); });
+      await sleep(1200); await page.keyboard.down('Space'); await page.keyboard.down('KeyW'); await sleep(2600); await page.screenshot({ path: join(root, 'dev/shots/bird-climb.png') });
+      await page.keyboard.up('Space'); await sleep(1400); await page.screenshot({ path: join(root, 'dev/shots/bird-glide.png') }); const alt = await page.evaluate(() => window.__garden.player.alt.toFixed(1)); await page.keyboard.up('KeyW');
+      await page.evaluate(() => { const g = window.__garden; g.setAvatar({ kind: 'cat', coat: 'siamese' }); g.player.pos.set(0, 0, 46); g.player.yaw = 0; }); await sleep(800);
+      await page.keyboard.down('KeyW'); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/cat-walk.png') }); await page.keyboard.press('Space'); await sleep(250); await page.screenshot({ path: join(root, 'dev/shots/cat-pounce.png') }); await page.keyboard.up('KeyW');
+      await sleep(4500); await page.screenshot({ path: join(root, 'dev/shots/cat-sit.png') });
+      console.log('  the bird flew to ' + alt + ' m');
+    }
     else if (FLOW === 'parasol') { // your figure with a parasol, from behind, at the gate
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(1200); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden; g.setAvatar({ extra: 'parasol', outfit: 'kimono', cloth: '#2c3d6b', accent: '#f2c46a', hairStyle: 'bob' }); g.setThirdPerson(true); });
@@ -178,6 +190,10 @@ async function shoot(page) {
       await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
       await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await sleep(9000);
     }
+    if (v.kinds) await page.evaluate(pose => {
+      // a girl, the boy from the owner's picture, a girl with a pink bow, a siamese cat, a tabby, a cockatiel, a blue bird
+      window.__garden.lineup([{ kind: 'girl' }, { kind: 'boy', hairStyle: 'messy', outfit: 'jacket', cloth: '#3b3a38', accent: '#c9474a', extra: 'scarf', skin: '#a8744f' }, { kind: 'girl', extra: 'bow', hairStyle: 'twintails', cloth: '#efe6d4' }, { kind: 'cat', coat: 'siamese' }, { kind: 'cat', coat: 'tabby' }, { kind: 'bird', plumage: 'cream' }, { kind: 'bird', plumage: 'blue' }], -1.3, 36.6, pose);
+    }, v.kinds === 'walk' ? 'walk' : 'idle');
     if (v.lineup) await page.evaluate(() => {
       const O = [['dress', '#9cc0d6', 'bun', '#1d1a19', '#f3cfb5', 'none'], ['dress', '#e7b7c4', 'twintails', '#5c3f2b', '#fbe3d3', 'parasol'], ['yukata', '#3d4a6b', 'bob', '#1d1a19', '#e2b393', 'none'],
         ['kimono', '#b5603d', 'long', '#8a4f2e', '#c99573', 'none'], ['casual', '#6f8a5a', 'short', '#3a2a20', '#86593b', 'scarf'], ['coat', '#7b5a86', 'tail', '#c49a62', '#f3cfb5', 'hat']];

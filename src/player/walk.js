@@ -14,7 +14,14 @@ import { tmpV } from '../world/atmosphere.js';
 import { fireFlurry } from '../world/particles.js';
 import { T } from '../core/state.js';
 import { things } from '../core/things.js';
+import { getAvatar } from './figure.js';
+import { figureMetrics } from './avatar.js';
+import { clamp, isTouch } from '../core/util.js';
+import { state } from '../core/state.js';
 
+// the touch button for flying or pouncing holds this, like Space
+export let flyHeld = false;
+export const setFlyHeld = v => { flyHeld = v; };
 export function walk(dt) {
   let ix = 0, iz = 0;
   if (keys.has('KeyW') || keys.has('ArrowUp')) iz += 1;
@@ -23,23 +30,33 @@ export function walk(dt) {
   if (keys.has('KeyD') || keys.has('ArrowRight')) ix += 1;
   ix += jv.x; iz += jv.y;
   const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
-  const sp = (keys.has('ShiftLeft') || keys.has('ShiftRight')) ? 5.2 : 3.0;
+  // each kind moves as it would: a cat is quick and can pounce (Space); a bird hops on the ground and
+  // flies while Space is held, gliding down when it is let go, over hedges and roofs
+  const av = getAvatar(), kind = av.kind, fast = keys.has('ShiftLeft') || keys.has('ShiftRight');
+  player.alt = player.alt || 0; player.vy = player.vy || 0;
+  const up = keys.has('Space') || flyHeld;
+  if (kind === 'bird') { player.vy = up ? Math.min(player.vy + 10 * dt, 3.4) : Math.max(player.vy - 4 * dt, player.alt > 0.02 ? -1.4 : 0); }
+  else if (kind === 'cat') { if (up && player.alt < 0.01 && !player.jumpHeld) player.vy = 3.1; player.jumpHeld = up; player.vy -= 9.8 * dt; }
+  else player.vy = 0;
+  player.alt = clamp(player.alt + player.vy * dt, 0, 24); if (player.alt === 0 && player.vy < 0) player.vy = 0;
+  const flying = kind === 'bird' && player.alt > 0.15, high = player.alt > 3.2;
+  const sp = kind === 'bird' ? (flying ? (fast ? 9 : 6) : (fast ? 3.4 : 2.2)) : kind === 'cat' ? (fast ? 6.4 : 3.4) : fast ? 5.2 : 3.0;
   const sy = Math.sin(player.yaw), cy = Math.cos(player.yaw);
   player.vel.lerp(new V3((-sy * iz + cy * ix) * sp, 0, (-cy * iz - sy * ix) * sp), 1 - Math.exp(-dt * 5));
   const nx = player.pos.x + player.vel.x * dt, nz = player.pos.z + player.vel.z * dt;
   const stuck = blocked(player.pos.x, player.pos.z);
-  if (stuck || !blocked(nx, nz)) { player.pos.x = nx; player.pos.z = nz; }
+  if (high || stuck || !blocked(nx, nz)) { player.pos.x = nx; player.pos.z = nz; } // above the roofs nothing is in the way
   else if (!blocked(nx, player.pos.z)) player.pos.x = nx;
   else if (!blocked(player.pos.x, nz)) player.pos.z = nz;
   else player.vel.set(0, 0, 0);
   const r = Math.hypot(player.pos.x, player.pos.z);
   if (r > WORLD_R + 1) player.pos.multiplyScalar((WORLD_R + 1) / r);
   plants.forEach(pl => {
-    if (!pl.collide || pl.vis < 0.5) return;
+    if (!pl.collide || pl.vis < 0.5 || high) return;
     const dx = player.pos.x - pl.root.position.x, dz = player.pos.z - pl.root.position.z, d = Math.hypot(dx, dz), m = pl.collide + 0.35;
     if (d < m && d > 0.0001) { player.pos.x = pl.root.position.x + dx / d * m; player.pos.z = pl.root.position.z + dz / d * m; }
   });
-  const ty = floorH(player.pos.x, player.pos.z) + 1.6;
+  const ty = floorH(player.pos.x, player.pos.z) + figureMetrics(av).eye + player.alt;
   player.eyeY += (ty - player.eyeY) * (1 - Math.exp(-dt * 6));
   camera.position.set(player.pos.x, player.eyeY, player.pos.z);
   camera.rotation.set(player.pitch, player.yaw, 0);
@@ -75,4 +92,16 @@ export function walk(dt) {
   if (target && target.kind === 'plant') target.plant.glowT = 1;
   setCue(target);
   showRegion(regionAt(player.pos.x, player.pos.z));
+}
+
+// on a touch screen a cat or a bird gets a button for Space: hold it to fly, tap it to pounce
+const actBtn = document.getElementById('act-btn');
+if (actBtn) {
+  const hold = v => e => { e.preventDefault(); setFlyHeld(v); actBtn.classList.toggle('held', v); };
+  actBtn.addEventListener('pointerdown', hold(true)); ['pointerup', 'pointercancel', 'pointerleave'].forEach(n => actBtn.addEventListener(n, hold(false)));
+  setInterval(() => {
+    const k = getAvatar().kind, show = isTouch && state.mode === 'walk' && (k === 'bird' || k === 'cat');
+    if (actBtn.hidden === show) actBtn.hidden = !show;
+    const t = k === 'bird' ? 'Fly' : 'Pounce'; if (actBtn.textContent !== t) { actBtn.textContent = t; actBtn.setAttribute('aria-label', k === 'bird' ? 'Fly (hold)' : 'Pounce'); }
+  }, 400);
 }

@@ -152,6 +152,12 @@ select throws_ok($$update public.gardens set settings = '{"view":"the moon"}' wh
 select lives_ok($$update public.profiles set avatar = '{"outfit":"dress","hairStyle":"twintails","skin":"#f3cfb5"}' where id = auth.uid()$$, 'the chibi figure''s dress and twintails save');
 select lives_ok($$update public.gardens set settings = '{"season":"autumn","links":[{"label":"site","url":"https://example.com"}],"show":{"swings":false}}' where owner = auth.uid()$$, 'valid settings save');
 select throws_ok($$update public.profiles set avatar = '{"outfit":"spacesuit"}' where id = auth.uid()$$, '23514', null, 'the avatar uses known values');
+select lives_ok($$update public.profiles set avatar = '{"kind":"boy","hairStyle":"messy","outfit":"jacket","extra":"scarf","accent":"#c62f2a"}' where id = auth.uid()$$, 'a boy in a jacket with messy hair saves');
+select lives_ok($$update public.profiles set avatar = '{"kind":"cat","coat":"siamese"}' where id = auth.uid()$$, 'a siamese cat saves');
+select lives_ok($$update public.profiles set avatar = '{"kind":"bird","plumage":"cream"}' where id = auth.uid()$$, 'a cream bird saves');
+select lives_ok($$update public.profiles set avatar = '{"kind":"girl","extra":"bow"}' where id = auth.uid()$$, 'a pink bow saves');
+select throws_ok($$update public.profiles set avatar = '{"kind":"dragon"}' where id = auth.uid()$$, '23514', null, 'the figure is a girl, a boy, a cat or a bird');
+select throws_ok($$update public.profiles set avatar = '{"kind":"cat","coat":"plaid"}' where id = auth.uid()$$, '23514', null, 'cats come in known coats');
 select lives_ok($$update public.profiles set avatar = '{"outfit":"kimono","skin":"#d9a77f","height":1.02}' where id = auth.uid()$$, 'a valid avatar saves');
 select throws_ok($$insert into public.poems (owner, id, title, content, mood) values (auth.uid(), 'odd', 'Odd', 'x', 'furious')$$, '23514', null, 'moods are known values');
 

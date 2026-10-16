@@ -8,7 +8,7 @@ import { decor, featOn } from '../world/paths.js';
 import { bench } from '../world/decor.js';
 import { plants } from '../plants/registry.js';
 import { curLook, floorH, lookDir, player } from './camera.js';
-import { HEAD_Y, HIP_SIT, animateAvatar, buildAvatar, cleanAvatar } from './avatar.js';
+import { animateAvatar, buildAvatar, cleanAvatar, figureMetrics } from './avatar.js';
 
 /* ================= your figure in the garden, and the third-person camera ================= */
 // In first person the figure only appears where the camera is elsewhere (it never blocks your eyes).
@@ -30,6 +30,7 @@ export function setAvatar(cfg) {
   config = cleanAvatar(cfg); flag.set('avatar', JSON.stringify(config));
   const old = fig; fig = buildAvatar(config); fig.root.position.copy(old.root.position); fig.root.quaternion.copy(old.root.quaternion); fig.phase = old.phase;
   scene.remove(old.root); scene.add(fig.root);
+  if (config.kind !== 'bird' && config.kind !== 'cat') { player.alt = 0; player.vy = 0; }
 }
 export function setThirdPerson(on) { state.thirdPerson = !!on; flag.set('view', on ? 'third' : 'first'); camD = 0; }
 
@@ -93,17 +94,17 @@ export function updateFigure(dt) {
     show = third; const sp = Math.hypot(player.vel.x, player.vel.z);
     const want = sp > 0.3 ? Math.atan2(-player.vel.x, -player.vel.z) : facing;
     placeAt(player.pos.x, player.pos.z, sp > 0.3 ? want : facing, dt, !r.visible);
-    pose = 'walk'; a.speed = sp;
+    pose = 'walk'; a.speed = sp; a.alt = player.alt || 0; a.vy = player.vy || 0; a.fly = config.kind === 'bird' && a.alt > 0.15;
     if (third) {
-      const head = tmp.set(player.pos.x, floorH(player.pos.x, player.pos.z) + (HEAD_Y + 0.25) * config.height, player.pos.z).clone();
+      const M = figureMetrics(config), head = tmp.set(player.pos.x, floorH(player.pos.x, player.pos.z) + M.head + 0.25 * (M.head / 0.9) + a.alt, player.pos.z).clone();
       const dir = lookDir(), right = new V3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
-      followCamera(dt, head, dir, right, 2.7);
+      followCamera(dt, head, dir, right, M.cam + (a.fly ? 0.9 : 0));
     }
   } else if (m === 'swing' && state.swing) {
     show = third; pose = 'swing'; const sw = state.swing; a.omega = sw.omega;
     sw.g.updateMatrixWorld(true); sw.pivot.getWorldQuaternion(q); up.set(0, 1, 0).applyQuaternion(q);
     const hips = sw.pivot.localToWorld(new V3(0, -sw.L + 0.04, 0.02));
-    r.position.copy(hips).addScaledVector(up, -HIP_SIT * config.height); r.quaternion.copy(q).multiply(flip);
+    r.position.copy(hips).addScaledVector(up, -figureMetrics(config).sit); r.quaternion.copy(q).multiply(flip);
     if (third) { // watch from behind the swing, toward the pond; dragging turns the view
       const f = new V3(0, 0, 1).applyQuaternion(sw.g.quaternion), side = new V3(f.z, 0, -f.x), ya = sw.yaw * 0.8;
       const base = sw.g.position, dirH = f.clone().multiplyScalar(Math.cos(ya)).addScaledVector(side, Math.sin(ya));
@@ -113,7 +114,7 @@ export function updateFigure(dt) {
     }
   } else if (m === 'writing') {
     show = third; pose = 'write';
-    const seat = bench.localToWorld(new V3(0, 0, 0.02)); r.position.set(seat.x, bench.position.y + 0.485 - HIP_SIT * config.height, seat.z); // sit on the slats, feet swinging
+    const seat = bench.localToWorld(new V3(0, 0, 0.02)); r.position.set(seat.x, bench.position.y + 0.485 - figureMetrics(config).sit, seat.z); // sit on the slats, feet swinging
     facing = bench.rotation.y + Math.PI; r.quaternion.setFromAxisAngle(up.set(0, 1, 0), facing);
   } else if (m === 'focus') {
     show = third;
