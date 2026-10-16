@@ -15,7 +15,7 @@ function makePetalGeo() {
 }
 export function rockGeo(seed) {
   // welded, so the stone shades smoothly (an unwelded icosahedron gets one normal per face: cut gems)
-  let g0 = new THREE.IcosahedronGeometry(1, 3); g0.deleteAttribute('normal'); g0.deleteAttribute('uv');
+  let g0 = new THREE.IcosahedronGeometry(1, 2); // welded, detail 2 is smooth enough (3 quadrupled every stepping stone) g0.deleteAttribute('normal'); g0.deleteAttribute('uv');
   const g = BufferGeometryUtils.mergeVertices(g0), p = g.attributes.position, R = rng(seed), cols = [], v = new V3();
   const f = [R() * 9, R() * 9, R() * 9];
   for (let i = 0; i < p.count; i++) {

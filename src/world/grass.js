@@ -75,17 +75,22 @@ export let grassMat;
   fm.frustumCulled = false; fm.layers.set(2); scene.add(fm); wildflowers.m = fm;
 
   // reeds along the pond and river
-  const RN = 260, rm = new THREE.InstancedMesh(GEO.cone, windify(new THREE.MeshLambertMaterial({ color: '#66773f' }), 0.1, 'blade'), RN);
+  // fewer, leaning every way and of every height, a deeper green, and cattails on some (they were even rows of sticks)
+  const RN = 170, rm = new THREE.InstancedMesh(GEO.cone, windify(new THREE.MeshLambertMaterial({ color: '#58703a' }), 0.1, 'blade'), RN);
+  const cat = new THREE.InstancedMesh(GEO.sph, new THREE.MeshLambertMaterial({ color: '#6a4a2c' }), RN); let ci = 0;
   let ri = 0;
   for (let i = 0; i < RN * 3 && ri < RN; i++) {
     let x, z;
     if (R() < 0.55) { const a = R() * 6.28, r = 7.0 + R() * 1.5; x = Math.cos(a) * r; z = Math.sin(a) * r; }
     else { const p = RIVER[5 + Math.floor(R() * 60)], side = R() < .5 ? -1 : 1, o = 1.3 + R() * 0.9; const a = R() * 6.28; x = p.x + Math.cos(a) * o * side; z = p.z + Math.sin(a) * o; }
     const y = groundH(x, z); if (y > WATER_Y + 0.35 || y < WATER_Y - 0.45 || stoneNear(x, z, 0.6) || bridgeH(x, z) !== null) continue;
-    d.position.set(x, y - 0.05, z); d.rotation.set((R() - .5) * 0.15, 0, (R() - .5) * 0.15); d.scale.set(0.012, 0.9 + R() * 1.0, 0.012);
+    const tx = (R() - .5) * 0.4, tz = (R() - .5) * 0.4, hgt = 0.6 + Math.pow(R(), 1.6) * 1.3;
+    d.position.set(x, y - 0.05, z); d.rotation.set(tx, R() * 6.28, tz); d.scale.set(0.016, hgt, 0.016);
     d.updateMatrix(); rm.setMatrixAt(ri++, d.matrix);
+    if (R() < 0.22) { const top = new THREE.Vector3(0, hgt * 0.82, 0).applyEuler(new THREE.Euler(tx, 0, tz)); d.position.set(x + top.x, y - 0.05 + top.y, z + top.z); d.scale.set(0.03, 0.11, 0.03); d.updateMatrix(); cat.setMatrixAt(ci++, d.matrix); }
   }
   rm.count = ri; rm.frustumCulled = false; scene.add(rm);
+  cat.count = ci; cat.frustumCulled = false; scene.add(cat);
 })();
 // nothing grows inside a pool, a court or a floor: grass and wildflowers within rad go (modules built later
 // call this for what they lay down, since the grass is planted first)

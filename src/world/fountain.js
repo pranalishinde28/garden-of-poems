@@ -210,7 +210,9 @@ function newTarget(f) {
   const a = f.R() * 6.28, r = 0.75 + f.R() * 0.85; f.tx = Math.cos(a) * r; f.tz = Math.sin(a) * r;
 }
 addTick(dt => {
-  if (!fountain.visible || camera.position.distanceTo(fountain.position) > 45) return true; // nobody near: let them rest
+  const near = fountain.visible && camera.position.distanceTo(fountain.position) < 45;
+  fish.forEach(f => { f.k.g.visible = near; }); // nobody near: they are not drawn at all
+  if (!near) return true;
   const t = waterU.uTime.value;
   fish.forEach(f => {
     if (Math.hypot(f.tx - f.x, f.tz - f.z) < 0.25 || f.R() < dt * 0.08) newTarget(f);

@@ -29,7 +29,7 @@ function waterMat(river) {
       float noise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);return mix(mix(h2(i),h2(i+vec2(1,0)),u.x),mix(h2(i+vec2(0,1)),h2(i+vec2(1,1)),u.x),u.y);}
       float wh(vec2 p){float t=uTime;vec2 q=p-vFlow*t;
         float h=sin(dot(q,vec2(.8,.6))*1.9+t*1.1)*.5+sin(dot(q,vec2(-.5,.85))*2.7+t*1.4)*.35+sin(dot(q,vec2(.2,-.98))*4.3+t*1.9)*.2+sin(dot(q,vec2(-.9,-.4))*6.1+t*2.4)*.12;
-        h+=(noise(q*2.5+t*.2)-.5)*.8+(noise(q*6.+vec2(t*.4,-t*.3))-.5)*.35;
+        h+=(noise(q*2.5+t*.2)-.5)*.7+(noise(q*6.+vec2(t*.4,-t*.3))-.5)*.14; // the finest ripples, kept faint: they sparkled
         float age=uTime-uRip.z;float dr=length(p-uRip.xy);h+=sin((dr-age*1.7)*11.)*exp(-pow(dr-age*1.7,2.)*3.)*exp(-age*.7)*step(0.,age)*2.5;
         if(uRain>0.01){for(int k=0;k<2;k++){vec2 g=p*1.7+float(k)*vec2(.43,.71);vec2 i=floor(g),f=fract(g);
           float cy=t*(0.75+h2(i+3.7)*0.5)+h2(i+9.1),ph=fract(cy),id=floor(cy);vec2 c=vec2(h2(i+id*.37),h2(i+5.3+id*.61))*.6+.2;float d=length(f-c)-ph*.42;
@@ -44,6 +44,8 @@ function waterMat(river) {
         #endif
         vec2 p=vW.xz;float e=.05;float h0=wh(p);
         vec3 n=normalize(vec3(-(wh(p+vec2(e,0.))-h0)/e,1.,-(wh(p+vec2(0.,e))-h0)/e));
+        // far water reads calm: ripples fade with distance (they aliased into hard white streaks)
+        n=normalize(mix(vec3(0.,1.,0.),n,clamp(1.25-length(cameraPosition-vW)/30.,.35,1.)));
         vec3 v=normalize(cameraPosition-vW);
         float f=clamp((0.03+0.97*pow(1.-max(dot(n,v),0.),5.))*1.1,0.,1.);
         vec2 uv=vR.xy/vR.w+n.xz*0.05;
@@ -61,7 +63,7 @@ function waterMat(river) {
         float foam=smoothstep(0.38,0.6,st)*0.3+smoothstep(0.8,1.05,vEdge)*0.35*noise(p*3.5+uTime*0.6);
         c=mix(c,vec3(.9,.94,.96)*mix(1.,0.25,uNight),foam*(1.-f*0.4));
         #endif
-        vec3 hv=normalize(normalize(uLightDir)+v);c+=uLightCol*pow(max(dot(n,hv),0.),260.)*1.8;
+        vec3 hv=normalize(normalize(uLightDir)+v);c+=uLightCol*pow(max(dot(n,hv),0.),150.)*0.95;
         #ifdef RIVER
         float a=max(mix(0.8,0.97,f),edge*0.4);
         #else

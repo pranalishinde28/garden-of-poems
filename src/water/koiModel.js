@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { rng } from '../core/util.js';
 import { canvasTex } from '../world/textures.js';
+import { BufferGeometryUtils } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /* ================= koi: a lifelike fish for the pond and the fountain ================= */
 // A tapered body (head toward +z) painted with a real variety's pattern, translucent fins and a long
@@ -41,6 +42,11 @@ function finGeo(shape) {
 const TAIL = finGeo('tail').rotateY(-Math.PI / 2).rotateZ(Math.PI / 2).translate(0, 0, -0.5); // trailing behind the body, upright
 const DORSAL = finGeo('dorsal').rotateY(Math.PI / 2).translate(0, 0.11, 0.2); // along the back
 const PECT = finGeo('pect');
+// every fin in one geometry, so a fish is two draw calls (body, fins) rather than seven
+const FINS = BufferGeometryUtils.mergeBufferGeometries([TAIL, DORSAL, ...[-1, 1].map(s => {
+  const g = PECT.clone(), m = new THREE.Matrix4().compose(new THREE.Vector3(s * 0.07, -0.04, 0.24), new THREE.Quaternion().setFromEuler(new THREE.Euler(0.3, s * 2.4, s * 0.5)), new THREE.Vector3(1, 1, 1));
+  return g.applyMatrix4(m);
+})]);
 
 // the varieties, painted onto a canvas wrapped round the body: x runs round it (0.5 = the spine), y runs
 // from the nose (top) to the tail (bottom)
@@ -76,6 +82,8 @@ function bodyTex(kind, seed) {
     const b = g.createLinearGradient(0, 0, 256, 0); b.addColorStop(0, 'rgba(255,250,240,.55)'); b.addColorStop(0.3, 'rgba(255,250,240,0)'); b.addColorStop(0.7, 'rgba(255,250,240,0)'); b.addColorStop(1, 'rgba(255,250,240,.55)');
     g.fillStyle = b; g.fillRect(0, 0, 256, 256);
     scales(g, 'rgba(0,0,0,.06)');
+    // the eyes, painted low on each side of the head (round the body: 0.25 and 0.75; along it: near the nose)
+    for (const x of [64, 192]) { g.fillStyle = '#121212'; g.beginPath(); g.ellipse(x, 22, 7, 5, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,.85)'; g.beginPath(); g.arc(x - 2, 20, 2, 0, 7); g.fill(); }
   }));
 }
 
@@ -99,15 +107,10 @@ export function makeKoi(kind, len, seed = 1) {
   const g = new THREE.Group(); g.scale.setScalar(len);
   const body = new THREE.Mesh(bodyGeo, swimify(new THREE.MeshPhongMaterial({ map: bodyTex(kind, seed), shininess: V.metal ? 90 : 45, specular: V.metal ? '#8a7440' : '#3a3a3a' }), u));
   const fm = swimify(new THREE.MeshLambertMaterial({ map: finTex, color: V.fin, transparent: true, opacity: 0.78, side: THREE.DoubleSide, depthWrite: false }), u);
-  const tail = new THREE.Mesh(TAIL, fm), dorsal = new THREE.Mesh(DORSAL, fm);
-  const pects = [-1, 1].map(s => { const m = new THREE.Mesh(PECT, fm); m.position.set(s * 0.07, -0.04, 0.24); m.rotation.set(0.3, s * 2.4, s * 0.5); return m; });
-  // eyes, low on the head, and two short barbels
-  const eyeM = new THREE.MeshPhongMaterial({ color: '#141414', shininess: 120 });
-  for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), eyeM); e.position.set(s * 0.05, 0.012, 0.42); g.add(e); }
-  g.add(body, tail, dorsal, ...pects);
+  g.add(body, new THREE.Mesh(FINS, fm));
   g.traverse(o => { if (o.isMesh) o.castShadow = false; });
   return {
     g, u,
-    swim(t, speed, turn) { u.uT.value = t; u.uSpeed.value = speed; u.uTurn.value = turn; pects[0].rotation.z = -0.5 - Math.sin(t * 3) * 0.25; pects[1].rotation.z = 0.5 + Math.sin(t * 3) * 0.25; },
+    swim(t, speed, turn) { u.uT.value = t; u.uSpeed.value = speed; u.uTurn.value = turn; },
   };
 }
