@@ -188,14 +188,36 @@ The modules are the old script's sections, and `src/main.js` imports them in the
 21. **Auto quality must only time full-rate frames:** `noteFrame()` measured the gap between drawn frames, so the deliberate 20 fps rest while standing still looked slow and Auto stepped the garden down to Low (no shadows, no colour grade, a third of the grass). It now skips frames unless `power.target` is 60. `--flow autoq` checks it.
 20. **The carpentry kit turns yaw first:** `Kit` uses Euler order `YXZ`, so a rafter yawed to its side still pitches along its length.
 
+## The owner's vision, round by round (keep adding to this)
+
+What the owner has asked for, in their own words where possible, so a later session knows not only what was built but what they were reaching for. Add each new round at the bottom; when a later request reverses an earlier one, note it rather than deleting the earlier line.
+
+**Standing wishes (true in every round)**
+- Every tree is a poem, and every poem grows as a **big cherry blossom tree that changes with the seasons**. No plants or flowers as poems, no decorative trees that look clickable.
+- **Quality comes first.** "Everything should be very very realistic and interactable." When battery work made the garden look worse, the answer was "bring back the original quality": savings must never be visible.
+- **Nothing confusing or cluttered:** no unnecessary poles ("there's too many of these poles unnecessarily"), no overlapping words on the map ("it's too cluttered"), no confusing wisteria poles.
+- **Readable from where you stand:** the gate's sign and its subtext should be big enough to read on arrival ("all of the subtext below the main name of the garden should be really bigger").
+- **The first view matters:** at the start you should see the arch, the garden's name and the sign, with no empty-looking side ("the right part side space is visible too much").
+- Seasonal accuracy (no wisteria in autumn; snow in winter; summer in full leaf).
+- Test locally before anything goes live; screenshots before and after; ask before pushing, making things public, enabling Pages or changing the live database.
+
+**Rounds**
+1. Run it; set up Supabase step by step; make sign-up work.
+2. "Swings are very far… bring them closer, remove the unnecessary wisteria poles", keeping the vision in this file.
+3. "A feature for adding rain."
+4. Six phases from the brief: Vite modules, accounts and sync, privacy and moderation, deploy to GitHub Pages, a UX audit, a database on migrations.
+5. "Trees get planted like plants or flowers, they should only be big cherry blossom trees, changing as per season." An avatar "like a cute stylized girl character" (built as an original chibi; the reference model's licence ruled out copying it). "Add a beach view of the entire park if the user doesn't want Mount Fuji"; "fix the view of Mount Fuji like shown in the image and add Japanese pagodas and temples at the view."
+6. Shorter grass ("when you walk it gets in the way"); battery life ("the battery is draining a lot", measure it properly); shortcut keys; "make the garden more interactive"; more pagodas and shrines "with accurate detail 3D"; a map without intersecting words; a bigger, fluffier, more beautiful arch with the garden's name, and a bigger sign with bigger lettering visible at spawn; public gardens "automatically best suggested for you"; a water fountain between the Wild Garden and the pond; the poem box "like an Instagram post", with "a book flip animation" and likes and comments when the garden is public.
+7. After seeing round 6 live: there was "no like button on the post" (it needs the live database migration, and appears only in public gardens); "give it a feel of book flip of pages while changing the poems" (pages now turn whenever the poem changes); "I liked the previous morning/daylight version" and "since you did that performance testing the park doesn't render good" (Auto quality had been stepping down to Low; fixed); fewer poles; balance the right side at the start; the character (the parasol hid her head from behind; now a wagasa over the left shoulder); much bigger subtext on the sign; "help me test this in local first before merge".
+
 ## What the owner wants next (open threads)
 
 They said they want to "edit a lot of things in the garden". Expect many visual and layout tweaks; ask them to describe or screenshot what feels wrong. Open items after the October 2026 round (phases 1–6):
 
-- **Migrate the live database** (docs/database.md), then merge and deploy the Phase 6 app.
 - **Custom SMTP** for confirmation and reset emails before inviting real people (Supabase's built-in mail sends only a few an hour).
 - **Three.js upgrade:** r128 → current, as its own step: colour management (`outputColorSpace`, hex colours treated as sRGB), physically based light units, `WebGLMultisampleRenderTarget` → `samples`, and the shader chunks that `windify` and the water shader patch. Compare with `npm run shots` and `dev/compare.mjs`.
-- **Migrate the live database** now includes `20261012000000` and `20261016000000` (hearts and suggestions); until then the card leaves the heart out.
+- **Migrate the live database** (docs/database.md): five migrations past the baseline, including `20261016000000` (hearts and suggestions). Until then the card leaves the heart out; the owner noticed. Ask before touching the live database.
+- **The character:** their last note said only "the character"; the parasol was fixed from their screenshot, but ask what else they want of her.
 - **Draw calls:** about 1,170 a frame at High (`--flow quality`), down from 1,400 after merging the temples. Merging more of the static scenery would help weaker devices more than any setting.
 - **Realtime presence** (the Phase 4 stretch goal, not built): other signed-in visitors as figures, movement only.
 - **Proposals in docs/ux-audit.md**, waiting for the owner's OK.
