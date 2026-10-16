@@ -47,6 +47,7 @@ import './ui/reading.js';
 import './ui/writing.js';
 import './ui/swingReader.js';
 import './ui/swinging.js';
+import './ui/fountainView.js';
 import './ui/themes.js';
 import './cloud/cloud.ts';
 import './cloud/gardensPanel.js';

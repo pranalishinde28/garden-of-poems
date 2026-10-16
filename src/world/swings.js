@@ -7,6 +7,7 @@ import { windify } from './wind.js';
 import { DS, GEO, M, Merge, VC, limb, part, rockGeo } from './geometry.js';
 import { BENCH, decor, regBegin, regEnd } from './paths.js';
 import { arborLeaves, wisGeoBase } from './arbors.js';
+import { clearRect } from './grass.js';
 import { GREEN_PALS, mapleMat } from '../plants/autumnLeaves.js';
 
 /* ================= swings ================= */
@@ -54,6 +55,7 @@ function buildSwing(x, z, ry, seed, sc = 1.35) {
   // more room between swings: 6.4 m apart in a row, 6.6 m between the rows
   for (let row = 0; row < 2; row++) for (let col = -1; col <= 1; col++) buildSwing(C0.x + rx * col * 6.4 - fx * row * 6.6, C0.z + rz * col * 6.4 - fz * row * 6.6, face, seed++, 1.35);
   const court = new THREE.Mesh(new THREE.PlaneGeometry(22, 16).rotateX(-Math.PI / 2), M('#8a7a5e')); court.position.set(C0.x - fx * 3.3, groundH(C0.x, C0.z) + 0.02, C0.z - fz * 3.3); court.rotation.y = face; court.receiveShadow = true; scene.add(court);
+  clearRect(court.position.x, court.position.z, 22, 16, face);
   // stepping stones from the front of the swings to the bench path
   const S0 = { x: C0.x + fx * 4.5, z: C0.z + fz * 4.5 }, S1 = { x: BENCH.x - 1.8, z: BENCH.z + 2.4 };
   const NS = Math.max(2, Math.round(Math.hypot(S1.x - S0.x, S1.z - S0.z) / 1.05) + 1);

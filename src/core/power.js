@@ -16,7 +16,7 @@ function targetFps(now) {
   if (state.mode === 'map') return 0;
   if (!document.hasFocus()) return 8;
   let fps = 60;
-  const moving = tween || seed || drag || keys.size || jv.x || jv.y || state.mode === 'swing' || state.mode === 'cinematic' || state.mode === 'intro' || power.growing;
+  const moving = tween || seed || drag || keys.size || jv.x || jv.y || state.mode === 'swing' || state.mode === 'cinematic' || state.mode === 'intro' || state.mode === 'fountain' || power.growing; // the koi swim smoothly while you watch
   if (!moving && now - lastActive > 2500) fps = (state.mode === 'focus' || state.mode === 'writing' || document.body.classList.contains('panel-open')) ? 24 : 20;
   if (reduceMotion) fps = Math.min(fps, 30);
   return fps;

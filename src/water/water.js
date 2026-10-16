@@ -3,6 +3,7 @@ import { C, V3, rng } from '../core/util.js';
 import { RIVER, WATER_Y } from '../world/terrain.js';
 import { reflRT, scene } from '../world/renderer.js';
 import { DS, GEO, M, part } from '../world/geometry.js';
+import { makeKoi } from './koiModel.js';
 
 /* ================= water: reflective pond and river ================= */
 export const reflCam = new THREE.PerspectiveCamera();
@@ -111,16 +112,11 @@ export const koi = [];
 // where the koi gather for a while: wherever you touch the water (ui/input.js)
 export const koiLure = { x: 0, z: 0, until: -1 };
 (function buildKoi() {
-  const R = rng(61), looks = [['#f2ece4', '#e1572b'], ['#e8742c', '#f6d9b8'], ['#f5f0e8', '#1f1f1f'], ['#f0a33a', '#f0a33a'], ['#f2ece4', '#d43f2a'], ['#d8d2c8', '#e8742c'], ['#e8742c', '#2a2a2a']];
-  looks.forEach((lk, i) => {
-    const g = new THREE.Group(), body = M(lk[0]), spot = M(lk[1]);
-    part(g, GEO.sph, body, [0, 0, 0], [0.065, 0.045, 0.24]);
-    part(g, GEO.sph, spot, [0, 0.012, 0.08 - R() * 0.12], [0.05, 0.035, 0.08]);
-    const tail = new THREE.Group(); tail.position.z = -0.22; g.add(tail);
-    part(tail, GEO.petal, M(lk[0], { side: DS, transparent: true, opacity: 0.85 }), [0, 0, 0], [0.16, 0.12, 0.12], [0, Math.PI / 2, Math.PI / 2]);
-    for (const sx of [-1, 1]) part(g, GEO.petal, M(lk[0], { side: DS }), [sx * 0.05, -0.01, 0.06], [0.08, 0.05, 0.06], [0, sx > 0 ? 0.5 : Math.PI - 0.5, 0]);
-    scene.add(g);
-    koi.push({ g, tail, r: 1.6 + R() * 3.6, cx: (R() - .5) * 1.5, cz: (R() - .5) * 1.5, sp: (0.12 + R() * 0.1) * (R() < .5 ? 1 : -1), ph: R() * 6.28, d: 0.18 + R() * 0.14, last: new V3() });
+  // lifelike koi (water/koiModel.js), each a different variety
+  const R = rng(61), kinds = ['kohaku', 'ogon', 'showa', 'chagoi', 'sanke', 'tancho', 'asagi', 'yamabuki', 'kohaku'];
+  kinds.forEach((kind, i) => {
+    const k = makeKoi(kind, 0.45 + R() * 0.2, 70 + i); scene.add(k.g);
+    koi.push({ g: k.g, swim: k.swim, r: 1.6 + R() * 3.6, cx: (R() - .5) * 1.5, cz: (R() - .5) * 1.5, sp: (0.12 + R() * 0.1) * (R() < .5 ? 1 : -1), ph: R() * 6.28, d: 0.18 + R() * 0.14, last: new V3(), turn: 0 });
   });
 })();
 

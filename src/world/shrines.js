@@ -8,6 +8,7 @@ import { Kit, PAL, brackets, hipRoof, lantern, pagoda, rafters, railing, roofMat
 import { SFX } from '../animals/animals.js';
 import { addTick, regThing } from '../core/things.js';
 import { late } from '../core/late.js';
+import { clearRect } from './grass.js';
 
 /* ================= inside the garden: a pagoda, a bell tower, and a Shinto shrine ================= */
 // Out past the poem regions, so they never crowd a tree: the pagoda and the bell tower beyond the Wild
@@ -101,6 +102,7 @@ const shrineParts = {};
 (function buildShrine() {
   const g = site(SHRINE.x, SHRINE.z), kit = new Kit();
   kit.box(9.5, 0.1, 17, 0, 0.06, 2, '#cbc3b0'); // the raked gravel court
+  { const c = toWorld(g, 0, 2); clearRect(c.x, c.z, 9.5, 17, g.rotation.y); }
   for (let z = 13.5; z > 3.6; z -= 1.05) kit.box(1.5, 0.08, 0.82, 0, 0.12, z, PAL.stone); // sandō paving
   // the honden, the inner sanctuary: raised on posts, plain hinoki, a thatched gable with chigi and katsuogi
   const hz = -5.2;

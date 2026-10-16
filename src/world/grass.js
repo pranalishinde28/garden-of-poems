@@ -8,6 +8,7 @@ import { BENCH, inTulip, stoneNear } from './paths.js';
 
 /* ================= grass ================= */
 export const grassChunks = [];
+const wildflowers = { m: null };
 export const trampleU = { uPlayer: { value: new V3(0, 0, -999) } };
 export let grassMat;
 (function buildGrass() {
@@ -71,7 +72,7 @@ export let grassMat;
     d.position.set(x, groundH(x, z) + 0.22 + R() * 0.25, z); d.rotation.set(R(), R(), R()); d.scale.set(1, 0.6, 1).multiplyScalar(0.7 + R() * 0.7);
     d.updateMatrix(); fm.setMatrixAt(i, d.matrix); fm.setColorAt(i, fc[Math.floor(R() * fc.length)]);
   }
-  fm.frustumCulled = false; fm.layers.set(2); scene.add(fm);
+  fm.frustumCulled = false; fm.layers.set(2); scene.add(fm); wildflowers.m = fm;
 
   // reeds along the pond and river
   const RN = 260, rm = new THREE.InstancedMesh(GEO.cone, windify(new THREE.MeshLambertMaterial({ color: '#66773f' }), 0.1, 'blade'), RN);
@@ -86,6 +87,27 @@ export let grassMat;
   }
   rm.count = ri; rm.frustumCulled = false; scene.add(rm);
 })();
+// nothing grows inside a pool, a court or a floor: grass and wildflowers within rad go (modules built later
+// call this for what they lay down, since the grass is planted first)
+export function clearArea(x, z, rad) {
+  const d = new THREE.Object3D(), zero = new THREE.Matrix4().makeScale(0, 0, 0), v = new THREE.Vector3();
+  grassChunks.forEach(ch => {
+    if (Math.abs(ch.cx - x) > 12 + rad || Math.abs(ch.cz - z) > 12 + rad) return;
+    let changed = false;
+    ch.items.forEach((it, i) => { if (Math.hypot(it.x - x, it.z - z) < rad) { ch.m.setMatrixAt(i, zero); it.cut = true; changed = true; } });
+    if (changed) ch.m.instanceMatrix.needsUpdate = true;
+  });
+  const fm = wildflowers.m; if (!fm) return;
+  for (let i = 0; i < fm.count; i++) { fm.getMatrixAt(i, d.matrix); v.setFromMatrixPosition(d.matrix); if (Math.hypot(v.x - x, v.z - z) < rad) fm.setMatrixAt(i, zero); }
+  fm.instanceMatrix.needsUpdate = true;
+}
+// the same for a rectangle w × d centred at (x, z), turned by ry (a court or a gravel yard)
+export function clearRect(x, z, w, d, ry) {
+  const c = Math.cos(ry), s = Math.sin(ry), zero = new THREE.Matrix4().makeScale(0, 0, 0), m4 = new THREE.Matrix4(), v = new THREE.Vector3();
+  const inside = (px, pz) => { const dx = px - x, dz = pz - z, lx = dx * c - dz * s, lz = dx * s + dz * c; return Math.abs(lx) < w / 2 && Math.abs(lz) < d / 2; };
+  grassChunks.forEach(ch => { let changed = false; ch.items.forEach((it, i) => { if (inside(it.x, it.z)) { ch.m.setMatrixAt(i, zero); it.cut = true; changed = true; } }); if (changed) ch.m.instanceMatrix.needsUpdate = true; });
+  const fm = wildflowers.m; if (fm) { for (let i = 0; i < fm.count; i++) { fm.getMatrixAt(i, m4); v.setFromMatrixPosition(m4); if (inside(v.x, v.z)) fm.setMatrixAt(i, zero); } fm.instanceMatrix.needsUpdate = true; }
+}
 export function clearGrass(x, z, rad) {
   const d = new THREE.Object3D();
   grassChunks.forEach(ch => {

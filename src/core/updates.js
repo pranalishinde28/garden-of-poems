@@ -59,7 +59,8 @@ export function updateFx(dt) {
     k.mix = (k.mix || 0) + (lure - (k.mix || 0)) * Math.min(1, dt * (lure ? 0.7 : 0.35));
     if (k.mix > 0.002) { const b = T * (0.9 + (i % 3) * 0.25) * (i % 2 ? 1 : -1) + k.ph, rr = 0.35 + (i % 4) * 0.2; x += (koiLure.x + Math.cos(b) * rr - x) * k.mix; z += (koiLure.z + Math.sin(b) * rr - z) * k.mix; }
     k.g.position.set(x, WATER_Y - k.d + Math.sin(T * 0.7 + k.ph) * 0.03, z);
-    const dx = x - k.last.x, dz = z - k.last.z; if (dx * dx + dz * dz > 1e-7) k.g.rotation.y = Math.atan2(dx, dz);
-    k.last.set(x, 0, z); k.tail.rotation.y = Math.sin(T * 6 + k.ph) * 0.35;
+    const dx = x - k.last.x, dz = z - k.last.z;
+    if (dx * dx + dz * dz > 1e-7) { const h = Math.atan2(dx, dz), dh = Math.atan2(Math.sin(h - k.g.rotation.y), Math.cos(h - k.g.rotation.y)); k.g.rotation.y = h; k.turn += (clamp(dh / Math.max(dt, 1e-3) * 0.1, -0.6, 0.6) - k.turn) * 0.1; }
+    k.last.set(x, 0, z); k.swim(T + k.ph, 0.5 + k.mix * 0.5, k.turn);
   });
 }

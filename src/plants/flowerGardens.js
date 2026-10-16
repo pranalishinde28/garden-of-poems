@@ -136,6 +136,7 @@ const cloverTex = canvasTex(128, 128, (g) => {
   for (let i = 0; i < N * 2 && n < N; i++) {
     const a = R() * 6.28, r = 9 + Math.sqrt(R()) * 50, x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (groundH(x, z) < WATER_Y + 0.1 || stoneNear(x, z, 0.4) || inTulip(x, z, 0.1)) continue;
+    if (decor.some(o => o.collide > 1 && Math.hypot(o.x - x, o.z - z) < o.collide + 0.2)) continue; // not inside the fountain or a building
     d.position.set(x, groundH(x, z) + 0.025, z); d.rotation.set(0, R() * 6.28, 0); d.scale.setScalar(0.35 + R() * 0.5); d.updateMatrix();
     m.setMatrixAt(n, d.matrix); m.setColorAt(n, C('#ffffff').lerp(C('#b8c48c'), R() * 0.5)); n++;
   }

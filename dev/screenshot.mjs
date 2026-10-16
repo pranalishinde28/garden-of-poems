@@ -138,6 +138,17 @@ async function main() {
       await page.keyboard.down('KeyW'); await sleep(5000); await page.keyboard.up('KeyW'); const walked = await page.evaluate(() => window.__garden.quality.level);
       console.log(`  Auto after standing 15 s: ${still}; after walking: ${walked}`); if (still !== 'high') errors.push('Auto stepped down while standing still');
     }
+    else if (FLOW === 'fountain') { // walk up, look in (E), watch the koi, toss a coin, step back
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const p = window.__garden.player; p.pos.set(14.2, 0, -6.3); p.yaw = Math.atan2(14.2 - 11, -6.3 + 10.2); p.pitch = -0.15; });
+      await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/fountain-near.png') });
+      const cue = await page.$eval('#cue', e => e.textContent.trim()); await page.keyboard.press('KeyE');
+      await sleep(5000); await page.screenshot({ path: join(root, 'dev/shots/fountain-look.png') });
+      const mode = await page.evaluate(() => window.__garden.state.mode); console.log(`  cue "${cue}", mode after E: ${mode}`); await page.click('#fv-coin'); await sleep(1600); await page.screenshot({ path: join(root, 'dev/shots/fountain-coin.png') });
+      await page.click('#fv-back'); await sleep(2500); const after = await page.evaluate(() => window.__garden.state.mode);
+      console.log(`  cue "${cue}", looking: ${mode}, after stepping back: ${after}`); if (mode !== 'fountain' || after !== 'walk') errors.push('fountain view did not open or close');
+      await page.evaluate(() => { const g = window.__garden; g.state.mode = 'cinematic'; g.camera.position.set(4.2, 1.6, 4.8); g.curLook.set(0, -0.4, 0); g.camera.lookAt(g.curLook); }); await sleep(1200); await page.screenshot({ path: join(root, 'dev/shots/pond-koi.png') });
+    }
     else if (FLOW === 'parasol') { // your figure with a parasol, from behind, at the gate
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(1200); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden; g.setAvatar({ extra: 'parasol', outfit: 'kimono', cloth: '#2c3d6b', accent: '#f2c46a', hairStyle: 'bob' }); g.setThirdPerson(true); });

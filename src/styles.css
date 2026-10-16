@@ -99,8 +99,10 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 #cue kbd{font-family:var(--serif);font-style:normal;font-size:.95rem;border:1px solid var(--line);border-radius:5px;padding:0 .4rem;line-height:1.4}
 @media (pointer:coarse){#cue kbd{display:none}}
 
-#swingui{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 28px);transform:translate(-50%,8px);display:flex;align-items:center;gap:.6rem;padding:.5rem .6rem .5rem 1.2rem;border-radius:999px;background:var(--paper);color:var(--ink);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-size:1.08rem;font-style:italic;opacity:0;transition:opacity .5s,transform .5s;z-index:10;max-width:94vw}
-#swingui.show{opacity:1;transform:translate(-50%,0)}
+#fview,#swingui{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 28px);transform:translate(-50%,8px);display:flex;align-items:center;gap:.6rem;padding:.5rem .6rem .5rem 1.2rem;border-radius:999px;background:var(--paper);color:var(--ink);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-size:1.08rem;font-style:italic;opacity:0;transition:opacity .5s,transform .5s;z-index:10;max-width:94vw}
+#fview.show,#swingui.show{opacity:1;transform:translate(-50%,0)}
+#fview button{font-style:normal;padding:.35rem 1rem .42rem;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+#fview #fv-coin{background:var(--ink);color:var(--paper-strong);border-color:transparent}
 #swingui kbd{font-family:var(--serif);font-style:normal;font-size:.92rem;border:1px solid var(--line);border-radius:5px;padding:0 .35rem}
 #swingui button{font-style:normal;padding:.35rem 1rem .42rem;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
 #swingui #sw-pump{background:var(--ink);color:var(--paper-strong);border-color:transparent;touch-action:none}
