@@ -49,7 +49,7 @@ let settingsTimer = null;
 export function persistSettings() {
   if (state.visiting) return;
   try { localStorage.setItem(settingsKey(), JSON.stringify(SETTINGS)); } catch (e) {}
-  if (Cloud.user) { clearTimeout(settingsTimer); settingsTimer = setTimeout(() => saveGardenSettings({ settings: SETTINGS, theme: THEME === 'autumn' || THEME === 'winter' ? 'autumn' : 'spring' }), 900); }
+  if (Cloud.user) { clearTimeout(settingsTimer); settingsTimer = setTimeout(() => saveGardenSettings({ settings: SETTINGS, theme: THEME === 'autumn' ? 'autumn' : 'spring' }), 900); }
 }
 export function applyVisibility() {
   // in winter the flower beds rest under the snow (the choices themselves are kept)
@@ -61,7 +61,10 @@ export function applyVisibility() {
   setShadowDirty(true);
 }
 function applyWeather() { state.showerAt = T; late.setRainUI(); }
-export function applyLight() { state.nightTarget = SETTINGS.light === 'day' ? 0 : SETTINGS.light === 'night' ? 1 : ((h => (h >= 18.5 || h < 5.5) ? 1 : 0)(new Date().getHours() + new Date().getMinutes() / 60)); late.setNightUI(); }
+// day, sunset or night; 'auto' follows the clock (sunset from five to half past six, and at dawn)
+export const lightByClock = () => { const h = new Date().getHours() + new Date().getMinutes() / 60; return h >= 18.5 || h < 5.5 ? 'night' : (h >= 17 || h < 7) ? 'sunset' : 'day'; };
+export function setLightMode(mode) { state.lightMode = mode; state.nightTarget = mode === 'night' ? 1 : 0; state.duskTarget = mode === 'sunset' ? 1 : 0; late.setNightUI(); }
+export function applyLight() { setLightMode(SETTINGS.light === 'auto' ? lightByClock() : SETTINGS.light); }
 function rebuildAllPlants() {
   [...plants.values()].filter(p => !p.dying).forEach(pl => { const tg = pl.target; removePlant(pl); const np = createPlant(pl.poem, { visible: tg === 1 }); np.target = tg; });
   rebuildPetals(); rebuildConnections(); applyThemeMaterials();

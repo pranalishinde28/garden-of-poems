@@ -1,6 +1,5 @@
 import { reduceMotion } from './util.js';
-import { state, tween, seed } from './state.js';
-import { keys, drag, jv } from '../ui/input.js';
+import { state } from './state.js';
 
 /* ================= power: draw only as often as the moment needs ================= */
 // The garden used to draw every frame (60 a second on most screens) even while you read, stood still,
@@ -13,11 +12,10 @@ const wake = () => { lastActive = performance.now(); };
 ['keydown', 'pointerdown', 'pointermove', 'wheel', 'touchstart', 'resize'].forEach(e => addEventListener(e, wake, { passive: true }));
 
 function targetFps(now) {
+  // the owner chose full quality over battery: always the full rate, except under the map, which covers
+  // the whole screen (the browser itself pauses a hidden tab). Reduced motion still asks for less.
   if (state.mode === 'map') return 0;
-  if (!document.hasFocus()) return 8;
   let fps = 60;
-  const moving = tween || seed || drag || keys.size || jv.x || jv.y || state.mode === 'swing' || state.mode === 'cinematic' || state.mode === 'intro' || state.mode === 'fountain' || power.growing; // the koi swim smoothly while you watch
-  if (!moving && now - lastActive > 2500) fps = (state.mode === 'focus' || state.mode === 'writing' || document.body.classList.contains('panel-open')) ? 24 : 20;
   if (reduceMotion) fps = Math.min(fps, 30);
   return fps;
 }

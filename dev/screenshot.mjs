@@ -64,6 +64,11 @@ const VIEWS = {
   'shrine-close': { pos: [-39.6, 1.7, -3.4], look: [-45.7, 2.3, -3.9] },
   'pagoda': { pos: [25, 3, -19], look: [41, 7, -31] },
   'bell': { pos: [24, 2.2, -35.6], look: [29, 3.2, -43] },
+  'day-fuji': { pos: [8, 2.6, 16], look: [-25, 14, -200], season: 'spring' },
+  'sunset-fuji': { pos: [8, 2.6, 16], look: [-25, 14, -200], season: 'spring', light: 'sunset' },
+  'sunset-gate': { pos: [0, 1.7, 49], look: [0, 1.6, 20], season: 'spring', light: 'sunset' },
+  'day-high': { pos: [4, 14, 44], look: [-20, 10, -200], season: 'spring' },
+  'sunset-high': { pos: [4, 14, 44], look: [-20, 10, -200], season: 'autumn', light: 'sunset' },
   'gate-back': { pos: [0, 1.7, 33], look: [0, 1.5, 50] },
   'entrance-high': { pos: [7, 7, 48], look: [0, 1.5, 30] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
@@ -215,6 +220,7 @@ async function shoot(page) {
       if (g.SETTINGS.season !== (v.season || 'spring')) g.setSetting('season', v.season || 'spring');
       document.querySelector('#toast')?.classList.remove('show');
       if (g.SETTINGS.view !== (v.view || 'fuji')) g.setSetting('view', v.view || 'fuji');
+      { const L = v.light || 'day'; if (g.SETTINGS.light !== L) g.setSetting('light', L); g.state.dusk = L === 'sunset' ? 1 : 0; g.state.night = L === 'night' ? 1 : 0; }
       g.camera.position.set(...v.pos); g.curLook.set(...v.look); g.camera.lookAt(g.curLook);
     }, v);
     await sleep(v.season ? 4000 : 2500);

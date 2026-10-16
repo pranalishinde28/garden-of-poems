@@ -89,7 +89,7 @@ export function rebuildPetals() {
 }
 export const linkU = { uTime: windU.uTime, uOpacity: { value: 0.4 } };
 let linkPoints = null;
-const LINK_WORDS = ['summer', 'winter', 'autumn', 'spring', 'rain', 'snow', 'moon', 'sea', 'river', 'mother', 'father', 'grandmother', 'home', 'train', 'city', 'letter', 'hands', 'light', 'station', 'night'];
+const LINK_WORDS = ['summer', 'monsoon', 'winter', 'autumn', 'spring', 'rain', 'snow', 'moon', 'sea', 'river', 'mother', 'father', 'grandmother', 'home', 'train', 'city', 'letter', 'hands', 'light', 'station', 'night'];
 function poemWords(p) { const t = (p.title + ' ' + p.content).toLowerCase(); return LINK_WORDS.filter(w => new RegExp('\\b' + w + '\\b').test(t)); }
 export function rebuildConnections() {
   if (linkPoints) { scene.remove(linkPoints); linkPoints.geometry.dispose(); linkPoints = null; }
@@ -174,7 +174,7 @@ export const flurry = { pts: null, vel: [], life: 0 };
   flurry.u = u; flurry.pts.frustumCulled = false; flurry.pts.visible = false; flurry.pts.layers.set(2); scene.add(flurry.pts);
   for (let i = 0; i < N; i++) flurry.vel.push(new V3());
 })();
-const FLURRY = { spring: '#ffd3df', summer: '#86b45e', autumn: '#e7803a', winter: '#f5f8fb' };
+const FLURRY = { spring: '#ffd3df', monsoon: '#7fb257', autumn: '#e7803a' };
 export function fireFlurry(x, y, z, spread) {
   const p = flurry.pts.geometry.attributes.position;
   for (let i = 0; i < p.count; i++) {

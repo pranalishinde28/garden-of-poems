@@ -42,5 +42,5 @@ export const REGIONS = {
 export const TYPE_REGION = { flower: 'meadow', twin: 'meadow', willow: 'willow', orchard: 'orchard', bigtree: 'orchard', mushrooms: 'moon', thorn: 'wild', treehouse: 'nest', oldtree: 'elder' };
 export const RAD = { flower: 0.9, twin: 1.0, willow: 2.8, thorn: 1.5, treehouse: 2.9, mushrooms: 1.2, orchard: 3.0, bigtree: 3.8, oldtree: 5.0 };
 export const COL = { flower: 0, twin: 0, willow: 0.35, thorn: 0.8, treehouse: 0.45, mushrooms: 0, orchard: 0.3, bigtree: 0.5, oldtree: 0.9 };
-export const seasonOf = iso => { const m = new Date(iso).getMonth(); return m >= 2 && m <= 4 ? 'spring' : m >= 5 && m <= 7 ? 'summer' : m >= 8 && m <= 10 ? 'autumn' : 'winter'; };
+export const seasonOf = iso => { const m = new Date(iso).getMonth(); return m >= 1 && m <= 4 ? 'spring' : m >= 5 && m <= 8 ? 'monsoon' : 'autumn'; };
 

@@ -41,8 +41,15 @@ $('#h-home').onclick = () => {
   const pos = SPAWN.pos.clone(); pos.y = groundH(pos.x, pos.z) + 1.6;
   camTween(pos, new V3(0, pos.y - 0.4, 25), clamp(1.4 + camera.position.distanceTo(pos) * 0.05, 1.6, 3.6), () => { state.mode = 'walk'; state.reading = null; state.reflection = false; syncPlayerFromCamera(); });
 };
-export function setNightUI() { const n = state.nightTarget === 1; $('#h-night').setAttribute('aria-pressed', n ? 'true' : 'false'); $('#h-night').dataset.tip = n ? 'Daylight' : 'Moonlight'; $('#i-moon').hidden = n; $('#i-sun').hidden = !n; }
-$('#h-night').onclick = () => { state.nightTarget = state.nightTarget ? 0 : 1; setNightUI(); };
+// the light button walks the day round: daylight, then sunset, then moonlight
+const NEXT_LIGHT = { day: 'sunset', sunset: 'night', night: 'day' }, LIGHT_TIP = { sunset: 'Sunset', night: 'Moonlight', day: 'Daylight' };
+export function setNightUI() {
+  const m = state.lightMode || 'day', next = NEXT_LIGHT[m], b = $('#h-night');
+  b.setAttribute('aria-pressed', m !== 'day' ? 'true' : 'false'); b.dataset.tip = LIGHT_TIP[next] + ' (L)'; b.setAttribute('aria-label', 'Change the light to ' + LIGHT_TIP[next].toLowerCase());
+  $('#i-moon').hidden = next !== 'night'; $('#i-sun').hidden = next === 'night';
+  const l = b.querySelector('.lbl'); if (l) l.textContent = LIGHT_TIP[next];
+}
+$('#h-night').onclick = () => { const m = NEXT_LIGHT[state.lightMode || 'day']; state.lightMode = m; state.nightTarget = m === 'night' ? 1 : 0; state.duskTarget = m === 'sunset' ? 1 : 0; setNightUI(); };
 export function setSoundUI() { $('#h-sound').setAttribute('aria-pressed', Music.muted ? 'false' : 'true'); $('#i-snd').hidden = Music.muted; $('#i-mute').hidden = !Music.muted; $('#h-sound').dataset.tip = Music.muted ? 'Music is off' : 'Music is on'; }
 $('#h-sound').onclick = () => { Music.setMuted(!Music.muted); setSoundUI(); if (!state.visiting) { SETTINGS.music = Music.muted ? 'off' : (Music.mode === 'own' ? 'own' : 'piano'); persistSettings(); } };
 export function setMusicMenu() { $('#m-piano').hidden = Music.mode !== 'own'; $('#m-own').textContent = Music.mode === 'own' ? 'Choose different music files' : 'Play my own music files'; }

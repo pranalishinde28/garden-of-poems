@@ -16,7 +16,7 @@ export const wisMatW = windify(new THREE.MeshLambertMaterial({ map: wisTexW, alp
 export const arborLeaves = [];
 // the arbors' leaf cards through the year
 export function setArborSeason(theme) {
-  arborLeaves.forEach(m => { if (!m.isInstancedMesh) return; const pal = (theme === 'autumn' ? AUTUMN_PALS[0].concat(AUTUMN_PALS[1]) : GREEN_PALS[theme === 'summer' ? 1 : 2]).map(C); for (let i = 0; i < m.count; i++) m.setColorAt(i, pal[(i * 7) % pal.length]); m.instanceColor.needsUpdate = true; });
+  arborLeaves.forEach(m => { if (!m.isInstancedMesh) return; const pal = (theme === 'autumn' ? AUTUMN_PALS[0].concat(AUTUMN_PALS[1]) : GREEN_PALS[theme === 'monsoon' ? 0 : 2]).map(C); for (let i = 0; i < m.count; i++) m.setColorAt(i, pal[(i * 7) % pal.length]); m.instanceColor.needsUpdate = true; });
 }
 function wisteriaArbor(o) {
   const g = new THREE.Group(); g.position.set(o.x, groundH(o.x, o.z), o.z); g.rotation.y = o.ry; scene.add(g);

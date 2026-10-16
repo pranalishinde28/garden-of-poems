@@ -15,9 +15,10 @@ export const IDB = {
 export let poems = loadPoems();
 const DEFAULT_SETTINGS = { season: 'auto', view: 'fuji', light: 'auto', weather: 'clear', tree: 'sakura', blossom: 'pink', music: 'piano', fuji: true, mist: true, drift: true, name: '', desc: '', links: [],
   show: { wisteria: true, tulips: true, roses: true, hydrangeas: true, lilies: true, orchids: true, lamps: true, swings: true, land: true, air: true, water: true } };
-const ENUMS = { season: ['auto', 'spring', 'summer', 'autumn', 'winter'], view: ['fuji', 'sea'], light: ['auto', 'day', 'night'], weather: ['clear', 'showers', 'rain'], tree: ['sakura', 'maple', 'green'], blossom: ['pink', 'white'], music: ['piano', 'own', 'off'] };
+const ENUMS = { season: ['auto', 'spring', 'monsoon', 'autumn'], view: ['fuji', 'sea'], light: ['auto', 'day', 'sunset', 'night'], weather: ['clear', 'showers', 'rain'], tree: ['sakura', 'maple', 'green'], blossom: ['pink', 'white'], music: ['piano', 'own', 'off'] };
 export function cleanSettings(s) {
   const d = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); if (!s || typeof s !== 'object') return d;
+  if (s.season === 'summer' || s.season === 'winter') s = { ...s, season: s.season === 'summer' ? 'monsoon' : 'autumn' }; // the seasons of earlier versions
   for (const k in ENUMS) if (ENUMS[k].includes(s[k])) d[k] = s[k];
   for (const k of ['fuji', 'mist', 'drift']) if (typeof s[k] === 'boolean') d[k] = s[k];
   if (s.show && typeof s.show === 'object') for (const k in d.show) if (typeof s.show[k] === 'boolean') d.show[k] = s.show[k];
@@ -29,7 +30,8 @@ export let SETTINGS = cleanSettings((() => { try { return JSON.parse(localStorag
 // the season the garden shows: the chosen one, or for 'auto' the calendar's (northern hemisphere)
 export function resolveSeason(s) {
   if (s !== 'auto') return s;
-  const m = new Date().getMonth(); return m >= 2 && m <= 4 ? 'spring' : m >= 5 && m <= 7 ? 'summer' : m >= 8 && m <= 10 ? 'autumn' : 'winter';
+  // February to May spring, June to September the monsoon, October to January autumn
+  const m = new Date().getMonth(); return m >= 1 && m <= 4 ? 'spring' : m >= 5 && m <= 8 ? 'monsoon' : 'autumn';
 }
 export let THEME = resolveSeason(SETTINGS.season);
 export const POST = { on: flag.get('cine') !== '0' };

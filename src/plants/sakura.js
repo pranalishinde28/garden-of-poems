@@ -10,7 +10,7 @@ import { AUTUMN_PALS, GREEN_PALS, SAKURA_WHITE, mapleMat } from './autumnLeaves.
 const cardMat = windify(new THREE.MeshLambertMaterial({ map: blossomTex, alphaTest: 0.45, side: DS, emissive: '#2a1219' }), 0.035, 'const');
 const SAKURA = {
   spring: ['#f7c3d2', '#f3b0c4', '#fad6e0', '#eea0b8'],
-  summer: ['#f4bccc', '#f0aac0', '#f8d0dc', '#e899b2'],
+  monsoon: ['#f4bccc', '#f0aac0', '#f8d0dc', '#e899b2'],
   autumn: ['#ee9fb5', '#e88aa6', '#f4b9c9', '#dc7d9c'],
   winter: ['#f6dbe3', '#f1cad6', '#fbe8ee', '#ecbccb']
 };
@@ -45,7 +45,7 @@ export function growSakura(g, R, o) {
   tips.push({ p: top.clone(), dir: UP });
 
   // the garden's season dresses every tree: blossom in spring, full leaf in summer, red and gold in autumn, bare and snowy in winter
-  const aut = THEME === 'autumn', green = THEME === 'summer', bare = THEME === 'winter', pi3 = Math.floor(R() * 3);
+  const aut = THEME === 'autumn', green = THEME === 'monsoon', bare = THEME === 'winter', pi3 = Math.floor(R() * 3);
   const pal = (aut ? AUTUMN_PALS[pi3] : green ? GREEN_PALS[pi3] : SETTINGS.blossom === 'white' ? SAKURA_WHITE : SAKURA.spring).map(C);
   const cards = [];
   let maxR = 0, maxY = 0, sumY = 0;
