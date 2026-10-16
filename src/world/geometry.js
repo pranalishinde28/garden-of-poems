@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { BufferGeometryUtils } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { C, V3, rng, smooth } from '../core/util.js';
 import { barkTex } from './textures.js';
 
@@ -13,7 +14,9 @@ function makePetalGeo() {
   g.computeVertexNormals(); return g;
 }
 export function rockGeo(seed) {
-  const g = new THREE.IcosahedronGeometry(1, 2), p = g.attributes.position, R = rng(seed), cols = [], v = new V3();
+  // welded, so the stone shades smoothly (an unwelded icosahedron gets one normal per face: cut gems)
+  let g0 = new THREE.IcosahedronGeometry(1, 3); g0.deleteAttribute('normal'); g0.deleteAttribute('uv');
+  const g = BufferGeometryUtils.mergeVertices(g0), p = g.attributes.position, R = rng(seed), cols = [], v = new V3();
   const f = [R() * 9, R() * 9, R() * 9];
   for (let i = 0; i < p.count; i++) {
     v.fromBufferAttribute(p, i);

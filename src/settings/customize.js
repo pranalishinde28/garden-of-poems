@@ -12,7 +12,7 @@ import { REG, decor, featOn } from '../world/paths.js';
 import { stoneLantern } from '../world/decor.js';
 import { createPlant, nightGlow, plants, removePlant, setShadowDirty } from '../plants/registry.js';
 import { koi } from '../water/water.js';
-import { wisMatP, wisMatW, wisGeoBase, arborLeaves } from '../world/arbors.js';
+import { wisMatP, wisMatW, wisGeoBase, arborLeaves, setArborSeason } from '../world/arbors.js';
 import { SPAWN } from '../player/camera.js';
 const SPAWN_Z = SPAWN.pos.z;
 import { swingVeilMat, swingVeilTex } from '../world/swings.js';
@@ -109,7 +109,7 @@ export function updateVeils() {
   // winter: the wisteria and the swing veils are bare
   [wisMatP, wisMatW, swingVeilMat].forEach(m => { m.needsUpdate = true; m.visible = THEME !== 'winter'; });
   arborLeaves.forEach(l => { l.visible = THEME !== 'winter'; });
-  setArchSeason(THEME); setAzaleaSeason(THEME);
+  setArchSeason(THEME); setAzaleaSeason(THEME); setArborSeason(THEME);
 }
 
 /* the gate: a deep double arch heavy with blossom, the garden's name hanging from its crown */
@@ -138,7 +138,7 @@ export const archPlaque = new THREE.Group();
     if (onPost) { const sx = R() < 0.5 ? -1 : 1, y = Math.pow(R(), 0.7) * post; p = new V3(sx * w, y, (R() - 0.5) * 1.0); n = new V3(sx, 0, 0); if (y < 0.5 && R() < 0.6) continue; }
     else { const t = R(), c = curve(t); p = c.clone().setZ((R() - 0.5) * 1.2); n = new V3(c.x / (w * w), (c.y - post) / (rise * rise), 0).normalize(); }
     p.addScaledVector(n, (R() - 0.3) * 0.26);
-    if (R() < 0.35) puff(leaf, p.clone().add(new V3((R() - .5) * 0.2, (R() - .5) * 0.2, 0)), 0.1 + R() * 0.12, leafC[i % 4]);
+    // (no leaf balls: the blossom cards cover the frame, and green balls stayed green in autumn)
     const nb = onPost ? 2 + Math.floor(R() * 2) : 5 + Math.floor(R() * 3);
     for (let k = 0; k < nb; k++) {
       const q = p.clone().addScaledVector(n, 0.05 + R() * 0.22); q.z = (R() - 0.5) * 1.5; q.x += (R() - .5) * 0.3; q.y += (R() - .5) * 0.25;
@@ -147,7 +147,7 @@ export const archPlaque = new THREE.Group();
     // winter lays snow along the top of the frame instead
     if (!onPost && n.y > 0.35 && R() < 0.5) { const k = 0.1 + R() * 0.1; snow.add(GEO.ico, p.clone().addScaledVector(n, 0.06).setZ((R() - 0.5) * 1.0), new V3(k * 1.6, k * 0.5, k * 1.3), C(R() < 0.5 ? '#f4f7fa' : '#e3eaf0')); }
   }
-  const lm = new THREE.Mesh(leaf.build(), VC); g.add(lm); arborLeaves.push(lm);
+  const lg = leaf.build(); if (lg) { const lm = new THREE.Mesh(lg, VC); g.add(lm); arborLeaves.push(lm); }
   const sm = new THREE.Mesh(snow.build(), VC); sm.visible = false; g.add(sm);
   const cg = GEO.card.clone(); cg.boundingSphere = new THREE.Sphere(new V3(0, post, 0), w + 2);
   const cm = new THREE.InstancedMesh(cg, archCardMat, cards.length), dd = new THREE.Object3D(), tints = ['#ffffff', '#fff0f4', '#fbe3ea', '#ffe8ee', '#f6d2de'].map(C);

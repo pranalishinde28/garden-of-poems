@@ -32,7 +32,7 @@ export { onResize };
 onResize(); addEventListener('resize', onResize);
 export const maxAniso = renderer.capabilities.getMaxAnisotropy();
 
-export const SKY = { zenD: C('#3f74b8'), horD: C('#c9dbe8'), zenN: C('#04080f'), horN: C('#16212f') };
+export const SKY = { zenD: C('#2c6cc4'), horD: C('#cfe1ee'), zenN: C('#04080f'), horN: C('#16212f') };
 export const SEASON = {
   spring: { tint: C('#fff6f4'), particle: { color: C('#f6eccf'), fall: 0.04, sway: 0.6, size: 0.045, leaf: 0, op: 0.45 }, words: 'mostly spring' },
   summer: { tint: C('#fff3dc'), particle: { color: C('#f3dc92'), fall: 0.02, sway: 0.5, size: 0.04, leaf: 0, op: 0.4 }, words: 'mostly summer' },

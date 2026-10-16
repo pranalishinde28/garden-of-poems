@@ -17,8 +17,10 @@ import { airSeason } from '../ui/themes.js';
 /* ================= frame loop ================= */
 export const tmpV = new V3();
 export let seasonTint = SEASON[state.seasonCur].tint.clone(), shadowClock = 0, lastNight = -1;
-const hemiD = { s: C('#d6e6f2'), g: C('#5d6e44') }, hemiN = { s: C('#4f6288'), g: C('#10170f') };
-const dirD = C('#fff0d8'), dirN = C('#a3b7de');
+// daylight: a clear, bright morning. The sun carries the light (warm, strong, real shadows) and the sky
+// only fills them; before, the two were nearly equal and the garden looked overcast
+const hemiD = { s: C('#d4e6f7'), g: C('#83924d') }, hemiN = { s: C('#4f6288'), g: C('#10170f') };
+const dirD = C('#ffefd2'), dirN = C('#a3b7de');
 const RAIN_D = C('#9aa2a6'), RAIN_N = C('#262c33'), rainCol = new THREE.Color();
 const SHOWER = { every: 420, lasts: 140 }; // passing showers: about 2½ minutes of rain in every 7
 function rainWanted() {
@@ -37,11 +39,11 @@ export function atmosphere(dt) {
   fujiU.uHor.value.copy(scene.fog.color); fujiU.uLight.value.copy(lightDir); fujiU.uNight.value = state.night; lampGlowU.uOpacity.value = 0.04 + state.night * 0.96;
   skyU.uNight.value = n; skyU.uTime.value = T;
   const hor = scene.fog.color.copy(SKY.horD).lerp(SKY.horN, n).lerp(rainCol, r * 0.6);
-  scene.fog.near = lerp(lerp(30, 14, n), 9, r * 0.7); scene.fog.far = lerp(lerp(170, 115, n), 85, r * 0.7);
+  scene.fog.near = lerp(lerp(55, 14, n), 9, r * 0.7); scene.fog.far = lerp(lerp(300, 115, n), 85, r * 0.7); // clear air by day
   mountainU.forEach(u => { u.uHor.value.copy(hor); u.uNight.value = n; });
-  hemi.color.copy(hemiD.s).lerp(hemiN.s, n); hemi.groundColor.copy(hemiD.g).lerp(hemiN.g, n); hemi.intensity = lerp(0.62, 0.42, n) * (1 - r * 0.12);
-  dirL.color.copy(dirD).lerp(dirN, n).multiply(seasonTint); dirL.intensity = lerp(1.05, 0.36, n) * (1 - r * 0.65);
-  sunDir.set(0.6 + Math.sin(T * 0.008) * 0.1, 0.48 + Math.sin(T * 0.011) * 0.04, 0.64).normalize();
+  hemi.color.copy(hemiD.s).lerp(hemiN.s, n); hemi.groundColor.copy(hemiD.g).lerp(hemiN.g, n); hemi.intensity = lerp(0.5, 0.42, n) * (1 - r * 0.12) + r * 0.08;
+  dirL.color.copy(dirD).lerp(dirN, n).multiply(seasonTint); dirL.intensity = lerp(1.6, 0.36, n) * (1 - r * 0.7);
+  sunDir.set(0.6 + Math.sin(T * 0.008) * 0.1, 0.44 + Math.sin(T * 0.011) * 0.03, 0.64).normalize(); // a morning sun: long, soft shadows
   skyU.uSunDir.value.copy(sunDir); skyU.uMoonDir.value.copy(moonDir);
   lightDir.copy(n < 0.5 ? sunDir : moonDir);
   dirL.position.copy(lightDir).multiplyScalar(120);

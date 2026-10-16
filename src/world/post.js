@@ -24,11 +24,11 @@ const compMat = postMat({ tScene: { value: null }, tBloom: { value: null }, uTim
     c+=texture2D(tBloom,vUv).rgb*mix(0.5,1.0,uNight);
     c=mix(c,aces(c*1.2),0.55);
     float l=dot(c,vec3(.299,.587,.114));
-    c=mix(vec3(l),c,1.12);
+    c=mix(vec3(l),c,mix(1.2,1.1,uNight));
     vec3 sh=mix(vec3(.93,.98,1.06),vec3(.98,.95,1.04),uNight),hi=mix(vec3(1.05,1.01,.95),vec3(1.08,.99,.9),uAutumn);
     c*=mix(sh,hi,smoothstep(.12,.85,l));
     c=(c-.5)*1.06+.5;
-    c*=1.-r2*0.85;
+    c*=1.-r2*mix(0.5,0.85,uNight);
     c+=(h(vUv*uRes+fract(uTime*7.)*91.)-.5)*0.028;
     gl_FragColor=vec4(clamp(c,0.,1.),1.);}`);
 function resizePost() {

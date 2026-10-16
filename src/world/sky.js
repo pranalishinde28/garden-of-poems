@@ -19,7 +19,7 @@ export const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 48, 24), new THR
     vec3 sd=normalize(uSunDir);float s=max(dot(d,sd),0.);vec3 sc=vec3(1.,.87,.68);
     c+=sc*(pow(s,6.)*0.22+pow(s,40.)*0.3)*(1.-n)*(1.-uRain);
     c+=vec3(1.,.97,.9)*smoothstep(0.99925,0.9997,s)*2.5*(1.-n)*(1.-uRain);
-    c=mix(c,hor*1.04,exp(-max(y,0.)*9.)*0.55);
+    c=mix(c,hor*1.04,exp(-max(y,0.)*12.)*0.4);
     if(y<0.)c=hor*mix(1.,.9,clamp(-y*4.,0.,1.));
     vec3 md=normalize(uMoonDir);float m=max(dot(d,md),0.);
     c+=n*(vec3(.96,.97,1.)*smoothstep(0.99955,0.99975,m)*1.3+vec3(.5,.6,.8)*pow(m,90.)*0.3+vec3(.25,.33,.5)*pow(m,10.)*0.1);
