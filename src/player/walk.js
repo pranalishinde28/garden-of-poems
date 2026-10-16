@@ -19,6 +19,9 @@ import { figureMetrics } from './avatar.js';
 import { clamp, isTouch } from '../core/util.js';
 import { state } from '../core/state.js';
 
+// a bird takes off on one press of Space (or the touch button) and lands on the next
+export function toggleFlight() { player.upAt = T; if (!player.flying) { player.flying = true; player.cruise = Math.max(player.alt, 6); } else player.flying = false; }
+addEventListener('keydown', e => { if (e.code === 'Space' && !e.repeat && state.mode === 'walk' && getAvatar().kind === 'bird' && !(e.target.closest && e.target.closest('input, textarea'))) toggleFlight(); });
 // the touch button for flying or pouncing holds this, like Space
 export let flyHeld = false;
 export const setFlyHeld = v => { flyHeld = v; };
@@ -35,10 +38,20 @@ export function walk(dt) {
   const av = getAvatar(), kind = av.kind, fast = keys.has('ShiftLeft') || keys.has('ShiftRight');
   player.alt = player.alt || 0; player.vy = player.vy || 0;
   const up = keys.has('Space') || flyHeld;
-  if (kind === 'bird') { player.vy = up ? Math.min(player.vy + 10 * dt, 3.4) : Math.max(player.vy - 4 * dt, player.alt > 0.02 ? -1.4 : 0); }
+  if (kind === 'bird') {
+    // a tap of Space takes off (and the bird keeps flying by itself at its height); another tap lands.
+    // Holding Space while aloft climbs higher, holding Q sinks lower.
+    // (taking off and landing happen on the key press itself, below, so even the quickest tap counts)
+    if (up && player.flying && T - (player.upAt || 0) > 0.3) player.cruise = Math.min(player.cruise + 4 * dt, 24);
+    if (keys.has('KeyQ') && player.flying) player.cruise = Math.max(player.cruise - 4 * dt, 1.2);
+    player.jumpHeld = up;
+    if (player.flying) player.vy += ((player.cruise - player.alt) * 1.6 - player.vy) * Math.min(1, dt * 3);
+    else { player.vy = Math.max(player.vy - 4 * dt, player.alt > 0.02 ? -1.6 : 0); }
+  }
   else if (kind === 'cat') { if (up && player.alt < 0.01 && !player.jumpHeld) player.vy = 3.1; player.jumpHeld = up; player.vy -= 9.8 * dt; }
   else player.vy = 0;
   player.alt = clamp(player.alt + player.vy * dt, 0, 24); if (player.alt === 0 && player.vy < 0) player.vy = 0;
+  if (kind !== 'bird') player.flying = false;
   const flying = kind === 'bird' && player.alt > 0.15, high = player.alt > 3.2;
   const sp = kind === 'bird' ? (flying ? (fast ? 9 : 6) : (fast ? 3.4 : 2.2)) : kind === 'cat' ? (fast ? 6.4 : 3.4) : fast ? 5.2 : 3.0;
   const sy = Math.sin(player.yaw), cy = Math.cos(player.yaw);
@@ -97,11 +110,11 @@ export function walk(dt) {
 // on a touch screen a cat or a bird gets a button for Space: hold it to fly, tap it to pounce
 const actBtn = document.getElementById('act-btn');
 if (actBtn) {
-  const hold = v => e => { e.preventDefault(); setFlyHeld(v); actBtn.classList.toggle('held', v); };
+  const hold = v => e => { e.preventDefault(); if (v && getAvatar().kind === 'bird') toggleFlight(); setFlyHeld(v); actBtn.classList.toggle('held', v); if (!v) setTimeout(() => actBtn.textContent = getAvatar().kind === 'bird' ? (player.flying ? 'Land' : 'Fly') : 'Pounce', 60); };
   actBtn.addEventListener('pointerdown', hold(true)); ['pointerup', 'pointercancel', 'pointerleave'].forEach(n => actBtn.addEventListener(n, hold(false)));
   setInterval(() => {
     const k = getAvatar().kind, show = isTouch && state.mode === 'walk' && (k === 'bird' || k === 'cat');
     if (actBtn.hidden === show) actBtn.hidden = !show;
-    const t = k === 'bird' ? 'Fly' : 'Pounce'; if (actBtn.textContent !== t) { actBtn.textContent = t; actBtn.setAttribute('aria-label', k === 'bird' ? 'Fly (hold)' : 'Pounce'); }
+    const t = k === 'bird' ? (player.flying ? 'Land' : 'Fly') : 'Pounce'; if (actBtn.textContent !== t) { actBtn.textContent = t; actBtn.setAttribute('aria-label', t); }
   }, 400);
 }

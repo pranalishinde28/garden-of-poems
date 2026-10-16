@@ -146,8 +146,9 @@ select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
 
 -- ---------- validation ----------
 select throws_ok($$update public.gardens set settings = '{"links":[{"label":"x","url":"javascript:alert(1)"}]}' where owner = auth.uid()$$, '23514', null, 'links must be http(s)');
-select throws_ok($$update public.gardens set settings = '{"season":"monsoon"}' where owner = auth.uid()$$, '23514', null, 'settings use known values');
-select lives_ok($$update public.gardens set settings = '{"season":"winter","view":"sea"}', theme = 'winter' where owner = auth.uid()$$, 'four seasons and the sea horizon save');
+select throws_ok($$update public.gardens set settings = '{"season":"harmattan"}' where owner = auth.uid()$$, '23514', null, 'settings use known values');
+select lives_ok($$update public.gardens set settings = '{"season":"monsoon","view":"sea","light":"sunset"}', theme = 'monsoon' where owner = auth.uid()$$, 'the monsoon, the sea horizon and a sunset save');
+select throws_ok($$update public.gardens set settings = '{"season":"winter"}' where owner = auth.uid()$$, '23514', null, 'winter is no longer a season here');
 select throws_ok($$update public.gardens set settings = '{"view":"the moon"}' where owner = auth.uid()$$, '23514', null, 'the horizon is fuji or sea');
 select lives_ok($$update public.profiles set avatar = '{"outfit":"dress","hairStyle":"twintails","skin":"#f3cfb5"}' where id = auth.uid()$$, 'the chibi figure''s dress and twintails save');
 select lives_ok($$update public.gardens set settings = '{"season":"autumn","links":[{"label":"site","url":"https://example.com"}],"show":{"swings":false}}' where owner = auth.uid()$$, 'valid settings save');

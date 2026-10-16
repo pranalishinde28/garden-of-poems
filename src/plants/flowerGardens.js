@@ -228,18 +228,20 @@ function buildPeacock(x, z, seed) {
   for (let k = 0; k < 6; k++) { const a = (k - 2.5) * 0.18; limb(head, new V3(0, 0.03, 0), new V3(Math.sin(a) * 0.04, 0.11, -0.02), 0.002, 0.002, dkb); part(head, GEO.sph, M('#1f6f9e'), [Math.sin(a) * 0.04, 0.115, -0.02], 0.01); }
   for (const s of [-1, 1]) part(g, GEO.cylB, grey, [s * 0.04, 0, 0.02], [0.012, 0.32, 0.012]);
   const train = new THREE.Group(); train.position.set(0, 0.42, -0.15); g.add(train);
-  const NF = 38, feathers = [];
+  const NF = 64, feathers = []; // a fuller train
   for (let i = 0; i < NF; i++) {
     const fg = new THREE.Group(); train.add(fg);
     const len = 0.95 + R() * 0.35, m = new THREE.Mesh(GEO.card, featherMat); m.scale.set(0.14, len, 1); m.position.y = len / 2; fg.add(m);
     feathers.push({ fg, ang: (i / (NF - 1) - 0.5) * 2.7 + (R() - .5) * 0.04, tilt: (R() - .5) * 0.08 });
   }
+  g.scale.setScalar(1.55); // life-size: a peacock stands about a metre tall, its fan nearly two across
   const b = { g, neck, head, train, feathers, pos: new V3(x, groundH(x, z), z), home: { x, z }, heading: R() * 6.28, mode: 'peck', timer: 2, dest: null, open: 0, fanT: 0, ph: R() * 6 };
   b.click = () => { b.fanT = 7; SFX.peacock(); };
   b.update = dt => updatePeacock(b, dt);
   return regAnimal(g, b);
 }
 function updatePeacock(b, dt) {
+  if (b.fanT <= 0 && Math.random() < dt / 45) b.fanT = 6 + Math.random() * 4; // now and then one displays by itself
   b.fanT = Math.max(0, b.fanT - dt);
   const target = b.fanT > 0 ? 1 : 0; b.open += (target - b.open) * (1 - Math.exp(-dt * 2.2));
   if (b.fanT > 0) { const toCam = new V3().subVectors(camera.position, b.pos); let dh = Math.atan2(toCam.x, toCam.z) - b.heading + Math.PI; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); b.heading += dh * (1 - Math.exp(-dt * 1.5)); }
@@ -257,7 +259,8 @@ function updatePeacock(b, dt) {
   b.g.position.copy(b.pos); b.g.rotation.y = b.heading;
 }
 SFX.peacock = function () { const o = this.out(); if (!o) return; const ctx = late.Music.ctx, t0 = ctx.currentTime + 0.02; for (let k = 0; k < 2; k++) { const t = t0 + k * 0.45, os = ctx.createOscillator(), bp = ctx.createBiquadFilter(), g = ctx.createGain(); os.type = 'sawtooth'; os.frequency.setValueAtTime(560, t); os.frequency.exponentialRampToValueAtTime(980, t + 0.12); os.frequency.exponentialRampToValueAtTime(700, t + 0.32); bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 2; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.18, t + 0.04); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.36); os.connect(bp); bp.connect(g); g.connect(o); os.start(t); os.stop(t + 0.4); } };
-[[44, 24], [46, 4], [-20, 44], [8, -46], [20, 50], [-48, -30], [44, -30]].forEach(([x, z], i) => { if (okGround(x, z)) buildPeacock(x, z, 1500 + i); });
+// a dozen, in twos and threes about the lawns
+[[44, 24], [46, 4], [-20, 44], [8, -46], [20, 50], [-48, -30], [44, -30], [24, 20], [27, 23], [-30, 30], [-27, 34], [16, -28], [-12, -40], [52, 14]].forEach(([x, z], i) => { if (okGround(x, z)) buildPeacock(x, z, 1500 + i); });
 
 /* riverbed pebbles and rocks in the stream */
 (function riverbed() {

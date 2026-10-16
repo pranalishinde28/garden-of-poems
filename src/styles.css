@@ -493,3 +493,9 @@ body.panel-open #savestate{opacity:0}
 .n-acts{display:flex;gap:.8rem;flex-wrap:wrap}
 .n-row.is-hidden .n-t{opacity:.55}
 .cf-cols > div{display:flex;flex-direction:column}.cf-cols pre{flex:1}.cf-cols .cf-pick{align-self:flex-start}
+
+#swingui #sw-keep[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:transparent}
+/* on a phone the swing pill keeps only its buttons, and wraps if it must */
+@media (max-width:640px){#swingui{flex-wrap:nowrap;gap:.3rem;padding:.4rem;width:max-content;max-width:calc(100vw - 16px)}#swingui > span{display:none}#swingui button{padding:.35rem .62rem .42rem;font-size:.95rem}#sw-keep .long{display:none}}
+#sw-keep .short{display:none}@media (max-width:640px){#sw-keep .short{display:inline}}
+body.on-swing #steps{bottom:calc(env(safe-area-inset-bottom,0px) + 120px)} /* the first steps sit above the swing's buttons */

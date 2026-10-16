@@ -28,6 +28,7 @@ addEventListener('keydown', e => {
     if (e.code === 'Escape' && late.swingReaderOpen()) { late.closeSwingReader(); return; }
     if (e.code === 'KeyE' || e.code === 'Escape') { late.leaveSwing(); return; }
     if (e.code === 'KeyR' && !e.repeat) { late.toggleSwingReader(); return; }
+    if (e.code === 'KeyK' && !e.repeat) { late.toggleKeepSwinging(); return; }
     if (late.swingReaderOpen() && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) { e.preventDefault(); late.stepSwingReader(e.code === 'ArrowLeft' ? -1 : 1); return; }
     if (e.code === 'Space') e.preventDefault();
   }
@@ -37,7 +38,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyM' && !e.repeat && (state.mode === 'walk' || state.mode === 'swing')) { late.toggleMap(); return; }
   if (e.code === 'KeyV' && !e.repeat && (state.mode === 'walk' || state.mode === 'swing')) { late.toggleView(); return; }
   if (e.code === 'KeyE' && state.mode === 'walk' && late.cueTarget) { e.preventDefault(); interact(late.cueTarget); return; }
-  if (/^(Key[WASD]|Arrow|Shift|Space)/.test(e.code)) { keys.add(e.code); if ((e.code.startsWith('Arrow') || e.code === 'Space') && (state.mode === 'walk' || state.mode === 'swing')) e.preventDefault(); }
+  if (/^(Key[WASDQ]|Arrow|Shift|Space)/.test(e.code)) { keys.add(e.code); if ((e.code.startsWith('Arrow') || e.code === 'Space') && (state.mode === 'walk' || state.mode === 'swing')) e.preventDefault(); }
 });
 // a focused button would otherwise 'click' on Space keyup while it pumps the swing
 addEventListener('keyup', e => { keys.delete(e.code); if (state.mode === 'swing' && e.code === 'Space' && !isTyping(e)) e.preventDefault(); });

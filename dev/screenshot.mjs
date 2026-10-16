@@ -41,14 +41,12 @@ const VIEWS = {
   'autumn-tunnel': { pos: [0, 1.7, 35.5], look: [0, 1.5, 17], season: 'autumn' },
   'autumn-swings': { pos: [-13.5, 1.7, 15.5], look: [-21, 1.5, 24.5], season: 'autumn' },
   'season-spring': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'spring', samples: true },
-  'season-summer': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'summer', samples: true },
+  'season-monsoon': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'monsoon', samples: true },
   'season-autumn': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'autumn', samples: true },
-  'season-winter': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'winter', samples: true },
   'fuji-view': { pos: [8, 2.6, 16], look: [-25, 14, -200], season: 'spring' },
   'fuji-high': { pos: [4, 14, 44], look: [-20, 10, -200], season: 'spring' },
-  'fuji-winter': { pos: [8, 2.6, 16], look: [-25, 14, -200], season: 'winter' },
   'sea-view': { pos: [8, 2.6, 16], look: [-25, 2, -200], season: 'spring', view: 'sea' },
-  'sea-high': { pos: [4, 26, 60], look: [-10, -2, -60], season: 'summer', view: 'sea' },
+  'sea-high': { pos: [4, 26, 60], look: [-10, -2, -60], season: 'monsoon', view: 'sea' },
   'sea-gate': { pos: [30, 3, 55], look: [140, -4, 90], season: 'spring', view: 'sea' },
   'lineup': { lineup: true, pos: [0, 0.95, 40.2], look: [0, 0.62, 36.6] },
   'kinds': { kinds: true, pos: [0.2, 0.75, 38.6], look: [0.2, 0.4, 36.6] },
@@ -56,7 +54,6 @@ const VIEWS = {
   'spawn': { pos: [0, 1.7, 49], look: [0, 1.15, 20] },
   'gate-close': { pos: [1.2, 2.2, 44], look: [0, 3, 39] },
   'gate-autumn': { pos: [1.2, 2.2, 44], look: [0, 3, 39], season: 'autumn' },
-  'gate-winter': { pos: [1.2, 2.2, 44], look: [0, 3, 39], season: 'winter' },
   'top': { pos: [0, 130, 0.01], look: [0, 0, 0] },
   'fountain': { pos: [16.5, 2.4, -3.5], look: [11, 0.9, -10.2] },
   'fountain-close': { pos: [13.6, 1.6, -7.2], look: [11, 1.0, -10.2] },
@@ -69,6 +66,10 @@ const VIEWS = {
   'sunset-gate': { pos: [0, 1.7, 49], look: [0, 1.6, 20], season: 'spring', light: 'sunset' },
   'day-high': { pos: [4, 14, 44], look: [-20, 10, -200], season: 'spring' },
   'sunset-high': { pos: [4, 14, 44], look: [-20, 10, -200], season: 'autumn', light: 'sunset' },
+  'swing-close': { pos: [-12.4, 1.7, 13.6], look: [-19, 1.4, 21] },
+  'swing-sunset': { pos: [-12.4, 1.7, 13.6], look: [-19, 1.4, 21], light: 'sunset' },
+  'swing-night': { pos: [-12.4, 1.7, 13.6], look: [-19, 1.4, 21], light: 'night' },
+  'peacocks': { pos: [30, 1.8, 15], look: [25.5, 0.9, 21.5], fan: true },
   'gate-back': { pos: [0, 1.7, 33], look: [0, 1.5, 50] },
   'entrance-high': { pos: [7, 7, 48], look: [0, 1.5, 30] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
@@ -159,12 +160,12 @@ async function main() {
     else if (FLOW === 'creatures') { // be a bird: take off over the garden; be a cat: trot and pounce
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden; g.setAvatar({ kind: 'bird', plumage: 'cream' }); g.setThirdPerson(true); });
-      await sleep(1200); await page.keyboard.down('Space'); await page.keyboard.down('KeyW'); await sleep(2600); await page.screenshot({ path: join(root, 'dev/shots/bird-climb.png') });
-      await page.keyboard.up('Space'); await sleep(1400); await page.screenshot({ path: join(root, 'dev/shots/bird-glide.png') }); const alt = await page.evaluate(() => window.__garden.player.alt.toFixed(1)); await page.keyboard.up('KeyW');
+      await sleep(1200); await page.keyboard.press('Space'); await page.keyboard.down('KeyW'); await sleep(2600); await page.screenshot({ path: join(root, 'dev/shots/bird-climb.png') });
+      await sleep(2400); await page.screenshot({ path: join(root, 'dev/shots/bird-glide.png') }); const alt = await page.evaluate(() => window.__garden.player.alt.toFixed(1)); await page.keyboard.up('KeyW');
       await page.evaluate(() => { const g = window.__garden; g.setAvatar({ kind: 'cat', coat: 'siamese' }); g.player.pos.set(0, 0, 46); g.player.yaw = 0; }); await sleep(800);
       await page.keyboard.down('KeyW'); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/cat-walk.png') }); await page.keyboard.press('Space'); await sleep(250); await page.screenshot({ path: join(root, 'dev/shots/cat-pounce.png') }); await page.keyboard.up('KeyW');
       await sleep(4500); await page.screenshot({ path: join(root, 'dev/shots/cat-sit.png') });
-      console.log('  the bird flew to ' + alt + ' m');
+      console.log('  after one tap the bird is still flying at ' + alt + ' m'); if (+alt < 4) errors.push('the bird did not stay up');
     }
     else if (FLOW === 'parasol') { // your figure with a parasol, from behind, at the gate
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
@@ -222,6 +223,7 @@ async function shoot(page) {
       if (g.SETTINGS.view !== (v.view || 'fuji')) g.setSetting('view', v.view || 'fuji');
       { const L = v.light || 'day'; if (g.SETTINGS.light !== L) g.setSetting('light', L); g.state.dusk = L === 'sunset' ? 1 : 0; g.state.night = L === 'night' ? 1 : 0; }
       g.camera.position.set(...v.pos); g.curLook.set(...v.look); g.camera.lookAt(g.curLook);
+      if (v.fan && g.animals) g.animals.forEach(a => { if (a.fanT !== undefined) { a.fanT = 20; } });
     }, v);
     await sleep(v.season ? 4000 : 2500);
     await page.screenshot({ path: `${out}-${name}.png` });
