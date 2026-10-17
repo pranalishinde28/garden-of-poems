@@ -30,7 +30,7 @@ export const groundTex = canvasTex(1024, 1024, (g, S) => {
 function drawBlossom(g, R, x, y, r, rot, edge) {
   for (let i = 0; i < 5; i++) {
     g.save(); g.translate(x, y); g.rotate(rot + i * Math.PI * 2 / 5);
-    const gr = g.createLinearGradient(0, 0, 0, -r); gr.addColorStop(0, '#fffafb'); gr.addColorStop(0.55, '#fde9ee'); gr.addColorStop(1, edge);
+    const gr = g.createLinearGradient(0, 0, 0, -r); gr.addColorStop(0, '#fff3f6'); gr.addColorStop(0.5, '#fbd3df'); gr.addColorStop(1, edge);
     g.fillStyle = gr; g.beginPath(); g.moveTo(0, 0);
     g.bezierCurveTo(-r * 0.62, -r * 0.3, -r * 0.56, -r * 0.95, -r * 0.15, -r); g.lineTo(0, -r * 0.84); g.lineTo(r * 0.15, -r);
     g.bezierCurveTo(r * 0.56, -r * 0.95, r * 0.62, -r * 0.3, 0, 0); g.fill();
@@ -45,9 +45,9 @@ export const blossomTex = canvasTex(256, 256, (g) => {
   const R = rng(31);
   g.strokeStyle = 'rgba(78,52,48,.85)'; g.lineCap = 'round';
   for (let i = 0; i < 3; i++) { g.lineWidth = 2.5 - i * 0.6; g.beginPath(); const x = 60 + R() * 140; g.moveTo(x, 250); g.quadraticCurveTo(x + (R() - .5) * 120, 140, 40 + R() * 180, 20 + R() * 60); g.stroke(); }
-  for (let i = 0; i < 46; i++) {
+  for (let i = 0; i < 64; i++) { // denser clusters
     const x = 34 + R() * 188, y = 34 + R() * 188; if (Math.hypot(x - 128, y - 128) > 108) continue;
-    const pick = R(), edge = pick < .33 ? '#f4b2c6' : pick < .66 ? '#f8c9d6' : '#ee9fb8';
+    const pick = R(), edge = pick < .33 ? '#ee8fae' : pick < .66 ? '#f4a9c1' : '#e6789e';
     drawBlossom(g, R, x, y, 12 + R() * 12, R() * 6.28, edge);
   }
   for (let k = 0; k < 10; k++) { const x = 30 + R() * 196, y = 30 + R() * 196; if (Math.hypot(x - 128, y - 128) > 110) continue; g.fillStyle = '#e57f9f'; g.beginPath(); g.ellipse(x, y, 4, 6, R() * 3, 0, 7); g.fill(); }

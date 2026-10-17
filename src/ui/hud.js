@@ -14,6 +14,7 @@ import { closePanel, closeReader, reader } from './reading.js';
 import { editor, openEditor } from './writing.js';
 import { hideSwingUI } from './swinging.js';
 import { persistSettings, setSetting } from '../settings/customize.js';
+import { setSkyButton } from './icons.js';
 import { late, provide } from '../core/late.js';
 
 // names other modules reach through late (see core/late.js)
@@ -44,36 +45,36 @@ $('#h-home').onclick = () => {
 // the light button walks the day round: daylight, then sunset, then moonlight
 const NEXT_LIGHT = { day: 'sunset', sunset: 'night', night: 'day' }, LIGHT_TIP = { sunset: 'Sunset', night: 'Moonlight', day: 'Daylight' };
 export function setNightUI() {
-  const m = state.lightMode || 'day', next = NEXT_LIGHT[m], b = $('#h-night');
-  b.setAttribute('aria-pressed', m !== 'day' ? 'true' : 'false'); b.dataset.tip = LIGHT_TIP[next] + ' (L)'; b.setAttribute('aria-label', 'Change the light to ' + LIGHT_TIP[next].toLowerCase());
-  $('#i-moon').hidden = next !== 'night'; $('#i-sun').hidden = next === 'night';
-  const l = b.querySelector('.lbl'); if (l) l.textContent = LIGHT_TIP[next];
+  const m = state.lightMode || 'day', next = NEXT_LIGHT[m];
+  setSkyButton('h-night', m, LIGHT_TIP[m], 'change to ' + LIGHT_TIP[next].toLowerCase(), 'L');
 }
-$('#h-night').onclick = () => { const m = NEXT_LIGHT[state.lightMode || 'day']; state.lightMode = m; state.nightTarget = m === 'night' ? 1 : 0; state.duskTarget = m === 'sunset' ? 1 : 0; setNightUI(); };
+$('#h-night').onclick = () => { if (state.visiting) { toast('You are visiting. The light belongs to this garden.'); return; } setSetting('light', NEXT_LIGHT[state.lightMode || 'day']); }; // kept with the garden, like Customize
 export function setSoundUI() { $('#h-sound').setAttribute('aria-pressed', Music.muted ? 'false' : 'true'); $('#i-snd').hidden = Music.muted; $('#i-mute').hidden = !Music.muted; $('#h-sound').dataset.tip = Music.muted ? 'Music is off' : 'Music is on'; }
 $('#h-sound').onclick = () => { Music.setMuted(!Music.muted); setSoundUI(); if (!state.visiting) { SETTINGS.music = Music.muted ? 'off' : (Music.mode === 'own' ? 'own' : 'piano'); persistSettings(); } };
-export function setMusicMenu() { $('#m-piano').hidden = Music.mode !== 'own'; $('#m-own').textContent = Music.mode === 'own' ? 'Choose different music files' : 'Play my own music files'; }
+export function setMusicMenu() { $('#m-piano').hidden = Music.mode !== 'own'; $('#m-own .t').textContent = Music.mode === 'own' ? 'Choose other music files' : 'Play my own music'; }
 const fileInput = $('#file-music');
 $('#m-own').onclick = () => { closePops(); fileInput.value = ''; fileInput.click(); };
 fileInput.addEventListener('change', () => { if (fileInput.files && fileInput.files.length) Music.useFiles(fileInput.files); });
 $('#m-piano').onclick = () => { closePops(); Music.backToPiano(); toast('Back to the piano.'); };
 $('#h-help').onclick = () => { closePops(); late.openHelp(); };
-// the rows in ⋯ show their current state as words (their data-tip changes with season, light and view)
-document.querySelectorAll('#menu .mrow').forEach(b => { const set = () => { const t = (b.dataset.tip || '').replace(/ \(.\)$/, ''); b.querySelector('.lbl').textContent = b.id === 'h-theme' ? 'Turn to ' + t.toLowerCase() : t; }; set(); new MutationObserver(set).observe(b, { attributes: true, attributeFilter: ['data-tip'] }); });
-function setCineUI() { $('#m-cine').textContent = POST.on ? 'Cinematic look: on' : 'Cinematic look: off'; }
+// the rows in ⋯ show their current state as words (their data-tip changes with the view)
+document.querySelectorAll('#menu .mrow').forEach(b => { let l = b.querySelector('.lbl'); if (!l) { l = document.createElement('span'); l.className = 'lbl'; b.append(l); } if (b.dataset.hint && !b.querySelector('small')) { const h = document.createElement('small'); h.textContent = b.dataset.hint; b.append(h); } const set = () => { l.textContent = (b.dataset.tip || '').replace(/ \(.\)$/, ''); }; set(); new MutationObserver(set).observe(b, { attributes: true, attributeFilter: ['data-tip'] }); });
+function setCineUI() { $('#m-cine .t').textContent = POST.on ? 'Soft film look: on' : 'Soft film look: off'; }
 $('#m-cine').onclick = () => { POST.on = !POST.on; flag.set('cine', POST.on ? '1' : '0'); setCineUI(); };
 setCineUI();
-function setRainUI() { $('#m-rain').textContent = SETTINGS.weather === 'clear' ? 'Let it rain' : 'Let the sky clear'; }
-$('#m-rain').onclick = () => { setSetting('weather', SETTINGS.weather === 'clear' ? 'rain' : 'clear'); closePops(); };
+// weather: clear, then passing showers, then steady rain
+const NEXT_W = { clear: 'showers', showers: 'rain', rain: 'clear' }, W_WORDS = { clear: 'Clear skies', showers: 'Passing showers', rain: 'Rain' };
+function setRainUI() { const w = SETTINGS.weather; setSkyButton('h-weather', w, W_WORDS[w], 'change to ' + W_WORDS[NEXT_W[w]].toLowerCase(), 'P'); }
+$('#h-weather').onclick = () => { if (state.visiting) { toast('You are visiting. The weather belongs to this garden.'); return; } setSetting('weather', NEXT_W[SETTINGS.weather]); toast({ clear: 'The sky clears.', showers: 'Showers will pass through now and then.', rain: 'Let it rain.' }[SETTINGS.weather], 2400); };
 setRainUI();
 $('#m-sample').onclick = () => { closePops(); if (state.visiting) { toast('Return to your own garden first.'); return; } const n = late.plantSamples(true); toast(n ? `${n} sample poems are taking root.` : 'The sample poems are already growing here.'); };
 let clearArmed = false;
-function clearConfirm() { clearArmed = false; $('#m-clear').textContent = 'Clear the garden'; }
+function clearConfirm() { clearArmed = false; $('#m-clear .t').textContent = 'Clear the garden'; $('#m-clear small').textContent = 'remove every poem here'; }
 $('#m-clear').onclick = e => {
   e.stopPropagation();
   if (state.visiting) { closePops(); toast('Return to your own garden first.'); return; }
   if (!poems.length) { closePops(); toast('The garden is already empty.'); return; }
-  if (!clearArmed) { clearArmed = true; $('#m-clear').textContent = `Delete all ${poems.length} poems? Click again`; return; }
+  if (!clearArmed) { clearArmed = true; $('#m-clear .t').textContent = `Remove all ${poems.length} poems?`; $('#m-clear small').textContent = 'press again to remove them; there is no undo'; return; }
   closePops();
   if (state.mode === 'focus') closeReader();
   setPoems([]); savePoems();

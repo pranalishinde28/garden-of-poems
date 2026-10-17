@@ -33,7 +33,7 @@ provide({ get openHelp() { return openHelp; }, get maybeStartSteps() { return ma
 /* ---------- shortcut keys ---------- */
 // Each key presses the same button you would, so what it does lives in one place. Walking only (the
 // swing, reading and writing keep their own keys), never while typing or with a modifier held.
-const SHORTCUTS = { KeyN: 'h-write', KeyC: 'h-custom', KeyG: 'h-gardens', KeyU: 'h-sound', KeyL: 'h-night', KeyY: 'h-theme', KeyT: 'h-time', KeyB: 'h-home', KeyP: 'm-rain' };
+const SHORTCUTS = { KeyN: 'h-write', KeyC: 'h-custom', KeyG: 'h-gardens', KeyU: 'h-sound', KeyL: 'h-night', KeyY: 'h-theme', KeyT: 'h-time', KeyB: 'h-home', KeyP: 'h-weather' };
 addEventListener('keydown', e => {
   if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || isTyping(e) || state.mode !== 'walk' || document.body.classList.contains('panel-open')) return;
   if (e.code === 'KeyF') { e.preventDefault(); if (document.fullscreenElement) document.exitFullscreen?.(); else document.documentElement.requestFullscreen?.().catch(() => {}); return; }

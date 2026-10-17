@@ -56,10 +56,10 @@ export function growSakura(g, R, o) {
       mg.add(GEO.sph, new V3(t.p.x, t.p.y + 0.05, t.p.z), new V3(0.14 + R() * 0.08, 0.05, 0.14 + R() * 0.08), C('#f3f6f9'));
       if (R() < 0.6) mg.add(GEO.sph, new V3(t.p.x - t.dir.x * 0.4, t.p.y - t.dir.y * 0.4 + 0.04, t.p.z - t.dir.z * 0.4), new V3(0.1, 0.04, 0.1), C('#eef2f6'));
     } else if (!o.weeping) {
-      pg.add(GEO.ico, new V3(t.p.x, t.p.y + 0.1, t.p.z), new V3(s * 0.45, s * 0.32, s * 0.45), pal[Math.floor(R() * 4)].clone().multiplyScalar(0.7));
-      for (let k = 0; k < 22; k++) {
-        const u = new V3(R() - .5, R() - .5, R() - .5).normalize(), rr = s * (0.3 + R() * 0.8);
-        cards.push({ p: new V3(t.p.x + u.x * rr * 1.2, t.p.y + 0.15 + u.y * rr * 0.75, t.p.z + u.z * rr * 1.2), s: 0.6 + R() * 0.5 });
+      // a full cloud of blossom (or leaves) round every tip; no solid filler balls (they read as circles)
+      for (let k = 0; k < 46; k++) {
+        const u = new V3(R() - .5, R() - .5, R() - .5).normalize(), rr = s * Math.cbrt(R()) * 1.05;
+        cards.push({ p: new V3(t.p.x + u.x * rr * 1.25, t.p.y + 0.15 + u.y * rr * 0.8, t.p.z + u.z * rr * 1.25), s: 0.62 + R() * 0.5 });
       }
     } else {
       const L = (1.6 + R() * 2.2) * o.bloom, n = Math.ceil(L / 0.26);
@@ -68,10 +68,16 @@ export function growSakura(g, R, o) {
   });
   const bm = mg.build(); const barkMesh = new THREE.Mesh(bm, BARK); g.add(barkMesh);
   const pm = pg.build(); if (pm) g.add(new THREE.Mesh(pm, VCP));
-  const cg = GEO.card.clone(); cg.boundingSphere = new THREE.Sphere(new V3(0, o.h, 0), o.h + o.bloom * 5);
+  // blossom along the inner branches too, so the crown is full from inside, not a ring of clumps
+  if (!bare) for (let i = 0; i < tips.length * 6; i++) {
+    const t = tips[Math.floor(R() * tips.length)], f = 0.35 + R() * 0.5, p = top.clone().lerp(t.p, f).add(new V3((R() - .5) * 0.8, (R() - .2) * 0.5, (R() - .5) * 0.8) .multiplyScalar(o.bloom));
+    if (!o.weeping) cards.push({ p, s: 0.55 + R() * 0.45 });
+  }
+  // generous bounds: a crown that reaches past them blinks out at the edge of the view
+  const cg = GEO.card.clone(); cg.boundingSphere = new THREE.Sphere(new V3(0, o.h, 0), o.h * 1.6 + o.bloom * 8);
   const dd = new THREE.Object3D();
   if (cards.length) {
-    const im = new THREE.InstancedMesh(cg, (aut || green) ? mapleMat : cardMat, cards.length), tints = (aut || green) ? pal : ['#ffffff', '#fff0f4', '#fbe3ea', '#ffe8ee'].map(C);
+    const im = new THREE.InstancedMesh(cg, (aut || green) ? mapleMat : cardMat, cards.length), tints = (aut || green) ? pal : (SETTINGS.blossom === 'white' ? ['#ffffff', '#fff6f8', '#fdeef2', '#fff0f4'] : ['#ffd2df', '#ffc0d3', '#ffdbe6', '#ffb4ca']).map(C); // clearly pink
     cards.forEach((c, i) => { dd.position.copy(c.p); dd.rotation.set(R() * 6.28, R() * 6.28, R() * 6.28); dd.scale.setScalar(c.s); dd.updateMatrix(); im.setMatrixAt(i, dd.matrix); im.setColorAt(i, tints[Math.floor(R() * 4)]); });
     im.userData.noShadow = true; g.add(im);
   }

@@ -8,6 +8,7 @@ import { recolorDecor } from '../plants/autumnLeaves.js';
 import { setTempleSeason } from '../world/temples.js';
 import { petalU, rebuildConnections, rebuildPetals } from '../world/particles.js';
 import { toast } from './helpers.js';
+import { setSkyButton } from './icons.js';
 import { late } from '../core/late.js';
 
 /* ================= themes ================= */
@@ -23,7 +24,8 @@ export function applyThemeMaterials() {
   grassMat.color.set(tint[0]); groundMat.color.set(tint[1]); grassMat.emissive.set(tint[2]); groundMat.emissive.set(tint[3]);
   petalU.uAutumn.value = THEME === 'autumn' ? 1 : 0; petalU.uOpacity.value = THEME === 'monsoon' ? 0 : 1;
 }
-export function setThemeUI() { const b = $('#h-theme'), n = NEXT[THEME]; b.setAttribute('aria-pressed', 'false'); b.dataset.tip = n[0].toUpperCase() + n.slice(1); b.setAttribute('aria-label', 'Turn to ' + n); }
+const CAP = s => s[0].toUpperCase() + s.slice(1);
+export function setThemeUI() { setSkyButton('h-theme', THEME, CAP(THEME), 'turn to ' + NEXT[THEME], 'Y'); }
 export function setTheme(t, quiet) {
   SETTINGS.season = t; setThemeName(resolveSeason(t)); if (typeof late.updateVeils === 'function') late.updateVeils();
   [...plants.values()].filter(p => !p.dying).forEach(pl => { const tg = pl.target; removePlant(pl); const np = createPlant(pl.poem, { visible: tg === 1 }); np.target = tg; });

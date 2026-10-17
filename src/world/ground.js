@@ -31,52 +31,24 @@ export let groundMesh;
   groundMesh = new THREE.Mesh(g, groundMat); groundMesh.receiveShadow = true; scene.add(groundMesh);
 })();
 
-/* far mountains: an alpine range all round, low where Fuji stands so it rises behind them */
-// Ridged noise gives sharp crests and steep faces; snow lies on the high, gentler slopes; the range fades
-// into the sky with distance (its own haze, out of the garden's fog) and turns rose at sunset.
+/* far mountains, hazed into the sky (the owner preferred these to an alpine range beside Fuji) */
 export const mountainU = [], mountainMeshes = [];
-(function buildAlps() {
-  const R = rng(17), perm = new Uint8Array(512); { const p = [...Array(256).keys()]; for (let i = 255; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } for (let i = 0; i < 512; i++) perm[i] = p[i & 255]; }
-  const fade = t => t * t * (3 - 2 * t), hsh = (x, y) => perm[(perm[x & 255] + y) & 255] / 255;
-  const vn = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = fade(xf), v = fade(yf); return (hsh(xi, yi) * (1 - u) + hsh(xi + 1, yi) * u) * (1 - v) + (hsh(xi, yi + 1) * (1 - u) + hsh(xi + 1, yi + 1) * u) * v; };
-  const ridged = (x, y) => { let s = 0, a = 0.55, f = 1, w = 1; for (let o = 0; o < 6; o++) { let n = 1 - Math.abs(vn(x * f, y * f) * 2 - 1); n *= n; n *= w; w = Math.min(1, n * 2); s += n * a; a *= 0.5; f *= 2.05; } return s; };
-  const FUJI_A = Math.atan2(-1000, -210); // the direction Fuji stands in
-  const R0 = 240, R1 = 560, SEG = 420, RINGS = 56, pos = [], idx = [];
-  for (let i = 0; i <= RINGS; i++) {
-    const r = R0 + (R1 - R0) * Math.pow(i / RINGS, 0.9);
-    for (let k = 0; k <= SEG; k++) {
-      const a = k / SEG * Math.PI * 2, x = Math.cos(a) * r, z = Math.sin(a) * r;
-      const env = THREE.MathUtils.smoothstep(r, R0, R0 + 90) * (1 - THREE.MathUtils.smoothstep(r, R1 - 110, R1));
-      const da = Math.atan2(Math.sin(a - FUJI_A), Math.cos(a - FUJI_A)), low = 0.22 + 0.78 * THREE.MathUtils.smoothstep(Math.abs(da), 0.42, 0.85);
-      const h = (Math.pow(ridged(x / 190, z / 190), 1.35) * 260 + vn(x / 55, z / 55) * 16) * env * low - 6; // sharper, higher crests
-      pos.push(x, h, z);
-      if (i < RINGS && k < SEG) { const b = i * (SEG + 1) + k; idx.push(b, b + SEG + 1, b + 1, b + 1, b + SEG + 1, b + SEG + 2); }
+(function buildMountains() {
+  [{ r: 300, h: 70, col: '#71869b', haze: 0.5, seed: 3 }, { r: 220, h: 42, col: '#4d6457', haze: 0.3, seed: 8 }].forEach(L => {
+    const seg = 220, pos = [], vt = [], idx = [], R = rng(L.seed), ph = [R() * 6, R() * 6, R() * 6, R() * 6];
+    for (let i = 0; i <= seg; i++) {
+      const a = i / seg * Math.PI * 2;
+      const hh = L.h * (0.5 + 0.28 * Math.sin(a * 3 + ph[0]) + 0.16 * Math.sin(a * 7 + ph[1]) + 0.07 * Math.sin(a * 17 + ph[2]) + 0.03 * Math.sin(a * 41 + ph[3]));
+      pos.push(Math.cos(a) * L.r, -8, Math.sin(a) * L.r, Math.cos(a) * L.r, hh, Math.sin(a) * L.r); vt.push(0, 1);
+      if (i < seg) { const b = i * 2; idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); }
     }
-  }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
-  const u = { uHor: { value: new THREE.Color() }, uNight: { value: 0 }, uDusk: { value: 0 }, uLight: { value: new THREE.Vector3(0.6, 0.45, 0.6) } };
-  mountainU.push(u);
-  const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: u, fog: false,
-    vertexShader: 'varying vec3 vW,vN;void main(){vW=(modelMatrix*vec4(position,1.)).xyz;vN=normal;gl_Position=projectionMatrix*viewMatrix*vec4(vW,1.);}',
-    fragmentShader: `uniform vec3 uHor,uLight;uniform float uNight,uDusk;varying vec3 vW,vN;
-      float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
-      float nz(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);return mix(mix(h2(i),h2(i+vec2(1,0)),u.x),mix(h2(i+vec2(0,1)),h2(i+vec2(1,1)),u.x),u.y);}
-      void main(){
-        vec3 n=normalize(vN);float lam=max(dot(n,normalize(uLight)),0.);
-        // rock: blue-grey granite with darker gullies; meadow green low down
-        float g=nz(vW.xz*.06)*.6+nz(vW.xz*.25)*.4;
-        vec3 rock=mix(vec3(.33,.36,.41),vec3(.48,.5,.54),g);rock=mix(vec3(.3,.38,.27),rock,smoothstep(8.,40.,vW.y));
-        // snow where it is high and not too steep, with a ragged snowline and streaks down the couloirs
-        float line=46.+(nz(vW.xz*.03)-.5)*30.;float snow=smoothstep(line-5.,line+8.,vW.y+(g-.5)*24.)*smoothstep(.1,.36,n.y+.14*sin(vW.x*.2+vW.z*.17)+(g-.5)*.25);
-        snow=max(snow,smoothstep(line+60.,line+90.,vW.y)*.9); // the summits are white
-        vec3 snowC=mix(vec3(.62,.7,.86),vec3(.97,.98,1.),lam);snowC=mix(snowC,vec3(1.,.72,.68)*(.65+.45*lam),uDusk*.85);
-        // faces turned from the sun drop into cool blue shadow, which gives the range its depth
-        vec3 c=mix(rock*(.28+.95*lam)*mix(vec3(.82,.88,1.05),vec3(1.),lam),snowC*(.72+.32*lam),snow);
-        c*=mix(1.,.16,uNight);
-        // distance: the range fades into the sky's haze
-        float d=length(vW.xz-cameraPosition.xz);c=mix(c,uHor,clamp(smoothstep(260.,700.,d)*.55+.04,0.,1.));
-        gl_FragColor=vec4(c,1.);
-      }` }));
-  m.renderOrder = -0.5; scene.add(m); mountainMeshes.push(m);
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aT', new THREE.Float32BufferAttribute(vt, 1)); g.setIndex(idx);
+    const u = { uCol: { value: C(L.col) }, uHor: { value: new THREE.Color() }, uHaze: { value: L.haze }, uNight: { value: 0 } };
+    mountainU.push(u);
+    const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: u, side: DS, fog: false,
+      vertexShader: 'attribute float aT;varying float vT;void main(){vT=aT;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+      fragmentShader: 'uniform vec3 uCol,uHor;uniform float uHaze,uNight;varying float vT;void main(){vec3 c=uCol*(0.8+0.3*vT)*mix(1.,0.2,uNight);c=mix(c,uHor,clamp(uHaze+(1.-vT)*0.35,0.,1.));gl_FragColor=vec4(c,1.);}' }));
+    scene.add(m); mountainMeshes.push(m);
+  });
 })();
 

@@ -73,7 +73,7 @@ function wisteriaArbor(o) {
 regBegin('wisteria');
 // Only two arbors: the one over the writing bench and the entrance tunnel. Free-standing ones read as confusing poles.
 (function buildArbors() {
-  wisteriaArbor({ x: BENCH.x, z: BENCH.z, ry: Math.atan2(-BENCH.x, -BENCH.z), len: 3.6, wid: 2.5, h: 2.6, seed: 3, density: 22, white: 0.15 });
+  // (the bench has its own white arch now: decor.js)
   wisteriaArbor({ x: 0, z: 26.6, ry: Math.PI / 2, len: 13, wid: 3.6, h: 2.9, seed: 5, density: 19, white: 0.25, long: 1.15 });
 })();
 

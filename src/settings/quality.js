@@ -30,7 +30,7 @@ function apply(level) {
   }
   setLabel();
 }
-function setLabel() { $('#m-quality').textContent = quality.choice === 'auto' ? `Quality: Auto (${quality.level})` : `Quality: ${quality.choice[0].toUpperCase() + quality.choice.slice(1)}`; }
+function setLabel() { $('#m-quality .t').textContent = quality.choice === 'auto' ? `Picture: Auto (${quality.level})` : `Picture: ${quality.choice[0].toUpperCase() + quality.choice.slice(1)}`; }
 
 // ---- Auto: sample frame times while walking, step down while the median is slow ----
 let samples = [], last = 0, settled = false;
