@@ -26,7 +26,7 @@ function render() {
   const p = sr.list[sr.i], none = !p;
   $('#sr-title').textContent = none ? 'Nothing grows here yet' : p.title;
   const body = $('#sr-body'); body.innerHTML = '';
-  const text = none ? 'Write a poem at the bench under the wisteria, then come back and read it here.' : p.content.replace(/\s+$/, '');
+  const text = none ? 'Write a poem at the white bench (“Sit here”), then come back and read it here.' : p.content.replace(/\s+$/, '');
   let n = 0;
   text.split('\n').forEach(line => {
     const d = document.createElement('div');

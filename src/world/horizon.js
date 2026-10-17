@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { C, clamp, rng, smooth } from '../core/util.js';
-import { groundH } from './terrain.js';
+import { groundH, shore } from './terrain.js';
+import { beachThings } from './beach.js';
 import { scene } from './renderer.js';
 import { groundMesh, mountainMeshes } from './ground.js';
 import { fujiMesh } from './fuji.js';
@@ -16,7 +17,8 @@ import { hedges } from './decor.js';
 const SEA_Y = -0.9;
 const pos = groundMesh.geometry.attributes.position, col = groundMesh.geometry.attributes.color;
 const outer = [];
-const sandDry = C('#f6e7bd'), sandWet = C('#cbb88e'), sandUnder = C('#9a8d70'), t = new THREE.Color();
+// warm sand that holds its colour in the sun
+const sandDry = C('#d9c08c'), sandWet = C('#b39d72'), sandUnder = C('#8c7f62'), t = new THREE.Color();
 for (let i = 0; i < pos.count; i++) {
   const x = pos.getX(i), z = pos.getZ(i), r = Math.hypot(x, z);
   if (r < 68) continue;
@@ -88,7 +90,7 @@ const beach = (() => {
 
 let current = 'fuji';
 export function applyHorizon(view, fujiOn) {
-  const seaView = view === 'sea';
+  const seaView = view === 'sea'; shore.on = seaView; beachThings.visible = seaView;
   sea.visible = seaView; islands.visible = seaView; beach.visible = seaView;
   mountainMeshes.forEach(m => { m.visible = !seaView; });
   fujiMesh.forEach(m => { m.visible = !seaView && fujiOn; });

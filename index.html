@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&display=swap" rel="stylesheet"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M16 4c3 4 3 8 0 12-3-4-3-8 0-12zM16 16c4-2 8-1 11 2-4 2-8 1-11-2zM16 16c-4-2-8-1-11 2 4 2 8 1 11-2zM16 16v12%22 fill=%22%23e8b7c8%22 stroke=%22%235a6b45%22 stroke-width=%221.2%22/%3E%3C/svg%3E">
 </head>
 <body>
-<main id="world"><canvas id="c" tabindex="-1" aria-label="A garden you can walk through. Each plant is a poem. The map (M) lists every poem."></canvas></main>
+<main id="world"><canvas id="c" tabindex="-1" aria-label="A garden you can walk through. Each cherry tree is a poem. The map (M) lists every poem."></canvas></main>
 <div id="vignette"></div>
 
 <div id="intro" role="banner">
@@ -35,7 +35,7 @@
   <button class="tip" id="h-night" data-tip="Light" aria-label="Light"><svg viewBox="0 0 24 24" id="i-light"></svg></button>
   <button class="tip" id="h-weather" data-tip="Weather" aria-label="Weather"><svg viewBox="0 0 24 24" id="i-weather"></svg></button>
   <span class="hud-sep" aria-hidden="true"></span>
-  <button class="tip" id="h-sound" data-tip="Music (U)" aria-label="Toggle music" aria-pressed="true">
+  <button class="tip" id="h-sound" data-tip="Music (U)" aria-label="Music on or off" aria-pressed="true">
     <svg viewBox="0 0 24 24" id="i-snd"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11"/></svg>
     <svg viewBox="0 0 24 24" id="i-mute" hidden><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
   </button>
@@ -87,7 +87,7 @@
   <div class="scroll" aria-live="polite"><h2 id="sr-title"></h2><div id="sr-body"></div><div class="meta"><div class="d" id="sr-date"></div><div id="sr-where"></div></div></div>
   <div class="sr-bar">
     <div class="sr-nav"><button id="sr-prev">Earlier</button><span id="sr-pos"></span><button id="sr-next">Later</button></div>
-    <div class="sr-opts"><span class="seg" role="group" aria-label="Order"><button data-o="new">Newest first</button><button data-o="near">Near me</button></span><button id="sr-auto" aria-pressed="false">Swing by itself</button></div>
+    <div class="sr-opts"><span class="seg" role="group" aria-label="Order"><button data-o="new">Newest first</button><button data-o="near">Near me</button></span><button id="sr-auto" aria-pressed="false">Keep swinging</button></div>
   </div>
 </section>
 <div id="visitbar" hidden><span>Visiting <em id="visit-name"></em></span><button id="visit-home">Return to my garden</button></div>
@@ -126,7 +126,7 @@
       <canvas id="av-preview" width="320" height="440" aria-label="A preview of your figure"></canvas>
       <div class="av-ctl">
         <div class="av-row"><span>You are</span><div class="seg" data-av="kind" role="group" aria-label="You are"></div></div>
-        <div class="av-row" data-for="cat"><span>Coat</span><div class="seg" data-av="coat" role="group" aria-label="The cat's coat"></div></div>
+        <div class="av-row" data-for="cat"><span>Fur</span><div class="seg" data-av="coat" role="group" aria-label="The cat's fur"></div></div>
         <div class="av-row" data-for="bird"><span>Feathers</span><div class="seg" data-av="plumage" role="group" aria-label="The bird's feathers"></div></div>
         <div class="av-row" data-for="person"><span>Skin</span><div class="sw" data-av="skin" role="group" aria-label="Skin tone"></div></div>
         <div class="av-row" data-for="person"><label for="av-height">Height</label><input type="range" id="av-height" min="0.9" max="1.08" step="0.01"></div>
@@ -135,7 +135,7 @@
         <div class="av-row" data-for="person"><span>Wearing</span><div class="seg" data-av="outfit" role="group" aria-label="Clothing"></div></div>
         <div class="av-row" data-for="person"><span></span><div class="sw" data-av="cloth" role="group" aria-label="Clothing colour"></div></div>
         <div class="av-row" data-for="person"><span>Accent</span><div class="sw" data-av="accent" role="group" aria-label="Accent colour: sash, scarf, collar and parasol"></div></div>
-        <div class="av-row" data-for="person"><span>Wearing too</span><div class="seg" data-av="extra" role="group" aria-label="Something extra"></div></div>
+        <div class="av-row" data-for="person"><span>Accessory</span><div class="seg" data-av="extra" role="group" aria-label="Something extra"></div></div>
       </div>
     </div>
     <div class="c-row"><span>Camera</span><div class="seg" data-av-view role="group" aria-label="Camera"><button data-v="first">Through my eyes</button><button data-v="third">Behind me</button></div></div>
@@ -254,12 +254,12 @@
       <dl class="keys only-fine"><dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows</dt><dd>walk</dd><dt><kbd>Shift</kbd></dt><dd>walk faster</dd><dt>Drag</dt><dd>look around</dd></dl>
       <dl class="keys only-coarse"><dt>The circle, bottom left</dt><dd>walk</dd><dt>Swipe</dt><dd>look around</dd></dl>
       <h3>Doing</h3>
-      <dl class="keys"><dt><kbd class="only-fine">E</kbd><span class="only-fine"> or click</span><span class="only-coarse">Tap</span></dt><dd>when something glows: read a poem, sit at the bench, swing</dd><dt>The bench under the wisteria</dt><dd>write a poem</dd><dt>The pond</dt><dd>an older poem rises as a reflection, and the koi come to you</dd><dt>The fountain</dt><dd>toss a coin and make a wish</dd><dt>The shrine and the bell tower</dt><dd>ring the bells</dd></dl>
+      <dl class="keys"><dt><kbd class="only-fine">E</kbd><span class="only-fine"> or click</span><span class="only-coarse">Tap</span></dt><dd>when something glows: read a poem, sit at the bench, swing</dd><dt>The white bench, “Sit here”</dt><dd>write a poem</dd><dt>The pond</dt><dd>an older poem rises as a reflection, and the koi come to you</dd><dt>The fountain</dt><dd>toss a coin and make a wish</dd><dt>The shrine and the bell tower</dt><dd>ring the bells</dd></dl>
     </div>
     <div class="only-fine"><h3>Keys</h3>
-      <dl class="keys"><dt><kbd>M</kbd></dt><dd>the map</dd><dt><kbd>N</kbd></dt><dd>write a poem</dd><dt><kbd>V</kbd></dt><dd>see yourself, or look through your eyes</dd><dt><kbd>B</kbd></dt><dd>back to the gate</dd><dt><kbd>C</kbd> · <kbd>G</kbd></dt><dd>customize · public gardens</dd><dt><kbd>U</kbd> · <kbd>L</kbd> · <kbd>P</kbd></dt><dd>music · moonlight · rain</dd><dt><kbd>Y</kbd> · <kbd>T</kbd></dt><dd>next season · walk through time</dd><dt><kbd>F</kbd></dt><dd>full screen</dd><dt><kbd>Space</kbd></dt><dd>as a bird, take off (it keeps flying); tap again to land; hold to climb, <kbd>Q</kbd> to sink. As a cat, pounce</dd></dl>
+      <dl class="keys"><dt><kbd>M</kbd></dt><dd>the map</dd><dt><kbd>N</kbd></dt><dd>write a poem</dd><dt><kbd>V</kbd></dt><dd>see yourself, or look through your eyes</dd><dt><kbd>B</kbd></dt><dd>back to the gate</dd><dt><kbd>C</kbd> · <kbd>G</kbd></dt><dd>customize · public gardens</dd><dt><kbd>U</kbd> · <kbd>L</kbd> · <kbd>P</kbd></dt><dd>music · light · weather</dd><dt><kbd>Y</kbd> · <kbd>T</kbd></dt><dd>next season · walk through time</dd><dt><kbd>F</kbd></dt><dd>full screen</dd><dt><kbd>Space</kbd></dt><dd>as a bird, take off (it keeps flying); tap again to land; hold to climb, <kbd>Q</kbd> to sink. As a cat, pounce</dd></dl>
       <h3>Reading and swinging</h3>
-      <dl class="keys"><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>earlier or later poem</dd><dt><kbd>J</kbd> · <kbd>K</kbd></dt><dd>like · leave a note (in a public garden)</dd><dt><kbd>R</kbd></dt><dd>read while on a swing</dd><dt><kbd>W</kbd> or <kbd>Space</kbd></dt><dd>swing higher</dd><dt><kbd>Esc</kbd></dt><dd>close, or stand up</dd><dt><kbd>?</kbd></dt><dd>this page</dd></dl>
+      <dl class="keys"><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>earlier or later poem</dd><dt><kbd>J</kbd> · <kbd>K</kbd></dt><dd>heart a poem · notes (in a public garden)</dd><dt><kbd>R</kbd></dt><dd>read while on a swing</dd><dt><kbd>W</kbd> or <kbd>Space</kbd></dt><dd>swing higher</dd><dt><kbd>Esc</kbd></dt><dd>close, or stand up</dd><dt><kbd>?</kbd></dt><dd>this page</dd></dl>
     </div>
   </div>
   <p class="help-foot"><button class="g-link" id="help-steps">Show the first steps again</button></p>

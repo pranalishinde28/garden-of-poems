@@ -75,6 +75,9 @@ const VIEWS = {
   'trees-c': { pos: [20, 4, -2], look: [24, 2.5, -14], season: 'spring', samples: true },
   'trees-d': { pos: [-4, 3, 20], look: [-14, 2.5, 30], season: 'autumn', samples: true },
   'bench-front': { pos: [-5.6, 1.7, 8.3], look: [-9.4, 1.0, 12.6] },
+  'beach-castle': { pos: [27, 2.2, 74], look: [33, 0.2, 73], view: 'sea', season: 'spring' },
+  'beach-wide': { pos: [-20, 3.5, -62], look: [-40, 0, -88], view: 'sea', season: 'spring' },
+  'beach-sunset': { pos: [30, 2, 70], look: [60, 0.5, 70], view: 'sea', season: 'spring', light: 'sunset' },
   'gate-back': { pos: [0, 1.7, 33], look: [0, 1.5, 50] },
   'entrance-high': { pos: [7, 7, 48], look: [0, 1.5, 30] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
@@ -178,6 +181,13 @@ async function main() {
       await page.click('#h-more'); await sleep(700); await page.screenshot({ path: join(root, 'dev/shots/box-menu.png') }); await page.keyboard.press('Escape'); await sleep(500);
       await page.click('#h-write'); await page.waitForFunction(() => window.__garden.state.mode === 'writing', { timeout: 60000, polling: 300 }); await sleep(2500);
       await page.type('#e-body', 'The plum tree forgot\nit was night.'); await page.evaluate(() => document.querySelector('#editor').scrollTop = 0); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/box-editor.png') });
+    }
+    else if (FLOW === 'wade') { // by the sea: walk off the lawn, across the sand and into the water
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden; g.setSetting('view', 'sea'); g.player.pos.set(0, 0, 66); g.player.yaw = Math.PI; g.player.pitch = -0.1; });
+      await sleep(1500); await page.keyboard.down('KeyW'); await sleep(9000); await page.keyboard.up('KeyW'); await sleep(600);
+      const st = await page.evaluate(() => { const p = window.__garden.player.pos; return { r: Math.hypot(p.x, p.z).toFixed(1), eye: window.__garden.camera.position.y.toFixed(2) }; });
+      await page.screenshot({ path: join(root, 'dev/shots/wade.png') }); console.log('  walked out to r ' + st.r + ' m, eye at ' + st.eye); if (+st.r < 90) errors.push('could not reach the water');
     }
     else if (FLOW === 'parasol') { // your figure with a parasol, from behind, at the gate
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });

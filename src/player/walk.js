@@ -1,5 +1,6 @@
 import { V3 } from '../core/util.js';
-import { WORLD_R } from '../world/terrain.js';
+import { SHORE_MAX_R, WORLD_R, seaDepth, shore } from '../world/terrain.js';
+import { wade } from '../world/beach.js';
 import { poems } from '../settings/storage.js';
 import { camera } from '../world/renderer.js';
 import { BENCH, featOn } from '../world/paths.js';
@@ -53,7 +54,8 @@ export function walk(dt) {
   player.alt = clamp(player.alt + player.vy * dt, 0, 24); if (player.alt === 0 && player.vy < 0) player.vy = 0;
   if (kind !== 'bird') player.flying = false;
   const flying = kind === 'bird' && player.alt > 0.15, high = player.alt > 3.2;
-  const sp = kind === 'bird' ? (flying ? (fast ? 9 : 6) : (fast ? 3.4 : 2.2)) : kind === 'cat' ? (fast ? 6.4 : 3.4) : fast ? 5.2 : 3.0;
+  let sp = kind === 'bird' ? (flying ? (fast ? 9 : 6) : (fast ? 3.4 : 2.2)) : kind === 'cat' ? (fast ? 6.4 : 3.4) : fast ? 5.2 : 3.0;
+  { const dep = seaDepth(player.pos.x, player.pos.z); if (dep > 0 && !flying) sp *= 1 - Math.min(0.6, dep * 0.7); } // wading is slow
   const sy = Math.sin(player.yaw), cy = Math.cos(player.yaw);
   player.vel.lerp(new V3((-sy * iz + cy * ix) * sp, 0, (-cy * iz - sy * ix) * sp), 1 - Math.exp(-dt * 5));
   const nx = player.pos.x + player.vel.x * dt, nz = player.pos.z + player.vel.z * dt;
@@ -62,8 +64,9 @@ export function walk(dt) {
   else if (!blocked(nx, player.pos.z)) player.pos.x = nx;
   else if (!blocked(player.pos.x, nz)) player.pos.z = nz;
   else player.vel.set(0, 0, 0);
+  wade(dt, player.pos, Math.hypot(player.vel.x, player.vel.z));
   const r = Math.hypot(player.pos.x, player.pos.z);
-  if (r > WORLD_R + 1) player.pos.multiplyScalar((WORLD_R + 1) / r);
+  const rMax = shore.on ? SHORE_MAX_R : WORLD_R + 1; if (r > rMax) player.pos.multiplyScalar(rMax / r);
   plants.forEach(pl => {
     if (!pl.collide || pl.vis < 0.5 || high) return;
     const dx = player.pos.x - pl.root.position.x, dz = player.pos.z - pl.root.position.z, d = Math.hypot(dx, dz), m = pl.collide + 0.35;
