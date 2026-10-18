@@ -44,7 +44,7 @@ function enterGarden(withSamples) {
     $('#hud').hidden = false; if (isTouch) joy.hidden = false;
     if (withSamples) plantSamples(true);
     late.maybeStartSteps(); offerSuggestion();
-    if (!poems.length) setTimeout(() => toast('Nothing grows here yet. The white bench marked “Sit here”, to your left past the tulips, is where poems begin.', 6000), 4000);
+    if (!poems.length) setTimeout(() => !document.body.classList.contains('panel-open') && toast('Nothing grows here yet. The white bench marked “Sit here”, to your left past the tulips, is where poems begin.', 6000), 4000);
   });
 }
 $('#enter').onclick = () => enterGarden(false);

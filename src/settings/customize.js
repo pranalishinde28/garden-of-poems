@@ -88,7 +88,7 @@ export function setSetting(k, v) {
   else if (k === 'weather') applyWeather();
   else if (k === 'music') applyMusic(v);
   else applyVisibility();
-  persistSettings(); renderCustom();
+  persistSettings(); renderCustom(); if (late.setRainUI) late.setRainUI(); // the sky buttons show the change
 }
 
 /* veils: wisteria in spring, autumn leaves in autumn; pink veils over the swings */
@@ -273,6 +273,7 @@ export function drawBoard() {
   else if (info.own) { g.font = serif(400, 84, 'italic '); g.fillStyle = 'rgba(245,234,214,.88)'; wrapText(g, 'Add your name, a welcome line and links with Customize.', W - 200).slice(0, 2).forEach(l => { y += 100; g.fillText(l, W / 2, y); }); }
   board.userData.tex.needsUpdate = true;
   drawPlaque(info.name);
+  if (late.drawLinkBoards) late.drawLinkBoards(); // the QR boards follow the same links
 }
 function drawPlaque(name) {
   const cv = archPlaque.userData.cv, g = cv.getContext('2d'), W = cv.width, H = cv.height;

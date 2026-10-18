@@ -7,12 +7,13 @@ import { Cloud } from '../cloud/cloud.ts';
 import { AVATAR_OPTIONS, KIND_PRESETS, animateAvatar, buildAvatar, cleanAvatar } from '../player/avatar.js';
 import { getAvatar, setAvatar, setThirdPerson } from '../player/figure.js';
 import { setViewUI } from '../ui/hud.js';
-import { provide } from '../core/late.js';
+import { late, provide } from '../core/late.js';
+import { closePanel, openPanel } from '../ui/reading.js';
 
 /* ================= your figure: the editor in Customize ================= */
 // The figure belongs to the person, not the garden: it is kept on this device and, when signed in,
 // with your profile, and it can be changed while visiting someone else's garden.
-const panel = $('#custom'), canvas = $('#av-preview');
+const panel = $('#youpanel'), canvas = $('#av-preview');
 state.minimap = flag.get('minimap') !== '0';
 
 // ---- live preview: a small separate renderer that only runs while Customize is open ----
@@ -91,3 +92,8 @@ export function useProfileAvatar(prof) {
 provide({ get useProfileAvatar() { return useProfileAvatar; } });
 
 build(); render();
+
+// its own box, from its own button
+function openYou() { late.closePops(); openPanel(panel); }
+$('#h-you').onclick = () => panel.classList.contains('open') ? closePanel(panel) : openYou();
+$('#y-close').onclick = () => closePanel(panel);

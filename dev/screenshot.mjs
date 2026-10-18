@@ -78,6 +78,9 @@ const VIEWS = {
   'beach-castle': { pos: [27, 2.2, 74], look: [33, 0.2, 73], view: 'sea', season: 'spring' },
   'beach-wide': { pos: [-20, 3.5, -62], look: [-40, 0, -88], view: 'sea', season: 'spring' },
   'beach-sunset': { pos: [30, 2, 70], look: [60, 0.5, 70], view: 'sea', season: 'spring', light: 'sunset' },
+  'qr-boards': { pos: [1.5, 1.75, 51], look: [8, 1.4, 44], links: [{ label: 'Instagram', url: 'https://instagram.com/garden.of.poems' }, { label: '', url: 'https://github.com/pranalishinde28' }, { label: 'My portfolio', url: 'https://example.com' }] },
+  'edge': { pos: [40, 4, 40], look: [58, 0.5, 30] },
+  'edge-high': { pos: [30, 18, 30], look: [55, 0, 40] },
   'gate-back': { pos: [0, 1.7, 33], look: [0, 1.5, 50] },
   'entrance-high': { pos: [7, 7, 48], look: [0, 1.5, 30] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
@@ -189,6 +192,11 @@ async function main() {
       const st = await page.evaluate(() => { const p = window.__garden.player.pos; return { r: Math.hypot(p.x, p.z).toFixed(1), eye: window.__garden.camera.position.y.toFixed(2) }; });
       await page.screenshot({ path: join(root, 'dev/shots/wade.png') }); console.log('  walked out to r ' + st.r + ' m, eye at ' + st.eye); if (+st.r < 90) errors.push('could not reach the water');
     }
+    else if (FLOW === 'panels') { // the two customize boxes and the gardens box
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => document.querySelector('#steps-skip')?.click());
+      for (const [b, n] of [['#h-you', 'you'], ['#h-custom', 'garden'], ['#h-gardens', 'gardens']]) { await page.click(b); await sleep(1300); await page.screenshot({ path: join(root, `dev/shots/panel-${n}.png`) }); await page.keyboard.press('Escape'); await sleep(900); }
+    }
     else if (FLOW === 'parasol') { // your figure with a parasol, from behind, at the gate
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(1200); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden; g.setAvatar({ extra: 'parasol', outfit: 'kimono', cloth: '#2c3d6b', accent: '#f2c46a', hairStyle: 'bob' }); g.setThirdPerson(true); });
@@ -245,6 +253,7 @@ async function shoot(page) {
       if (g.SETTINGS.view !== (v.view || 'fuji')) g.setSetting('view', v.view || 'fuji');
       { const L = v.light || 'day'; if (g.SETTINGS.light !== L) g.setSetting('light', L); g.state.dusk = L === 'sunset' ? 1 : 0; g.state.night = L === 'night' ? 1 : 0; }
       g.camera.position.set(...v.pos); g.curLook.set(...v.look); g.camera.lookAt(g.curLook);
+      if (v.links) { g.setSetting('links', v.links); window.__garden.drawBoard && window.__garden.drawBoard(); }
       if (v.fan && g.animals) g.animals.forEach(a => { if (a.fanT !== undefined) { a.fanT = 20; } });
     }, v);
     await sleep(v.season ? 4000 : 2500);
@@ -385,10 +394,10 @@ async function avatarFlow(page) {
     await page.keyboard.press('KeyV'); await sleep(1500);
     if (!(await page.evaluate(() => window.__garden.state.thirdPerson))) throw new Error('not in third person');
   });
-  await step('change your figure in Customize (live preview)', async () => {
-    await page.click('#h-custom'); await sleep(1200);
+  await step('change your figure in the You box (live preview)', async () => {
+    await page.click('#h-you'); await sleep(1200);
     await page.click('[data-av="outfit"] [data-v="dress"]'); await page.click('[data-av="hairStyle"] [data-v="twintails"]'); await page.click('[data-av="cloth"] button:nth-child(1)'); await sleep(1500);
-    await page.$eval('#custom', e => { e.scrollTop = 0; }); await shot('editor');
+    await page.$eval('#youpanel', e => { e.scrollTop = 0; }); await shot('editor');
     const a = await page.evaluate(() => JSON.parse(localStorage.getItem('garden-of-poems:avatar')));
     if (a.outfit !== 'dress' || a.hairStyle !== 'twintails') throw new Error('not saved: ' + JSON.stringify(a));
     await page.keyboard.press('Escape'); await sleep(900); await page.click('#c-close').catch(() => {}); await sleep(900);

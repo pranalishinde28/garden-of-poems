@@ -28,7 +28,7 @@ export const reader = $('#reader');
 // One behaviour for every panel: focus moves in and comes back when it closes, Tab stays inside,
 // and Esc or a click on the garden closes the settings-like panels (the reader and the editor keep
 // their own closing, and the swing reader never takes focus from the swing).
-const panels = [], CLOSERS = { custom: '#c-close', gardens: '#g-close', signpanel: '#s-close', helpsheet: '#help-close' };
+const panels = [], CLOSERS = { youpanel: '#y-close', custom: '#c-close', gardens: '#g-close', signpanel: '#s-close', helpsheet: '#help-close' };
 export function openPanel(el) {
   el.hidden = false; requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
   if (el.id === 'swreader') return;

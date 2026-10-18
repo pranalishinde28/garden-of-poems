@@ -129,12 +129,12 @@ const cloverTex = canvasTex(128, 128, (g) => {
   }
 });
 (function groundCover() {
-  const N = isTouch ? 2500 : 7000, R = rng(1301);
+  const N = isTouch ? 3500 : 11000, R = rng(1301);
   const geo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
   const m = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ map: cloverTex, alphaTest: 0.5, side: DS }), N), d = new THREE.Object3D();
   let n = 0;
   for (let i = 0; i < N * 2 && n < N; i++) {
-    const a = R() * 6.28, r = 9 + Math.sqrt(R()) * 50, x = Math.cos(a) * r, z = Math.sin(a) * r;
+    const a = R() * 6.28, r = 9 + Math.sqrt(R()) * 63, x = Math.cos(a) * r, z = Math.sin(a) * r; // clover out to the edge
     if (groundH(x, z) < WATER_Y + 0.1 || stoneNear(x, z, 0.4) || inTulip(x, z, 0.1)) continue;
     if (decor.some(o => o.collide > 1 && Math.hypot(o.x - x, o.z - z) < o.collide + 0.2)) continue; // not inside the fountain or a building
     d.position.set(x, groundH(x, z) + 0.025, z); d.rotation.set(0, R() * 6.28, 0); d.scale.setScalar(0.35 + R() * 0.5); d.updateMatrix();

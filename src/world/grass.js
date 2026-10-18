@@ -52,7 +52,9 @@ export let grassMat;
   }
   const d = new THREE.Object3D();
   chunks.forEach(ch => {
-    const m = new THREE.InstancedMesh(g, grassMat, ch.items.length);
+    // bounds for the whole 22 m patch: with the one tuft's bounds, a patch vanished whenever its centre left the view
+    const cg = g.clone(); cg.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.5, 0), CELL * 0.75 + 2);
+    const m = new THREE.InstancedMesh(cg, grassMat, ch.items.length);
     m.position.set(ch.cx, 0, ch.cz);
     ch.items.forEach((it, i) => {
       d.position.set(it.x - ch.cx, groundH(it.x, it.z) - 0.03, it.z - ch.cz); d.rotation.set(0, it.ry, 0); d.scale.set(it.w, it.h, it.w);

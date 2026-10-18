@@ -64,7 +64,10 @@ $('#m-cine').onclick = () => { POST.on = !POST.on; flag.set('cine', POST.on ? '1
 setCineUI();
 // weather: clear, then passing showers, then steady rain
 const NEXT_W = { clear: 'showers', showers: 'rain', rain: 'clear' }, W_WORDS = { clear: 'Clear skies', showers: 'Passing showers', rain: 'Rain' };
-function setRainUI() { const w = SETTINGS.weather; setSkyButton('h-weather', w, W_WORDS[w], 'change to ' + W_WORDS[NEXT_W[w]].toLowerCase(), 'P'); }
+// the horizon: Mount Fuji or the sea
+function setHorizonUI() { const v = SETTINGS.view; setSkyButton('h-view-horizon', v, v === 'sea' ? 'The sea' : 'Mount Fuji', v === 'sea' ? 'change to Mount Fuji' : 'change to the sea', 'O'); }
+$('#h-view-horizon').onclick = () => { if (state.visiting) { toast('You are visiting. The horizon belongs to this garden.'); return; } setSetting('view', SETTINGS.view === 'sea' ? 'fuji' : 'sea'); toast(SETTINGS.view === 'sea' ? 'The garden opens onto the sea. Walk down to the water.' : 'Mount Fuji stands over the garden again.', 3200); };
+function setRainUI() { setHorizonUI(); const w = SETTINGS.weather; setSkyButton('h-weather', w, W_WORDS[w], 'change to ' + W_WORDS[NEXT_W[w]].toLowerCase(), 'P'); }
 $('#h-weather').onclick = () => { if (state.visiting) { toast('You are visiting. The weather belongs to this garden.'); return; } setSetting('weather', NEXT_W[SETTINGS.weather]); toast({ clear: 'The sky clears.', showers: 'Showers will pass through now and then.', rain: 'Let it rain.' }[SETTINGS.weather], 2400); };
 setRainUI();
 $('#m-sample').onclick = () => { closePops(); if (state.visiting) { toast('Return to your own garden first.'); return; } const n = late.plantSamples(true); toast(n ? `${n} sample poems are taking root.` : 'The sample poems are already growing here.'); };

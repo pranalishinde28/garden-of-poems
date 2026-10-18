@@ -141,9 +141,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 .g-link:hover{color:var(--ink)}
 .g-who{margin:.2rem 0 0}.g-d{font-size:1rem;font-style:italic;color:var(--ink-soft);margin-top:.15rem}
 #intro-visit{font-style:italic}
-#custom,#signpanel{left:50%;top:50%;width:min(660px,94vw);max-height:86vh;overflow:auto;transform:translate(-50%,-47%);border-radius:4px;padding:2rem 2.2rem 1.6rem;touch-action:pan-y}
-#custom.open,#signpanel.open{transform:translate(-50%,-50%)}
-#custom h2,#signpanel h2{margin:0 0 .4rem;font-style:italic;font-weight:500;font-size:2rem;padding-right:2rem}
+#youpanel,#custom,#signpanel{left:50%;top:50%;width:min(660px,94vw);max-height:86vh;overflow:auto;transform:translate(-50%,-47%);border-radius:4px;padding:2rem 2.2rem 1.6rem;touch-action:pan-y}
+#youpanel.open,#custom.open,#signpanel.open{transform:translate(-50%,-50%)}
+#youpanel h2,#custom h2,#signpanel h2{margin:0 0 .4rem;font-style:italic;font-weight:500;font-size:2rem;padding-right:2rem}
 #custom h3{margin:1.5rem 0 .5rem;font-weight:500;font-size:1.25rem}
 #custom label.f{display:block;font-size:1rem;color:var(--ink-soft);margin:.7rem 0 .2rem}
 #custom input[type=text],#custom input[type=url],.c-link input{width:100%;font-family:var(--serif);font-size:1.12rem;color:var(--ink);background:transparent;border:0;border-bottom:1px solid var(--field);padding:.2rem 0;user-select:text}
@@ -446,8 +446,7 @@ body.on-swing #minimap-btn{bottom:calc(env(safe-area-inset-bottom,0px) + 90px)}
 .st-bar{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.7rem}
 .st-bar button{padding:.3rem 1rem .36rem;border-radius:999px;border:1px solid var(--line);min-height:40px}
 #steps-next{background:var(--ink);color:#f7f3ea;border-color:transparent}
-body.is-night #steps-next{color:#162021}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #steps-next{color:#162021}}
+
 @media (pointer:coarse){#steps{bottom:calc(env(safe-area-inset-bottom,0px) + 158px)}}
 
 /* ---------- while a panel is open, the walking controls step aside ---------- */
@@ -508,7 +507,8 @@ body.on-swing #steps{bottom:calc(env(safe-area-inset-bottom,0px) + 120px)} /* th
 
 /* ---------- paper pages: the writing box and the ⋯ menu share the poem card's parchment ---------- */
 /* inside them the ink and lines are the page's own, in day and at night alike */
-#editor,#menu-pop,#time-pop{
+/* every box shares the parchment of the poem card and the menu */
+.panel,#editor,#menu-pop,#time-pop,#steps,#toast,#fview,#swingui,#visitbar,#cue{
   --ink:var(--page-ink);--ink-soft:rgba(43,51,34,.72);--line:rgba(96,72,48,.24);--field:rgba(96,72,48,.42);--paper-strong:var(--page);--accent:#8a4f6a;--rose:#a2453f;
   color:var(--page-ink);
   background:radial-gradient(120% 80% at 20% 0%,rgba(255,255,255,.55),transparent 55%),radial-gradient(90% 70% at 100% 100%,rgba(196,160,110,.18),transparent 60%),var(--page);
@@ -539,3 +539,44 @@ body.on-swing #steps{bottom:calc(env(safe-area-inset-bottom,0px) + 120px)} /* th
 #menu .mrow svg{grid-row:1 / span 2}
 #menu button:hover{background:rgba(120,92,60,.1)}
 #menu .danger .t{color:var(--rose)}
+
+/* ---------- type: Cormorant is light; the whole interface reads a weight heavier ---------- */
+body{font-weight:500}
+.panel h2,#mapview h2,#steps h2{font-weight:600}
+.panel h3,#menu .mh{font-weight:600}
+.panel p,.panel label,.panel small,.panel dd,.panel .g-m,#menu small,.seg button,.panel button{font-weight:500}
+.panel em,.panel i,.panel [style*=italic]{font-weight:500}
+::placeholder{font-weight:500}
+/* parchment boxes keep their own frame line; small boxes get a single fine one */
+.panel::before{content:"";position:absolute;inset:8px;border:1px solid rgba(120,92,60,.26);border-radius:inherit;pointer-events:none}
+#editor::before,#reader::before{display:none}
+#toast,#cue,#fview,#swingui,#visitbar{border:1px solid rgba(120,92,60,.4)}
+.panel .x,.panel #r-close,.panel #g-close,.panel #c-close{color:rgba(43,51,34,.7)}
+/* the reader card: its frame and header on parchment too */
+#reader{background:var(--page)}
+#reader .card-head,#reader .card-acts,#reader .card-likes,#reader .bar{background:transparent}
+.book{background:#e7dcc4}
+body.panel-open #steps{opacity:0!important;pointer-events:none;visibility:hidden} /* the first steps wait while a box is open */
+
+/* ---------- the two customize boxes, laid out on one grid ---------- */
+/* every row: a label column of the same width, then the choices, left-aligned and wrapping under themselves */
+#youpanel,#custom{width:min(720px,94vw)}
+#custom .c-row,#youpanel .c-row{display:grid;grid-template-columns:8.5rem 1fr;align-items:start;gap:.4rem 1rem;margin:.55rem 0}
+#custom .c-row > span,#youpanel .c-row > span{padding-top:.35rem;font-weight:600}
+#custom .c-row .seg,#youpanel .c-row .seg{justify-content:flex-start}
+#youpanel .av-wrap{display:grid;grid-template-columns:200px 1fr;gap:1.4rem;align-items:start}
+#youpanel #av-preview{width:200px!important;height:276px!important;position:sticky;top:0}
+#youpanel .av-row{grid-template-columns:7rem 1fr;margin:.5rem 0}
+#youpanel .av-row > span,#youpanel .av-row > label{font-weight:600;color:var(--ink)}
+#custom h3,#youpanel h3{margin:1.6rem 0 .5rem;padding-bottom:.35rem;border-bottom:1px solid var(--line);font-size:1.3rem}
+#custom .c-note,#youpanel .c-note{font-style:italic;color:var(--ink-soft);margin:0 0 .4rem}
+@media (max-width:640px){#youpanel .av-wrap{grid-template-columns:1fr}#youpanel #av-preview{position:static;margin:0 auto}#custom .c-row,#youpanel .c-row{grid-template-columns:1fr}}
+.g-oauth{display:grid;gap:.5rem;margin:.6rem 0 .2rem}
+.g-oauth-btn{display:flex;align-items:center;justify-content:center;gap:.6rem;padding:.6rem 1rem;border-radius:999px;border:1px solid rgba(96,72,48,.4);background:#fffdf8;color:#2b3322;font-size:1.08rem;font-weight:600}
+.g-oauth-btn:hover{background:#fff}
+.g-oauth-btn svg{width:20px;height:20px}
+.g-oauth-btn:disabled{opacity:.6}
+.g-or{display:flex;align-items:center;gap:.7rem;margin:.8rem 0 .2rem!important;font-style:italic;font-size:.98rem!important}
+.g-or::before,.g-or::after{content:"";flex:1;height:1px;background:var(--line)}
+#toast{padding:.55rem 1.3rem .6rem;border-radius:14px;line-height:1.35;max-width:min(760px,90vw)}
+body.panel-open #toast{z-index:40} /* messages stay above an open box */

@@ -7,7 +7,7 @@
 <meta name="description" content="Write poems and watch them grow into a garden you can walk through. Keep it private or open it to visitors.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&display=swap" rel="stylesheet"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M16 4c3 4 3 8 0 12-3-4-3-8 0-12zM16 16c4-2 8-1 11 2-4 2-8 1-11-2zM16 16c-4-2-8-1-11 2 4 2 8 1 11-2zM16 16v12%22 fill=%22%23e8b7c8%22 stroke=%22%235a6b45%22 stroke-width=%221.2%22/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M16 4c3 4 3 8 0 12-3-4-3-8 0-12zM16 16c4-2 8-1 11 2-4 2-8 1-11-2zM16 16c-4-2-8-1-11 2 4 2 8 1 11-2zM16 16v12%22 fill=%22%23e8b7c8%22 stroke=%22%235a6b45%22 stroke-width=%221.2%22/%3E%3C/svg%3E">
 </head>
 <body>
 <main id="world"><canvas id="c" tabindex="-1" aria-label="A garden you can walk through. Each cherry tree is a poem. The map (M) lists every poem."></canvas></main>
@@ -33,13 +33,15 @@
   <span class="hud-sep" aria-hidden="true"></span>
   <button class="tip" id="h-theme" data-tip="Season" aria-label="Season"><svg viewBox="0 0 24 24" id="i-season"></svg></button>
   <button class="tip" id="h-night" data-tip="Light" aria-label="Light"><svg viewBox="0 0 24 24" id="i-light"></svg></button>
+  <button class="tip" id="h-view-horizon" data-tip="Horizon" aria-label="Horizon"><svg viewBox="0 0 24 24" id="i-horizon"></svg></button>
   <button class="tip" id="h-weather" data-tip="Weather" aria-label="Weather"><svg viewBox="0 0 24 24" id="i-weather"></svg></button>
   <span class="hud-sep" aria-hidden="true"></span>
   <button class="tip" id="h-sound" data-tip="Music (U)" aria-label="Music on or off" aria-pressed="true">
     <svg viewBox="0 0 24 24" id="i-snd"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11"/></svg>
     <svg viewBox="0 0 24 24" id="i-mute" hidden><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
   </button>
-  <button class="tip" id="h-custom" data-tip="Customize (C)" aria-label="Customize your garden">
+  <button class="tip" id="h-you" data-tip="You: girl, boy, cat or bird (A)" aria-label="You, in the garden: your character"><svg viewBox="0 0 24 24"><circle cx="12" cy="7.5" r="3.4"/><path d="M5 20.5c.8-4.2 3.6-6.6 7-6.6s6.2 2.4 7 6.6"/></svg></button>
+  <button class="tip" id="h-custom" data-tip="Your garden: scenery, flowers, sign (C)" aria-label="Customize your garden">
     <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
   </button>
   <button class="tip" id="h-gardens" data-tip="Public gardens (G)" aria-label="Public gardens">
@@ -116,12 +118,11 @@
     <button id="g-morelist" class="g-link" hidden>More gardens</button>
   </div>
 </section>
-<section id="custom" class="panel" tabindex="-1" role="dialog" aria-labelledby="c-title" hidden>
-  <button id="c-close" class="x" aria-label="Close">×</button>
-  <h2 id="c-title">Customize your garden</h2>
-  <p class="c-note" id="c-note"></p>
+<section id="youpanel" class="panel" tabindex="-1" role="dialog" aria-labelledby="y-title" hidden>
+  <button id="y-close" class="x" aria-label="Close">×</button>
+  <h2 id="y-title">You, in the garden</h2>
+  <p class="c-note">Who you are as you walk. Kept on this device, and with your account when you sign in.</p>
   <div id="c-you">
-    <h3>You, in the garden</h3>
     <div class="av-wrap">
       <canvas id="av-preview" width="320" height="440" aria-label="A preview of your figure"></canvas>
       <div class="av-ctl">
@@ -141,18 +142,23 @@
     <div class="c-row"><span>Camera</span><div class="seg" data-av-view role="group" aria-label="Camera"><button data-v="first">Through my eyes</button><button data-v="third">Behind me</button></div></div>
     <label class="matters"><input type="checkbox" id="av-minimap"> A small map in the corner</label>
   </div>
+</section>
+<section id="custom" class="panel" tabindex="-1" role="dialog" aria-labelledby="c-title" hidden>
+  <button id="c-close" class="x" aria-label="Close">×</button>
+  <h2 id="c-title">Your garden</h2>
+  <p class="c-note" id="c-note"></p>
   <h3>The sign at the gate</h3>
   <label class="f" for="c-name">Garden name</label>
   <input type="text" id="c-name" maxlength="60" placeholder="The Garden of Poems" autocomplete="off">
   <label class="f" for="c-desc">Welcome line</label>
   <input type="text" id="c-desc" maxlength="280" placeholder="Poems from my first year in Tokyo" autocomplete="off">
   <label class="f">Socials and portfolio links</label>
+  <p class="c-note">Each link also gets its own board with a QR code, to the right of the gate, so visitors can scan it and find you.</p>
   <div id="c-links"></div>
   <p class="g-err" id="c-linkerr" role="alert"></p>
   <button class="g-link" id="c-addlink">Add a link</button>
   <h3>Scenery</h3>
   <div class="c-row"><span>Season</span><div class="seg" data-k="season"><button data-v="auto">Follow the calendar</button><button data-v="spring">Spring</button><button data-v="monsoon">Monsoon</button><button data-v="autumn">Autumn</button></div></div>
-  <div class="c-row"><span>Horizon</span><div class="seg" data-k="view"><button data-v="fuji">Mount Fuji</button><button data-v="sea">The sea</button></div></div>
   <div class="c-row"><span>Light</span><div class="seg" data-k="light"><button data-v="auto">My clock</button><button data-v="day">Day</button><button data-v="sunset">Sunset</button><button data-v="night">Night</button></div></div>
   <div class="c-row"><span>Weather</span><div class="seg" data-k="weather"><button data-v="clear">Clear</button><button data-v="showers">Passing showers</button><button data-v="rain">Rain</button></div></div>
   <div class="c-row"><span>Poem trees</span><div class="seg" data-k="tree"><button data-v="sakura">Cherry blossom</button><button data-v="maple">Red maple</button><button data-v="green">Green leaves</button></div></div>
