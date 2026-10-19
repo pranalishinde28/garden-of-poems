@@ -28,7 +28,8 @@ export const BUILD = {
   },
   willow(g, R, p, season) {
     const s = 0.95 + Math.min(lineCount(p), 24) / 50;
-    const t = growSakura(g, R, { h: 2.5 * s, r: 0.24 * s, spread: 0.85, depth: 2, bloom: 0.95 * s, season, weeping: true });
+    // no weeping or drooping trees (the owner found them sad and broken-looking): a full, upright cherry
+    const t = growSakura(g, R, { h: 2.4 * s, r: 0.24 * s, spread: 1.3, depth: 3, bloom: 0.95 * s, season });
     return { h: t.h, canopy: t.canopy, extraMats: t.extraMats };
   },
   orchard(g, R, p, season) {

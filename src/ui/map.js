@@ -212,7 +212,7 @@ addEventListener('keydown', e => {
   }
 }, true);
 addEventListener('resize', () => { if (!view.hidden) { layout(); buildMarks(); } });
-$('#h-map').onclick = () => toggleMap();
+$('#h-map').onclick = () => { late.closePops(); toggleMap(); };
 
 // ---- the corner map ----
 const W = 150, PX = 5, world = document.createElement('canvas'); world.width = world.height = W * 2 * PX;

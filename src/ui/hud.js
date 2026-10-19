@@ -28,9 +28,13 @@ provide({
 });
 
 /* ================= HUD wiring ================= */
-const timePop = $('#time-pop'), menuPop = $('#menu-pop');
-function closePops() { timePop.classList.remove('open'); menuPop.classList.remove('open'); $('#h-time').setAttribute('aria-pressed', 'false'); $('#h-more').setAttribute('aria-pressed', 'false'); clearConfirm(); }
+const timePop = $('#time-pop'), menuPop = $('#menu-pop'), skyPop = $('#sky-pop');
+function closePops() { timePop.classList.remove('open'); menuPop.classList.remove('open'); skyPop.classList.remove('open'); $('#h-sky').setAttribute('aria-pressed', 'false'); $('#h-time').setAttribute('aria-pressed', 'false'); $('#h-more').setAttribute('aria-pressed', 'false'); clearConfirm(); }
 $('#h-time').onclick = () => { const o = !timePop.classList.contains('open'); closePops(); if (o) { timePop.classList.add('open'); $('#h-time').setAttribute('aria-pressed', 'true'); } };
+// season, light, horizon and weather, all in one small page
+function renderSky() { skyPop.querySelectorAll('.seg[data-k]').forEach(sg => sg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', SETTINGS[sg.dataset.k] === b.dataset.v ? 'true' : 'false'))); }
+skyPop.querySelectorAll('.seg[data-k] button').forEach(b => { b.onclick = () => { if (state.visiting) { toast('You are visiting. The sky belongs to this garden.'); return; } setSetting(b.parentElement.dataset.k, b.dataset.v); renderSky(); }; });
+$('#h-sky').onclick = () => { const o = !skyPop.classList.contains('open'); closePops(); if (o) { renderSky(); skyPop.classList.add('open'); $('#h-sky').setAttribute('aria-pressed', 'true'); } };
 $('#h-more').onclick = () => { const o = !menuPop.classList.contains('open'); closePops(); if (o) { menuPop.classList.add('open'); $('#h-more').setAttribute('aria-pressed', 'true'); } };
 document.querySelectorAll('#timebar button').forEach(b => b.onclick = () => { applyFilter(b.dataset.f, true); });
 $('#h-write').onclick = () => { if (state.mode === 'cinematic' || state.mode === 'writing') return; openEditor(null); };
@@ -67,7 +71,7 @@ const NEXT_W = { clear: 'showers', showers: 'rain', rain: 'clear' }, W_WORDS = {
 // the horizon: Mount Fuji or the sea
 function setHorizonUI() { const v = SETTINGS.view; setSkyButton('h-view-horizon', v, v === 'sea' ? 'The sea' : 'Mount Fuji', v === 'sea' ? 'change to Mount Fuji' : 'change to the sea', 'O'); }
 $('#h-view-horizon').onclick = () => { if (state.visiting) { toast('You are visiting. The horizon belongs to this garden.'); return; } setSetting('view', SETTINGS.view === 'sea' ? 'fuji' : 'sea'); toast(SETTINGS.view === 'sea' ? 'The garden opens onto the sea. Walk down to the water.' : 'Mount Fuji stands over the garden again.', 3200); };
-function setRainUI() { setHorizonUI(); const w = SETTINGS.weather; setSkyButton('h-weather', w, W_WORDS[w], 'change to ' + W_WORDS[NEXT_W[w]].toLowerCase(), 'P'); }
+function setRainUI() { setHorizonUI(); if (skyPop.classList.contains('open')) renderSky(); const w = SETTINGS.weather; setSkyButton('h-weather', w, W_WORDS[w], 'change to ' + W_WORDS[NEXT_W[w]].toLowerCase(), 'P'); }
 $('#h-weather').onclick = () => { if (state.visiting) { toast('You are visiting. The weather belongs to this garden.'); return; } setSetting('weather', NEXT_W[SETTINGS.weather]); toast({ clear: 'The sky clears.', showers: 'Showers will pass through now and then.', rain: 'Let it rain.' }[SETTINGS.weather], 2400); };
 setRainUI();
 $('#m-sample').onclick = () => { closePops(); if (state.visiting) { toast('Return to your own garden first.'); return; } const n = late.plantSamples(true); toast(n ? `${n} sample poems are taking root.` : 'The sample poems are already growing here.'); };

@@ -87,6 +87,7 @@ export function setSetting(k, v) {
   else if (k === 'light') applyLight();
   else if (k === 'weather') applyWeather();
   else if (k === 'music') applyMusic(v);
+  else if (k === 'links') drawBoard();
   else applyVisibility();
   persistSettings(); renderCustom(); if (late.setRainUI) late.setRainUI(); // the sky buttons show the change
 }
@@ -266,10 +267,17 @@ export function drawBoard() {
   // everything under the name is large enough to read from the path (it used to be a third of this)
   if (info.by) { fitFont(g, 'a garden by ' + info.by, W - 200, 400, 104, 64); g.font = 'italic ' + g.font; g.fillStyle = 'rgba(245,234,214,.92)'; y += 125; g.fillText('a garden by ' + info.by, W / 2, y); }
   if (info.desc) { g.font = serif(400, 88, 'italic '); g.fillStyle = '#f5ead6'; wrapText(g, info.desc, W - 200).slice(0, 2).forEach(l => { y += 104; g.fillText(l, W / 2, y); }); }
-  const links = (info.links || []).filter(l => safeUrl(l.url)).slice(0, 3);
+  const links = (info.links || []).filter(l => safeUrl(l.url)).slice(0, 6);
   y += 58; g.strokeStyle = 'rgba(245,234,214,.45)'; g.lineWidth = 4; g.beginPath(); g.moveTo(W * 0.3, y); g.lineTo(W * 0.7, y); g.stroke();
   g.fillStyle = '#f5ead6';
-  if (links.length) { links.forEach(l => { const t = `${l.label || hostOf(l.url)}  ·  ${hostOf(l.url)}`; y += 96; fitFont(g, t, W - 200, 500, 78, 44); g.fillText(t, W / 2, y); }); g.font = serif(400, 60, 'italic '); g.fillStyle = 'rgba(245,234,214,.8)'; g.fillText('Click the sign to open these links', W / 2, Math.min(H - 44, y + 90)); }
+  // the links, by name, large enough to read from the path; their codes are on the board across the arch
+  if (links.length) {
+    g.font = serif(600, 116); const names = links.map(l => late.linkKind ? late.linkKind(l.url, l.label).name : (l.label || hostOf(l.url)));
+    const lines = []; let cur = '';
+    names.forEach(n => { const t = cur ? cur + '  ·  ' + n : n; if (g.measureText(t).width > W - 160 && cur) { lines.push(cur); cur = n; } else cur = t; }); if (cur) lines.push(cur);
+    lines.slice(0, 2).forEach(l => { y += 130; g.fillText(l, W / 2, y); });
+    g.font = serif(500, 76, 'italic '); g.fillStyle = 'rgba(245,234,214,.9)'; g.fillText('Click to open · codes on the board opposite', W / 2, Math.min(H - 56, y + 112));
+  }
   else if (info.own) { g.font = serif(400, 84, 'italic '); g.fillStyle = 'rgba(245,234,214,.88)'; wrapText(g, 'Add your name, a welcome line and links with Customize.', W - 200).slice(0, 2).forEach(l => { y += 100; g.fillText(l, W / 2, y); }); }
   board.userData.tex.needsUpdate = true;
   drawPlaque(info.name);
@@ -308,16 +316,41 @@ const customPanel = $('#custom');
   mk($('#c-scene'), SCENE_LABELS, ''); mk($('#c-show'), SHOW_LABELS, 'show.');
   customPanel.querySelectorAll('.seg[data-k] button').forEach(b => { b.onclick = () => setSetting(b.parentElement.dataset.k, b.dataset.v); });
 })();
-function linkRows() { return [...$('#c-links').querySelectorAll('.c-link')].map(r => ({ label: r.querySelector('.c-l').value.trim().slice(0, 40), url: r.querySelector('.c-u').value.trim().slice(0, 200) })); }
+// four well-known places come ready: you type only your name there, and the address is made for you
+export const PRESETS = [
+  { name: 'Instagram', host: /(^|\.)instagram\.com$/, make: h => `https://instagram.com/${h}`, read: u => u.pathname.split('/')[1], hint: 'yourname' },
+  { name: 'Facebook', host: /(^|\.)facebook\.com$/, make: h => `https://facebook.com/${h}`, read: u => u.pathname.split('/')[1], hint: 'yourname' },
+  { name: 'Substack', host: /\.substack\.com$/, make: h => `https://${h}.substack.com`, read: u => u.hostname.split('.')[0], hint: 'yourname' },
+  { name: 'Goodreads', host: /(^|\.)goodreads\.com$/, make: h => `https://www.goodreads.com/${h}`, read: u => u.pathname.replace(/^\//, ''), hint: 'yourname' },
+];
+const handleClean = v => v.trim().replace(/^@/, '').replace(/^https?:\/\/\S*?\//, '').replace(/[^A-Za-z0-9._\-\/]/g, '').slice(0, 60);
+function linkRows() {
+  const pre = [...$('#c-presets').querySelectorAll('.c-pre')].map(r => { const h = handleClean(r.querySelector('input').value), P = PRESETS[+r.dataset.i]; return h ? { label: P.name, url: P.make(h) } : null; }).filter(Boolean);
+  const own = [...$('#c-links').querySelectorAll('.c-link')].map(r => ({ label: r.querySelector('.c-l').value.trim().slice(0, 40), url: r.querySelector('.c-u').value.trim().slice(0, 200) }));
+  return pre.concat(own);
+}
 function saveLinks() {
   const rows = linkRows(), bad = rows.filter(r => r.url && !safeUrl(r.url));
-  $('#c-linkerr').textContent = bad.length ? 'Links need to start with https:// (for example https://instagram.com/yourname).' : '';
+  $('#c-linkerr').textContent = bad.length ? 'Other links need to start with https:// (for example https://yourname.com).' : '';
   SETTINGS.links = rows.filter(r => safeUrl(r.url)).slice(0, 6); persistSettings(); drawBoard();
+}
+function renderPresets(links) {
+  const box = $('#c-presets'); box.innerHTML = '';
+  PRESETS.forEach((P, i) => {
+    let h = ''; for (const l of links) { try { const u = new URL(l.url); if (P.host.test(u.hostname.replace(/^www\./, ''))) { h = P.read(u) || ''; l._used = true; break; } } catch (e) { /* skip */ } }
+    const row = document.createElement('label'); row.className = 'c-pre'; row.dataset.i = i;
+    const name = document.createElement('span'); name.className = 'c-pre-n'; name.textContent = P.name;
+    const pre = document.createElement('span'); pre.className = 'c-pre-u'; pre.textContent = P.make('').replace(/^https:\/\/(www\.)?/, '').replace(/\/$/, '/');
+    const inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = P.hint; inp.value = h; inp.maxLength = 60; inp.autocomplete = 'off'; inp.setAttribute('aria-label', `Your ${P.name} name`);
+    if (P.name === 'Substack') { row.classList.add('sub'); pre.textContent = ''; const post = document.createElement('span'); post.className = 'c-pre-u'; post.textContent = '.substack.com'; inp.addEventListener('change', saveLinks); row.append(name, inp, post); }
+    else { inp.addEventListener('change', saveLinks); row.append(name, pre, inp); }
+    box.appendChild(row);
+  });
 }
 function addLinkRow(l) {
   const wrap = $('#c-links'); if (wrap.children.length >= 6) return;
   const row = document.createElement('div'); row.className = 'c-link';
-  const a = document.createElement('input'); a.className = 'c-l'; a.placeholder = 'Instagram'; a.maxLength = 40; a.value = l ? l.label : ''; a.setAttribute('aria-label', 'Link name');
+  const a = document.createElement('input'); a.className = 'c-l'; a.placeholder = 'Name, e.g. My portfolio'; a.maxLength = 40; a.value = l ? l.label : ''; a.setAttribute('aria-label', 'Link name');
   const u = document.createElement('input'); u.className = 'c-u'; u.placeholder = 'https://'; u.maxLength = 200; u.type = 'url'; u.value = l ? l.url : ''; u.setAttribute('aria-label', 'Link address');
   const x = document.createElement('button'); x.className = 'g-link'; x.textContent = 'Remove'; x.onclick = () => { row.remove(); saveLinks(); };
   [a, u].forEach(i => i.addEventListener('change', saveLinks));
@@ -333,7 +366,7 @@ function renderCustom() {
   customPanel.querySelectorAll('.seg[data-k]').forEach(s => s.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', SETTINGS[s.dataset.k] === b.dataset.v ? 'true' : 'false')));
   $('#c-blossom').hidden = SETTINGS.tree !== 'sakura';
   customPanel.querySelectorAll('input[type=checkbox][data-k]').forEach(i => { const k = i.dataset.k; i.checked = k.startsWith('show.') ? SETTINGS.show[k.slice(5)] !== false : !!SETTINGS[k]; });
-  $('#c-links').innerHTML = ''; (SETTINGS.links || []).forEach(addLinkRow); $('#c-linkerr').textContent = '';
+  { const ls = (SETTINGS.links || []).map(l => ({ ...l })); renderPresets(ls); $('#c-links').innerHTML = ''; ls.filter(l => !l._used).forEach(addLinkRow); } $('#c-linkerr').textContent = '';
 }
 function openCustomize() { late.closePops(); renderCustom(); openPanel(customPanel); }
 $('#h-custom').onclick = () => customPanel.classList.contains('open') ? closePanel(customPanel) : openCustomize();

@@ -78,7 +78,9 @@ const VIEWS = {
   'beach-castle': { pos: [27, 2.2, 74], look: [33, 0.2, 73], view: 'sea', season: 'spring' },
   'beach-wide': { pos: [-20, 3.5, -62], look: [-40, 0, -88], view: 'sea', season: 'spring' },
   'beach-sunset': { pos: [30, 2, 70], look: [60, 0.5, 70], view: 'sea', season: 'spring', light: 'sunset' },
-  'qr-boards': { pos: [1.5, 1.75, 51], look: [8, 1.4, 44], links: [{ label: 'Instagram', url: 'https://instagram.com/garden.of.poems' }, { label: '', url: 'https://github.com/pranalishinde28' }, { label: 'My portfolio', url: 'https://example.com' }] },
+  'qr-boards': { pos: [0, 1.7, 49], look: [0, 1.6, 20], links: [{ label: 'Instagram', url: 'https://instagram.com/garden.of.poems' }, { label: 'Facebook', url: 'https://facebook.com/gardenofpoems' }, { label: 'Substack', url: 'https://gardenofpoems.substack.com' }, { label: 'Goodreads', url: 'https://www.goodreads.com/gardenofpoems' }] },
+  'qr-close': { pos: [3.2, 1.9, 43.5], look: [6.3, 2, 38.6], links: [{ label: 'Instagram', url: 'https://instagram.com/garden.of.poems' }, { label: 'Facebook', url: 'https://facebook.com/gardenofpoems' }, { label: 'Substack', url: 'https://gardenofpoems.substack.com' }, { label: 'Goodreads', url: 'https://www.goodreads.com/gardenofpoems' }] },
+  'board-close': { pos: [-3.2, 1.9, 43.5], look: [-6.3, 2, 38.6], links: [{ label: 'Instagram', url: 'https://instagram.com/garden.of.poems' }, { label: 'Facebook', url: 'https://facebook.com/gardenofpoems' }, { label: 'Substack', url: 'https://gardenofpoems.substack.com' }, { label: 'Goodreads', url: 'https://www.goodreads.com/gardenofpoems' }] },
   'edge': { pos: [40, 4, 40], look: [58, 0.5, 30] },
   'edge-high': { pos: [30, 18, 30], look: [55, 0, 40] },
   'gate-back': { pos: [0, 1.7, 33], look: [0, 1.5, 50] },
@@ -253,7 +255,7 @@ async function shoot(page) {
       if (g.SETTINGS.view !== (v.view || 'fuji')) g.setSetting('view', v.view || 'fuji');
       { const L = v.light || 'day'; if (g.SETTINGS.light !== L) g.setSetting('light', L); g.state.dusk = L === 'sunset' ? 1 : 0; g.state.night = L === 'night' ? 1 : 0; }
       g.camera.position.set(...v.pos); g.curLook.set(...v.look); g.camera.lookAt(g.curLook);
-      if (v.links) { g.setSetting('links', v.links); window.__garden.drawBoard && window.__garden.drawBoard(); }
+      if (v.links) { g.setSetting('links', v.links); }
       if (v.fan && g.animals) g.animals.forEach(a => { if (a.fanT !== undefined) { a.fanT = 20; } });
     }, v);
     await sleep(v.season ? 4000 : 2500);
@@ -437,7 +439,7 @@ async function mapFlow(page, browser, url, errors) {
     await sleep(1500); await shot('minimap'); return (await page.$eval('#minimap-btn', b => !b.hidden)) ? 'corner map showing' : 'corner map hidden';
   });
   let target;
-  await step('click 1: open the map', async () => { await page.click('#h-map'); await sleep(900); if (!(await page.$('#mapview.open'))) throw new Error('map did not open'); const n = await page.$$eval('.map-poem', b => b.length), p = await page.$$eval('.map-place', b => b.map(x => x.getAttribute('aria-label'))); await shot('full'); return `${n} poems, places: ${p.join(' | ')}`; });
+  await step('click 1: open the map', async () => { await page.keyboard.press('KeyM'); await sleep(900); if (!(await page.$('#mapview.open'))) throw new Error('map did not open'); const n = await page.$$eval('.map-poem', b => b.length), p = await page.$$eval('.map-place', b => b.map(x => x.getAttribute('aria-label'))); await shot('full'); return `${n} poems, places: ${p.join(' | ')}`; });
   await step('hover a poem shows its title', async () => { const b = (await page.$$('.map-poem'))[3]; await b.hover(); await sleep(400); target = await b.evaluate(e => e.dataset.title); await shot('hover'); return target; });
   await step('click 2: choose it; glide there and read it', async () => {
     const b = (await page.$$('.map-poem'))[3]; await b.click();

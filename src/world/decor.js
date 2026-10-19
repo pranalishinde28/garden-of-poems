@@ -181,7 +181,7 @@ function boulder(x, z, s, seed) {
 export const sign = new THREE.Group();
 (function buildSign() {
   // beside the path just outside the gate, turned toward where you arrive (0, 49)
-  const x = 6.1, z = 38.8; sign.position.set(x, groundH(x, z), z); sign.rotation.y = Math.atan2(0 - x, 49 - z);
+  const x = 3.1, z = 34.6; sign.position.set(x, groundH(x, z), z); sign.rotation.y = Math.atan2(0 - x, 49 - z);
   const wood = M('#6b5440'); part(sign, GEO.cylB, wood, [-1.1, 0, 0], [0.07, 1.75, 0.07]); part(sign, GEO.cylB, wood, [1.1, 0, 0], [0.07, 1.75, 0.07]);
   const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 430; sign.userData.canvas = cv;
   const tex = new THREE.CanvasTexture(cv); sign.userData.tex = tex;
