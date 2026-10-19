@@ -592,3 +592,33 @@ body.panel-open #toast{z-index:40} /* messages stay above an open box */
 .c-pre input:focus{outline:none;border-bottom-color:var(--ink)}
 .c-pre.sub{grid-template-columns:7.5rem 1fr auto}
 .pop.open{z-index:45} /* an open popup sits above messages */
+
+/* ---------- the map as an illustrated park plan ---------- */
+#mapview{background:radial-gradient(ellipse at 50% 45%,#c9e6a0,#b4da84 70%,#a9d37a);color:#2f3a28}
+#mapview::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,transparent 60%,rgba(60,90,30,.12))}
+.map-head h2{font-family:var(--serif);font-weight:700;font-style:normal;font-size:clamp(2rem,4vw,3rem);letter-spacing:.06em;color:#fff;text-shadow:0 2px 0 rgba(70,110,40,.45),0 6px 18px rgba(50,80,20,.25)}
+.map-head h2::after{content:" ❦";color:#e9f6d8;font-size:.7em;vertical-align:.2em}
+.map-head p{color:rgba(40,60,25,.82);font-weight:600}
+#map-close{color:#2f4a22;background:rgba(255,255,255,.5)}
+/* places: a brown medallion with a white glyph */
+#map-marks .map-place .dot,.medal{width:30px;height:30px;border-radius:50%;background:#8a4a35;box-shadow:0 0 0 2.5px #fff,0 3px 8px rgba(40,30,20,.35);display:grid;place-items:center;flex:none}
+#map-marks .map-place .dot svg,.medal svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#map-marks .map-place.side-l{transform:translate(calc(-100% + 15px),-50%)}
+#map-marks .map-place.side-r,#map-marks .map-place.side-c{transform:translate(-15px,-50%)}
+#map-marks .map-place.side-t{transform:translate(-50%,calc(-100% + 15px))}
+#map-marks .map-place.side-b{transform:translate(-50%,-15px)}
+.map-place .t{background:rgba(255,253,246,.94);box-shadow:0 2px 8px rgba(40,60,20,.18);font-weight:600}
+/* poem trees: a round crown in the mood's colour with a highlight and a shadow */
+.map-poem::before{width:14px;height:14px;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.7),transparent 45%),var(--c);box-shadow:0 0 0 2px #fff,2px 3px 4px rgba(40,60,20,.35)}
+.map-poem.big::before{width:19px;height:19px}
+/* the legend: a parchment card along the bottom, places with their medallions, then the poem trees */
+#map-legend{display:flex;flex-direction:column;align-items:center;gap:.45rem;margin:0 auto .9rem;padding:.7rem 1.2rem;border-radius:14px;background:rgba(255,252,243,.92);box-shadow:0 6px 20px rgba(40,60,20,.18);font-style:normal;font-weight:600;max-width:min(980px,94vw)}
+.lg-places{display:flex;flex-wrap:wrap;justify-content:center;gap:.4rem 1.1rem}
+.lg-place{display:inline-flex;align-items:center;gap:.4rem}
+.lg-place .medal{width:24px;height:24px}
+.lg-place .medal svg{width:14px;height:14px}
+.lg-moods{display:flex;flex-wrap:wrap;justify-content:center;gap:.3rem .9rem;font-style:italic;font-weight:500}
+.lg-h{font-style:normal;font-weight:700;color:#8a4a35}
+#minimap-btn{box-shadow:0 0 0 3px #fff,0 8px 24px rgba(20,32,22,.25)}
+@media (max-width:640px){.lg-places{display:none}}
+#map-stage{overflow:hidden}

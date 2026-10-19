@@ -33,47 +33,71 @@ const mini = $('#minimap'), miniBtn = $('#minimap-btn');
 
 // ---- drawing the garden ----
 const INK = 'rgba(52,62,42,', WATER = 'rgba(120,163,186,';
+// An illustrated garden map, like a printed park plan: a bright lawn, cream paths, blue water with stone
+// rims, flower beds in their colours, white pergolas, red temples with grey roofs, round trees outside
+// the hedge, everything with a soft drop shadow. The corner map draws the same picture, closer in.
+const COL = { lawn: '#a7d46f', lawn2: '#9bcb62', out: '#c4e39a', path: '#f3e6c6', pathEdge: '#e0cfa6', water: '#6cb8e2', water2: '#a6daf2', stone: '#efe8d6', wood: '#9a6b45', tree: '#4f9a3c', tree2: '#6db84b', roof: '#5b6062', red: '#c0503a', shadow: 'rgba(40,70,20,.22)' };
 function drawWorld(g, P, s, full) {
-  const at = (x, z) => P(x, z);
+  const at = (x, z) => P(x, z), R = (seed => () => (seed = (seed * 16807) % 2147483647) / 2147483647)(11);
+  const disc = (x, y, r, fill, stroke, lw) => { g.beginPath(); g.arc(x, y, r, 0, 7); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw || 1; g.stroke(); } };
   g.lineCap = g.lineJoin = 'round';
-  // the garden ground and its hedge
   let [cx, cy] = at(0, 0);
-  g.fillStyle = 'rgba(112,140,88,.13)'; g.beginPath(); g.arc(cx, cy, WORLD_R * s, 0, 7); g.fill();
-  g.setLineDash([2, 5]); g.strokeStyle = INK + '.28)'; g.lineWidth = 1.2; g.stroke(); g.setLineDash([]);
-  // regions: a faint wash and a soft name
-  if (full) for (const k in REGIONS) {
-    const r = REGIONS[k]; g.beginPath(); g.arc(cx, cy, r.r1 * s, r.a - r.sa, r.a + r.sa); g.arc(cx, cy, r.r0 * s, r.a + r.sa, r.a - r.sa, true); g.closePath();
-    g.fillStyle = 'rgba(160,140,180,.06)'; g.fill();
-  }
-  // the stream and the pond
-  g.strokeStyle = WATER + '.75)'; g.lineWidth = Math.max(2, 3.6 * s); g.beginPath();
-  RIVER.forEach((p, i) => { const [x, y] = at(p.x, p.z); if (Math.hypot(p.x, p.z) > WORLD_R + 6) return; i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke();
-  g.fillStyle = WATER + '.6)'; g.beginPath(); g.arc(cx, cy, POND_R * s, 0, 7); g.fill(); g.strokeStyle = 'rgba(64,96,116,.55)'; g.lineWidth = 1.2; g.stroke();
-  // bridges
-  g.strokeStyle = 'rgba(128,96,68,.9)'; g.lineWidth = Math.max(2, 1.3 * s);
-  BRIDGES.forEach(b => { const [x0, y0] = at(b.x - b.D.x * b.half, b.z - b.D.z * b.half), [x1, y1] = at(b.x + b.D.x * b.half, b.z + b.D.z * b.half); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); });
-  // stepping stones
-  g.fillStyle = INK + '.38)'; const sr = Math.max(0.8, 0.26 * s);
-  stones.forEach(st => { const [x, y] = at(st.x, st.z); g.beginPath(); g.arc(x, y, sr, 0, 7); g.fill(); });
-  // flowers and features the owner keeps
+  // the lawn inside the hedge, with a faint mown texture
+  disc(cx, cy, (WORLD_R + 2) * s, COL.lawn);
+  g.save(); g.beginPath(); g.arc(cx, cy, WORLD_R * s, 0, 7); g.clip(); g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 2.2 * s;
+  for (let k = -WORLD_R; k < WORLD_R; k += 4) { const [x0, y0] = at(k, -WORLD_R), [x1, y1] = at(k + 30, WORLD_R); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
+  g.restore();
+  // the hedge ring with hydrangeas inside it, and round trees beyond
+  for (let k = 0; k < 200; k++) { const a = k / 200 * Math.PI * 2, [x, y] = at(Math.cos(a) * (WORLD_R + 3), Math.sin(a) * (WORLD_R + 3)); disc(x + 0.4 * s, y + 0.5 * s, 2.1 * s, COL.shadow); disc(x, y, 2.1 * s, '#4f8a3a'); disc(x - 0.5 * s, y - 0.6 * s, 1.1 * s, '#64a548'); }
+  const hyd = ['#6f8fe0', '#f19bbc', '#b98fe0', '#ffffff', '#e05a9a'];
+  for (let k = 0; k < 200; k++) { const a = R() * Math.PI * 2, r = 66.5 + R() * 4.5; if (Math.abs(Math.cos(a) * r) < 5.5 && Math.sin(a) > 0) continue; const [x, y] = at(Math.cos(a) * r, Math.sin(a) * r); disc(x, y, 0.75 * s, '#3f7a36'); disc(x, y - 0.15 * s, 0.45 * s, hyd[k % 5]); }
+  if (full) for (let k = 0; k < 90; k++) { const a = R() * Math.PI * 2, r = WORLD_R + 7 + R() * 26, [x, y] = at(Math.cos(a) * r, Math.sin(a) * r), t = (1.6 + R() * 1.6) * s; disc(x + 0.5 * s, y + 0.7 * s, t, COL.shadow); disc(x, y, t, k % 3 ? COL.tree : '#3f8a34'); disc(x - t * 0.3, y - t * 0.35, t * 0.5, COL.tree2); }
+  // the main path: from the gate, through the wisteria walk, to the pond, then paths of stepping stones
+  { const [x0, y0] = at(0, 52), [x1, y1] = at(0, POND_R + 1); g.strokeStyle = COL.pathEdge; g.lineWidth = 3.4 * s; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); g.strokeStyle = COL.path; g.lineWidth = 2.8 * s; g.stroke(); }
+  stones.forEach(st => { const [x, y] = at(st.x, st.z); disc(x, y, Math.max(1.4, 0.95 * s), COL.path, COL.pathEdge, 0.6); });
+  // the stream, banked with stone, and the pond with its rim and lilies
+  const stream = w => { g.beginPath(); RIVER.forEach((p, i) => { if (Math.hypot(p.x, p.z) > WORLD_R + 6) return; const [x, y] = at(p.x, p.z); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.lineWidth = w; g.stroke(); };
+  g.strokeStyle = COL.stone; stream(5.4 * s); g.strokeStyle = COL.water; stream(3.8 * s); g.strokeStyle = COL.water2; stream(1.2 * s);
+  disc(cx, cy, (POND_R + 1.2) * s, COL.stone, '#d8cfb8', 1);
+  { const gr = g.createRadialGradient(cx - POND_R * s * 0.3, cy - POND_R * s * 0.3, 1, cx, cy, POND_R * s); gr.addColorStop(0, COL.water2); gr.addColorStop(1, COL.water); disc(cx, cy, POND_R * s, gr); }
+  for (let k = 0; k < 9; k++) { const a = R() * 6.28, r = R() * POND_R * 0.8, [x, y] = at(Math.cos(a) * r, Math.sin(a) * r); disc(x, y, 0.7 * s, '#5f9a48'); }
+  // bridges: planks and two rails
+  BRIDGES.forEach(b => { const [x0, y0] = at(b.x - b.D.x * b.half, b.z - b.D.z * b.half), [x1, y1] = at(b.x + b.D.x * b.half, b.z + b.D.z * b.half); g.strokeStyle = '#6e4a30'; g.lineWidth = 2.6 * s; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); g.strokeStyle = COL.wood; g.lineWidth = 1.8 * s; g.stroke(); });
+  // flower beds in their colours, edged with a low hedge
   if (featOn('tulips')) TULIPS.forEach(t => {
-    const [x0, y0] = at(t.x0, t.z0), [x1, y1] = at(t.x1, t.z1), cols = ['#d6443f', '#e9c04a', '#e98fb0', '#f3ece0'];
-    for (let i = 0, n = Math.max(3, Math.round((x1 - x0) / Math.max(3, s * 1.2))); i < n; i++) { g.fillStyle = cols[i % 4]; g.globalAlpha = 0.5; g.fillRect(x0 + (x1 - x0) * i / n, y0, (x1 - x0) / n * 0.7, y1 - y0); }
-    g.globalAlpha = 1;
+    const [x0, y0] = at(t.x0, t.z0), [x1, y1] = at(t.x1, t.z1), cols = ['#e24a3f', '#f2c53a', '#f08bb2', '#fbf4e4', '#a66be0'];
+    g.fillStyle = COL.shadow; g.fillRect(x0 + 0.4 * s, y0 + 0.5 * s, x1 - x0, y1 - y0); g.fillStyle = '#4c8a38'; g.fillRect(x0 - 0.4 * s, y0 - 0.4 * s, x1 - x0 + 0.8 * s, y1 - y0 + 0.8 * s);
+    const n = Math.max(3, Math.round((x1 - x0) / Math.max(2.5, s * 1.1))); for (let i = 0; i < n; i++) { g.fillStyle = cols[i % 5]; g.fillRect(x0 + (x1 - x0) * i / n, y0, (x1 - x0) / n * 0.82, y1 - y0); }
   });
-  if (featOn('roses')) { const [x, y] = at(ROSE_GARDEN.x, ROSE_GARDEN.z); g.strokeStyle = 'rgba(160,70,70,.45)'; g.lineWidth = 1; g.beginPath(); g.arc(x, y, 7.5 * s, 0, 7); g.stroke(); g.fillStyle = 'rgba(190,64,72,.55)'; for (let i = 0; i < 18; i++) { const a = i / 18 * 6.28, r = (i % 2 ? 3.5 : 5.6) * s; g.beginPath(); g.arc(x + Math.cos(a) * r, y + Math.sin(a) * r, Math.max(1, 0.5 * s), 0, 7); g.fill(); } }
-  if (featOn('wisteria')) { const [x0, y0] = at(-1.8, 20.1), [x1, y1] = at(1.8, 33.1); g.fillStyle = 'rgba(150,120,200,.32)'; g.fillRect(x0, y0, x1 - x0, y1 - y0); }
-  if (featOn('swings')) { g.strokeStyle = 'rgba(110,84,64,.85)'; g.lineWidth = Math.max(1.2, 0.35 * s); swings.forEach(sw => { const p = sw.g.position, a = sw.g.rotation.y, w = 1.3 * 1.35, dx = Math.cos(a) * w, dz = -Math.sin(a) * w, [x0, y0] = at(p.x - dx, p.z - dz), [x1, y1] = at(p.x + dx, p.z + dz); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }); }
-  // the bench, the gate, the sign
-  g.save(); let [bx, by] = at(BENCH.x, BENCH.z); g.translate(bx, by); g.rotate(-Math.atan2(-BENCH.x, -BENCH.z)); g.fillStyle = 'rgba(110,80,56,.9)'; g.fillRect(-0.85 * s, -0.2 * s, 1.7 * s, Math.max(2, 0.4 * s)); g.restore();
-  { const [x, y] = at(0, 39.2); g.strokeStyle = 'rgba(150,52,40,.85)'; g.lineWidth = Math.max(1.5, 0.5 * s); g.beginPath(); g.moveTo(x - 3.2 * s, y); g.lineTo(x + 3.2 * s, y); g.stroke(); }
-  if (sign.visible) { const [x, y] = at(sign.position.x, sign.position.z); g.fillStyle = 'rgba(110,84,64,.9)'; g.fillRect(x - Math.max(2, 0.8 * s), y - 1, Math.max(4, 1.6 * s), 3); }
-  // the fountain, the pagoda, the bell tower and the shrine
-  { const [x, y] = at(FOUNTAIN.x, FOUNTAIN.z); g.fillStyle = WATER + '.7)'; g.strokeStyle = 'rgba(120,116,108,.8)'; g.lineWidth = Math.max(1, 0.3 * s); g.beginPath(); g.arc(x, y, Math.max(3, 2 * s), 0, 7); g.fill(); g.stroke(); }
-  const temple = (L, w, d) => { const [x, y] = at(L.x, L.z); g.save(); g.translate(x, y); g.rotate(-Math.atan2(-L.x, -L.z)); g.fillStyle = 'rgba(150,62,46,.55)'; g.strokeStyle = 'rgba(110,52,40,.85)'; g.lineWidth = 1; g.fillRect(-w * s / 2, -d * s / 2, w * s, d * s); g.strokeRect(-w * s / 2, -d * s / 2, w * s, d * s); g.restore(); };
-  temple(LANDMARKS.pagoda, 7.5, 7.5); temple(LANDMARKS.bell, 5.2, 5.2);
-  { const L = LANDMARKS.shrine; temple(L, 6.6, 9); const a = Math.atan2(-L.x, -L.z), [x, y] = at(L.x + Math.sin(a) * 12.4, L.z + Math.cos(a) * 12.4); g.save(); g.translate(x, y); g.rotate(-a); g.strokeStyle = 'rgba(170,58,40,.9)'; g.lineWidth = Math.max(1.5, 0.35 * s); g.beginPath(); g.moveTo(-2.2 * s, 0); g.lineTo(2.2 * s, 0); g.stroke(); g.restore(); }
+  if (featOn('roses')) { const [x, y] = at(ROSE_GARDEN.x, ROSE_GARDEN.z); disc(x, y, 7.8 * s, null, COL.path, 1.6 * s); for (let i = 0; i < 26; i++) { const a = i / 26 * 6.28, r = (i % 2 ? 3.6 : 5.8) * s; disc(x + Math.cos(a) * r + 0.3 * s, y + Math.sin(a) * r + 0.4 * s, 0.9 * s, COL.shadow); disc(x + Math.cos(a) * r, y + Math.sin(a) * r, 0.9 * s, '#3f7a36'); disc(x + Math.cos(a) * r, y + Math.sin(a) * r - 0.2 * s, 0.5 * s, '#d63a4a'); } }
+  if (featOn('wisteria')) { const [x0, y0] = at(-1.9, 20.1), [x1, y1] = at(1.9, 33.1); g.fillStyle = '#b59ae6'; g.fillRect(x0, y0, x1 - x0, y1 - y0); g.strokeStyle = '#ffffff'; g.lineWidth = Math.max(1, 0.25 * s); for (let z = 20.5; z < 33; z += 1.3) { const [a0, b0] = at(-1.9, z), [a1] = at(1.9, z); g.beginPath(); g.moveTo(a0, b0); g.lineTo(a1, b0); g.stroke(); } }
+  // white pergola swings, each with a coral bench
+  if (featOn('swings')) swings.forEach(sw => { const p = sw.g.position, [x, y] = at(p.x, p.z); g.save(); g.translate(x, y); g.rotate(-sw.g.rotation.y); const w = 2.9 * s, d = 2.3 * s; g.fillStyle = COL.shadow; g.fillRect(-w / 2 + 0.4 * s, -d / 2 + 0.5 * s, w, d); g.fillStyle = '#ffffff'; g.fillRect(-w / 2, -d / 2, w, d); g.fillStyle = '#d85a43'; g.fillRect(-w * 0.3, -d * 0.15, w * 0.6, d * 0.3); g.strokeStyle = '#d9d2c4'; g.lineWidth = 0.6; g.strokeRect(-w / 2, -d / 2, w, d); g.restore(); });
+  // the writing bench in its bed, the gate's arch
+  { const [x, y] = at(BENCH.x, BENCH.z); g.save(); g.translate(x, y); g.rotate(-Math.atan2(-BENCH.x, -BENCH.z)); disc(0, -0.35 * s, 2.6 * s, '#8a5c3c'); g.fillStyle = '#ffffff'; g.fillRect(-1.1 * s, -0.35 * s, 2.2 * s, 0.7 * s); g.restore(); }
+  { const [x, y] = at(0, 39.2); g.strokeStyle = '#f0a7c0'; g.lineWidth = Math.max(2, 1.1 * s); g.beginPath(); g.arc(x, y, 3.1 * s, Math.PI * 1.05, Math.PI * 1.95); g.stroke(); disc(x - 3 * s, y, 0.6 * s, '#5e4634'); disc(x + 3 * s, y, 0.6 * s, '#5e4634'); }
+  // the fountain: a stone octagon, blue water, a white jet
+  { const [x, y] = at(FOUNTAIN.x, FOUNTAIN.z); disc(x + 0.4 * s, y + 0.5 * s, 3.9 * s, COL.shadow); g.beginPath(); for (let k = 0; k < 8; k++) { const a = k / 8 * 6.28 + Math.PI / 8; g.lineTo(x + Math.cos(a) * 3.9 * s, y + Math.sin(a) * 3.9 * s); } g.closePath(); g.fillStyle = '#cfc8b8'; g.fill(); disc(x, y, 3.0 * s, COL.water); disc(x, y, 1.2 * s, '#e8e2d2'); disc(x, y, 0.5 * s, '#ffffff'); }
+  // temples: red walls under grey hipped roofs, seen from above
+  const temple = (L, w, d) => { const [x, y] = at(L.x, L.z); g.save(); g.translate(x, y); g.rotate(-Math.atan2(-L.x, -L.z)); w *= s; d *= s;
+    g.fillStyle = COL.shadow; g.fillRect(-w / 2 + 0.6 * s, -d / 2 + 0.8 * s, w, d); g.fillStyle = COL.red; g.fillRect(-w / 2, -d / 2, w, d);
+    g.fillStyle = COL.roof; g.beginPath(); g.moveTo(-w / 2 - 0.5 * s, -d / 2 - 0.5 * s); g.lineTo(w / 2 + 0.5 * s, -d / 2 - 0.5 * s); g.lineTo(w / 2 + 0.5 * s, d / 2 + 0.5 * s); g.lineTo(-w / 2 - 0.5 * s, d / 2 + 0.5 * s); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(-w / 2 - 0.5 * s, -d / 2 - 0.5 * s); g.lineTo(w / 2 + 0.5 * s, d / 2 + 0.5 * s); g.moveTo(w / 2 + 0.5 * s, -d / 2 - 0.5 * s); g.lineTo(-w / 2 - 0.5 * s, d / 2 + 0.5 * s); g.stroke();
+    disc(0, 0, Math.min(w, d) * 0.16, '#d2a347'); g.restore(); };
+  temple(LANDMARKS.pagoda, 7, 7); temple(LANDMARKS.bell, 5, 5); temple(LANDMARKS.shrine, 6.6, 9);
+  { const L = LANDMARKS.shrine, a = Math.atan2(-L.x, -L.z), [x, y] = at(L.x + Math.sin(a) * 12.4, L.z + Math.cos(a) * 12.4); g.save(); g.translate(x, y); g.rotate(-a); g.strokeStyle = COL.red; g.lineWidth = Math.max(1.6, 0.5 * s); g.beginPath(); g.moveTo(-2.4 * s, 0); g.lineTo(2.4 * s, 0); g.stroke(); g.restore(); }
+  if (sign.visible) { const [x, y] = at(sign.position.x, sign.position.z); g.fillStyle = '#7a5a40'; g.fillRect(x - 1.2 * s, y - 0.3 * s, 2.4 * s, 0.6 * s); }
 }
+// ---- the place icons: white line glyphs in brown medallions, as on a printed park map ----
+const GLYPHS = {
+  bench: '<path d="M5 11h14M6 11v6M18 11v6M5 15h14M7 7h10v4"/>', pond: '<path d="M4 13c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5M7 9l2 2-2 2"/><circle cx="16" cy="9" r="1.2"/>',
+  swing: '<path d="M5 5h14M8 5v10M16 5v10M7 15h10"/>', gate: '<path d="M6 19V10a6 6 0 0 1 12 0v9M4 19h16"/>', tulip: '<path d="M12 21V12M12 12c-3 0-4-2-4-5l2 1 2-3 2 3 2-1c0 3-1 5-4 5zM12 17c-2-2-4-2-5-2 1 3 3 4 5 4"/>',
+  rose: '<circle cx="12" cy="11" r="5"/><path d="M12 8c-1.5 1-1.5 3 0 4 1.5-1 1.5-3 0-4M12 16v5"/>', stream: '<path d="M5 8c3-2 5 2 8 0s5-2 6 0M5 13c3-2 5 2 8 0s5-2 6 0M5 18c3-2 5 2 8 0s5-2 6 0"/>',
+  fountain: '<path d="M6 18h12M8 18l1-4h6l1 4M12 14V8M9 8c0-2 1.5-3 3-3s3 1 3 3"/>', torii: '<path d="M4 7h16M6 10h12M8 7v12M16 7v12"/>', pagoda: '<path d="M12 3v3M7 9h10l-2-3H9zM6 14h12l-2-3H8zM8 19h8v-5H8z"/>',
+  bell: '<path d="M8 17V11a4 4 0 0 1 8 0v6M6 17h12M12 7V5M11 20h2"/>',
+};
+const glyphFor = name => /bench/i.test(name) ? 'bench' : /pond/i.test(name) ? 'pond' : /swing/i.test(name) ? 'swing' : /gate/i.test(name) ? 'gate' : /tulip/i.test(name) ? 'tulip' : /rose/i.test(name) ? 'rose' : /stream/i.test(name) ? 'stream' : /fountain/i.test(name) ? 'fountain' : /shrine/i.test(name) ? 'torii' : /pagoda/i.test(name) ? 'pagoda' : /bell/i.test(name) ? 'bell' : 'gate';
+const medal = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${GLYPHS[glyphFor(name)]}</svg>`;
 
 // ---- the full map ----
 let P = null, S = 1, prevMode = 'walk', openedFrom = null;
@@ -114,7 +138,7 @@ function buildMarks() {
   const add = (cls, x, z, attrs, html) => { const [sx, sy] = P(x, z), b = document.createElement('button'); b.className = cls; b.style.left = sx + 'px'; b.style.top = sy + 'px'; Object.entries(attrs).forEach(([k, v]) => b.setAttribute(k, v)); if (html) b.innerHTML = html; marks.appendChild(b); return b; };
   places().forEach(pl => {
     const go = () => { const [x, z] = standNear(pl.stand[0], pl.stand[1], pl.face[0], pl.face[1]); closeMap(false); glideTo(x, z, pl.face[0], pl.face[1]); };
-    const b = add('map-place side-' + pl.side + (pl.small ? ' small' : ''), pl.x, pl.z, { 'aria-label': `${pl.name}: ${pl.hint}`, 'data-side': pl.side }, `<span class="dot"></span><span class="t"><em>${pl.name}</em><small>${pl.hint}</small></span>`);
+    const b = add('map-place side-' + pl.side + (pl.small ? ' small' : ''), pl.x, pl.z, { 'aria-label': `${pl.name}: ${pl.hint}`, 'data-side': pl.side }, `<span class="dot">${medal(pl.name)}</span><span class="t"><em>${pl.name}</em><small>${pl.hint}</small></span>`);
     b.onclick = go;
     // on narrow screens the hints live in a row under the map instead of crowding it
     const li = document.createElement('button'); li.setAttribute('role', 'listitem'); li.innerHTML = `<em>${pl.name}</em> <small>${pl.hint}</small>`; li.onclick = go; list.appendChild(li);
@@ -165,13 +189,15 @@ function settleLabels() {
   });
 }
 function legend() {
-  $('#map-legend').innerHTML = MOODS.map(([k, label]) => `<span><i style="background:${MOOD_INK[k]}"></i>${label}</span>`).join('') + '<span class="me-key"><b>▲</b>You</span>';
+  // the places with their medallions, then the poem trees by mood, then you
+  const ps = places().map(pl => `<span class="lg-place"><b class="medal">${medal(pl.name)}</b>${(n => n[0].toUpperCase() + n.slice(1))(pl.name.replace(/^The /, ''))}</span>`).join('');
+  $('#map-legend').innerHTML = `<div class="lg-places">${ps}</div><div class="lg-moods"><span class="lg-h">Poem trees</span>` + MOODS.map(([k, label]) => `<span><i style="background:${MOOD_INK[k]}"></i>${label}</span>`).join('') + '<span class="me-key"><b>▲</b>You</span></div>';
 }
 export function openMap() {
   if (!view.hidden || !(state.mode === 'walk' || state.mode === 'swing')) return;
   late.closePops(); keys.clear(); openedFrom = document.activeElement;
   $('#map-title').textContent = state.visiting ? (state.visiting.name || 'This garden') : (SETTINGS.name || 'Your garden');
-  view.hidden = false; layout(); buildMarks(); legend();
+  view.hidden = false; legend(); layout(); buildMarks(); // the legend first: it changes how much room the map has
   requestAnimationFrame(() => view.classList.add('open'));
   if (state.mode === 'walk') { prevMode = 'walk'; state.mode = 'map'; } else prevMode = state.mode;
   (marks.querySelector('.map-place') || $('#map-close')).focus({ preventScroll: true });

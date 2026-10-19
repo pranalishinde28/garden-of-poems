@@ -90,7 +90,9 @@ $('#m-clear').onclick = e => {
 };
 
 /* first or third person */
-export function setViewUI() { const t = !!state.thirdPerson, b = $('#h-view'); b.setAttribute('aria-pressed', t ? 'true' : 'false'); b.dataset.tip = t ? 'See through your eyes (V)' : 'See yourself (V)'; b.setAttribute('aria-label', t ? 'Switch to first person' : 'Switch to third person'); }
+export function setViewUI() { const t = !!state.thirdPerson, b = $('#h-view');
+  // the icon shows how you see now: an eye (through your eyes) or a little figure (behind you)
+  $('#i-view').innerHTML = t ? '<circle cx="12" cy="6.2" r="2.4"/><path d="M12 9v6.2M8.6 11.6l3.4-1.4 3.4 1.4M9.6 20.5l2.4-5.3 2.4 5.3"/><path d="M4 20.5h16" opacity=".5"/>' : '<path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.8"/>'; b.setAttribute('aria-pressed', t ? 'true' : 'false'); b.dataset.tip = t ? 'See through your eyes (V)' : 'See yourself (V)'; b.setAttribute('aria-label', t ? 'Switch to first person' : 'Switch to third person'); }
 export function toggleView() { setThirdPerson(!state.thirdPerson); setViewUI(); toast(state.thirdPerson ? 'You can see yourself now. Press V to look through your own eyes again.' : 'Looking through your own eyes.', 3200); }
 $('#h-view').onclick = () => toggleView();
 setViewUI();
