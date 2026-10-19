@@ -183,6 +183,7 @@ async function main() {
     else if (FLOW === 'boxes') { // the writing page and the menu, at sunset (as the owner saw them)
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); window.__garden.setSetting('light', 'sunset'); }); await sleep(3000);
+      await page.click('#h-sky'); await sleep(700); await page.screenshot({ path: join(root, 'dev/shots/box-sky.png') }); await page.click('#h-sky'); await sleep(500);
       await page.click('#h-more'); await sleep(700); await page.screenshot({ path: join(root, 'dev/shots/box-menu.png') }); await page.keyboard.press('Escape'); await sleep(500);
       await page.click('#h-write'); await page.waitForFunction(() => window.__garden.state.mode === 'writing', { timeout: 60000, polling: 300 }); await sleep(2500);
       await page.type('#e-body', 'The plum tree forgot\nit was night.'); await page.evaluate(() => document.querySelector('#editor').scrollTop = 0); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/box-editor.png') });

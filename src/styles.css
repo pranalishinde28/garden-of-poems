@@ -591,3 +591,4 @@ body.panel-open #toast{z-index:40} /* messages stay above an open box */
 .c-pre input{width:100%;font-family:var(--serif);font-size:1.1rem;font-weight:500;color:var(--ink);background:transparent;border:0;border-bottom:1px solid var(--field);padding:.15rem 0}
 .c-pre input:focus{outline:none;border-bottom-color:var(--ink)}
 .c-pre.sub{grid-template-columns:7.5rem 1fr auto}
+.pop.open{z-index:45} /* an open popup sits above messages */
