@@ -30,7 +30,19 @@ export const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 48, 24), new THR
     if(y<0.)c=hor*mix(1.,.9,clamp(-y*4.,0.,1.));
     vec3 md=normalize(uMoonDir);float m=max(dot(d,md),0.);
     c+=n*(vec3(.96,.97,1.)*smoothstep(0.99955,0.99975,m)*1.3+vec3(.5,.6,.8)*pow(m,90.)*0.3+vec3(.25,.33,.5)*pow(m,10.)*0.1);
-    if(y>0.){vec3 q=floor(d*300.);float st=step(0.9984,h3(q));c+=vec3(st)*n*smoothstep(0.04,0.35,y)*(0.55+0.45*sin(uTime*1.7+q.x*3.1))*(1.-uRain);}
+    if(y>0.){
+      // the Milky Way: a soft band across the sky, mottled with dust lanes, blue at its edges and rose at its heart
+      vec3 ax=normalize(vec3(.62,.25,-.74));float b=dot(d,ax),band=exp(-b*b*9.);
+      vec3 t1=normalize(cross(ax,vec3(0.,1.,0.))),t2=cross(ax,t1);vec2 bp=vec2(dot(d,t1),dot(d,t2))*3.+vec2(0.,b*2.);float dust=fbm(bp*2.2+3.),core=fbm(bp*5.+9.);
+      vec3 mw=mix(vec3(.25,.32,.62),vec3(.78,.62,.82),smoothstep(.45,.8,core))*band*smoothstep(.3,.75,dust);
+      mw+=vec3(.55,.4,.6)*exp(-b*b*60.)*smoothstep(.5,.85,core)*.6;
+      float vis=n*smoothstep(0.02,0.3,y)*(1.-uRain);c+=mw*.5*vis;
+      // stars: many faint ones, more within the band, a few bright ones that twinkle, some blue and some warm
+      vec3 q=floor(d*420.);float hs=h3(q),st=step(0.9975-band*.004,hs);
+      vec3 sc2=mix(vec3(.75,.85,1.),vec3(1.,.88,.75),fract(hs*97.));
+      c+=sc2*st*vis*(0.35+0.65*fract(hs*311.))*(0.6+0.4*sin(uTime*1.7+q.x*3.1));
+      vec3 q2=floor(d*140.);float bright=step(0.9993,h3(q2+17.));c+=vec3(1.)*bright*vis*(0.8+0.2*sin(uTime*2.3+q2.y));
+    }
     c=mix(c,uRainCol,uRain*0.6);
     if(y>0.005){
       vec2 uv=d.xz/(y+0.09)*0.8+vec2(uTime*0.005,uTime*0.0018);

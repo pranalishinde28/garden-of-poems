@@ -7,7 +7,7 @@ import { BARK, DS, GEO, Merge, UP, VCP } from '../world/geometry.js';
 import { AUTUMN_PALS, GREEN_PALS, SAKURA_WHITE, mapleMat } from './autumnLeaves.js';
 
 /* ================= sakura ================= */
-const cardMat = windify(new THREE.MeshLambertMaterial({ map: blossomTex, alphaTest: 0.45, side: DS, emissive: '#2a1219' }), 0.035, 'const');
+export const cardMat = windify(new THREE.MeshLambertMaterial({ map: blossomTex, alphaTest: 0.45, side: DS, emissive: '#2a1219' }), 0.035, 'const');
 const SAKURA = {
   spring: ['#f7c3d2', '#f3b0c4', '#fad6e0', '#eea0b8'],
   monsoon: ['#f4bccc', '#f0aac0', '#f8d0dc', '#e899b2'],

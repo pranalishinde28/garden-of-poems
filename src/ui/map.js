@@ -12,6 +12,7 @@ import { SWING_GARDEN, swings } from '../world/swings.js';
 import { ROSE_GARDEN } from '../plants/flowerGardens.js';
 import { FOUNTAIN } from '../world/fountain.js';
 import { LANDMARKS } from '../world/shrines.js';
+import { LANTERN_WALL } from '../world/lanterns.js';
 import { GATE } from '../settings/customize.js';
 import { blocked, camTween, floorH, player } from '../player/camera.js';
 import { keys } from './input.js';
@@ -78,6 +79,9 @@ function drawWorld(g, P, s, full) {
   });
   if (featOn('roses')) { const [x, y] = at(ROSE_GARDEN.x, ROSE_GARDEN.z); circle(x, y, 7.6 * s); fill('#f2c95a'); ink(); for (let i = 0; i < 22; i++) { const a = i / 22 * 6.28, r = (i % 2 ? 3.5 : 5.6) * s, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r; circle(px, py, 1 * s); fill('#5f8e45'); ink(lw * 0.5); circle(px, py - 0.2 * s, 0.55 * s); fill('#d23a4a'); } }
   if (featOn('wisteria')) { const [x0, y0] = at(-1.9, 20.1), [x1, y1] = at(1.9, 33.1); g.beginPath(); g.rect(x0, y0, x1 - x0, y1 - y0); fill('#b9a0e2'); ink(); }
+  // the parasol court over the wisteria walk: a dotted frame with round paper parasols
+  { const [x0, y0] = at(-8.8, 16.4), [x1, y1] = at(8.8, 31.6); g.setLineDash([2, 3]); g.beginPath(); g.rect(x0, y0, x1 - x0, y1 - y0); ink(lw); g.setLineDash([]); for (let k = 0; k < 9; k++) { const [x, y] = at(-7 + (k % 3) * 7 + (R() - .5) * 2, 18.5 + Math.floor(k / 3) * 5 + (R() - .5) * 2); circle(x, y, 1.1 * s); fill('rgba(251,238,226,.9)'); ink(lw * 0.6); circle(x, y, 0.2 * s); fill('#b8452e'); } }
+  { const W = LANTERN_WALL, [x, y] = at(W.x, W.z); for (let k = -2; k <= 2; k++) { circle(x, y + k * 0.9 * s, 0.42 * s); fill('#ffe7b0'); ink(lw * 0.5); } }
   // swings: white pergolas with a coral bench
   if (featOn('swings')) swings.forEach(sw => { const p = sw.g.position, [x, y] = at(p.x, p.z); g.save(); g.translate(x, y); g.rotate(-sw.g.rotation.y); const w = 2.9 * s, d = 2.3 * s; g.beginPath(); g.rect(-w / 2, -d / 2, w, d); fill('#fbf7ee'); ink(); g.fillStyle = '#d85a43'; g.fillRect(-w * 0.3, -d * 0.15, w * 0.6, d * 0.3); g.restore(); });
   // the writing bench in its mulch bed, the gate's blossom arch
@@ -102,8 +106,9 @@ const GLYPHS = {
   rose: '<circle cx="12" cy="11" r="5"/><path d="M12 8c-1.5 1-1.5 3 0 4 1.5-1 1.5-3 0-4M12 16v5"/>', stream: '<path d="M5 8c3-2 5 2 8 0s5-2 6 0M5 13c3-2 5 2 8 0s5-2 6 0M5 18c3-2 5 2 8 0s5-2 6 0"/>',
   fountain: '<path d="M6 18h12M8 18l1-4h6l1 4M12 14V8M9 8c0-2 1.5-3 3-3s3 1 3 3"/>', torii: '<path d="M4 7h16M6 10h12M8 7v12M16 7v12"/>', pagoda: '<path d="M12 3v3M7 9h10l-2-3H9zM6 14h12l-2-3H8zM8 19h8v-5H8z"/>',
   bell: '<path d="M8 17V11a4 4 0 0 1 8 0v6M6 17h12M12 7V5M11 20h2"/>',
+  lantern: '<path d="M12 3v2M9 5h6M9 19h6M8 8c0-1.6 1.8-3 4-3s4 1.4 4 3v8c0 1.6-1.8 3-4 3s-4-1.4-4-3z"/><path d="M8 10h8M8 14h8"/>',
 };
-const glyphFor = name => /bench/i.test(name) ? 'bench' : /pond/i.test(name) ? 'pond' : /swing/i.test(name) ? 'swing' : /gate/i.test(name) ? 'gate' : /tulip/i.test(name) ? 'tulip' : /rose/i.test(name) ? 'rose' : /stream/i.test(name) ? 'stream' : /fountain/i.test(name) ? 'fountain' : /shrine/i.test(name) ? 'torii' : /pagoda/i.test(name) ? 'pagoda' : /bell/i.test(name) ? 'bell' : 'gate';
+const glyphFor = name => /lantern/i.test(name) ? 'lantern' : /bench/i.test(name) ? 'bench' : /pond/i.test(name) ? 'pond' : /swing/i.test(name) ? 'swing' : /gate/i.test(name) ? 'gate' : /tulip/i.test(name) ? 'tulip' : /rose/i.test(name) ? 'rose' : /stream/i.test(name) ? 'stream' : /fountain/i.test(name) ? 'fountain' : /shrine/i.test(name) ? 'torii' : /pagoda/i.test(name) ? 'pagoda' : /bell/i.test(name) ? 'bell' : 'gate';
 const medal = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${GLYPHS[glyphFor(name)]}</svg>`;
 
 // ---- the full map ----
@@ -129,6 +134,7 @@ function places() {
   { const i = 50, p = RIVER[i], q = RIVER[i + 1], tx = q.x - p.x, tz = q.z - p.z, l = Math.hypot(tx, tz); L.push({ name: 'The stream', hint: 'bridges and running water', x: p.x, z: p.z, stand: [p.x + tz / l * 4.2, p.z - tx / l * 4.2], face: [RIVER[i + 6].x + tz / l * 4.2, RIVER[i + 6].z - tx / l * 4.2], side: 'l' }); }
   { const [dx, dz] = toPond(FOUNTAIN.x, FOUNTAIN.z); L.push({ name: 'The fountain', hint: 'toss a coin, make a wish', x: FOUNTAIN.x, z: FOUNTAIN.z, stand: [FOUNTAIN.x - dx * 4, FOUNTAIN.z - dz * 4], face: [FOUNTAIN.x, FOUNTAIN.z], side: 'r' }); }
   const before = (Lm, d, name, hint, side) => { const a = Math.atan2(-Lm.x, -Lm.z); L.push({ name, hint, x: Lm.x, z: Lm.z, stand: [Lm.x + Math.sin(a) * d, Lm.z + Math.cos(a) * d], face: [Lm.x, Lm.z], side }); };
+  { const W = LANTERN_WALL; L.push({ name: 'The lantern wall', hint: 'your newest poems, lit', x: W.x, z: W.z, stand: [W.x - 4.5, W.z], face: [W.x, W.z], side: 'r' }); }
   before(LANDMARKS.shrine, 15, 'The shrine', 'ring the bell, make a wish', 'r');
   before(LANDMARKS.pagoda, 9, 'The pagoda', 'three storeys, and a lantern each side', 'r');
   before(LANDMARKS.bell, 5.5, 'The bell tower', 'strike the temple bell', 'l');

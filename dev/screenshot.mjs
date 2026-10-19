@@ -83,6 +83,13 @@ const VIEWS = {
   'board-close': { pos: [-3.2, 1.9, 43.5], look: [-6.3, 2, 38.6], links: [{ label: 'Instagram', url: 'https://instagram.com/garden.of.poems' }, { label: 'Facebook', url: 'https://facebook.com/gardenofpoems' }, { label: 'Substack', url: 'https://gardenofpoems.substack.com' }, { label: 'Goodreads', url: 'https://www.goodreads.com/gardenofpoems' }] },
   'edge': { pos: [40, 4, 40], look: [58, 0.5, 30] },
   'edge-high': { pos: [30, 18, 30], look: [55, 0, 40] },
+  'fest-day': { pos: [0, 1.7, 47], look: [0, 3.2, 22], season: 'spring' },
+  'fest-night': { pos: [0, 1.7, 47], look: [0, 3.2, 22], season: 'spring', light: 'night' },
+  'canopy-under': { pos: [3.5, 1.6, 34], look: [0, 4.6, 22], season: 'spring', light: 'sunset' },
+  'canopy-night': { pos: [3.5, 1.6, 34], look: [0, 4.6, 22], season: 'spring', light: 'night' },
+  'wall-night': { pos: [5.6, 1.8, 20.2], look: [11.6, 1.9, 20.2], season: 'spring', light: 'night', samples: true },
+  'pond-night': { pos: [7, 2.4, 10], look: [0, -0.3, 0], season: 'spring', light: 'night', samples: true },
+  'sky-night': { pos: [6, 2, 16], look: [-30, 30, -60], season: 'spring', light: 'night', samples: true },
   'gate-back': { pos: [0, 1.7, 33], look: [0, 1.5, 50] },
   'entrance-high': { pos: [7, 7, 48], look: [0, 1.5, 30] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one

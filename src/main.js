@@ -34,6 +34,7 @@ import './world/horizon.js';
 import './animals/animals.js';
 import './world/fountain.js';
 import './world/shrines.js';
+import './world/lanterns.js';
 import './plants/flowerGardens.js';
 import './plants/edgeBeds.js';
 import './world/particles.js';
