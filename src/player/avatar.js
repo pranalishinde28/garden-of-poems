@@ -276,6 +276,7 @@ function target(fig, kind, t, a) {
     p.spineX = 0.45; p.chestX = 0.15; p.neckX = 0.55; p.hipsY = 0.06; p.lHipX = p.rHipX = -0.2; p.lKnX = p.rKnX = -0.35;
     p.lShX = p.rShX = 0.55; p.lElX = p.rElX = 0.35; p.lShZ = 0.15; p.rShZ = -0.15;
   }
+  if (a.air) { p.lHipX = 0.75; p.rHipX = 0.45; p.lKnX = -1.1; p.rKnX = -0.8; p.lShX = -0.9; p.rShX = -0.9; p.lShZ = 0.5; p.rShZ = -0.5; p.bob = 0; } // knees tucked, arms up
   if (parasol && kind !== 'swing') { p.lShX = 0.35; p.lShZ = 0.55; p.lElX = 1.5; } // the left hand up at the shaft
   return p;
 }

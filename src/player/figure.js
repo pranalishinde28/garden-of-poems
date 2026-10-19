@@ -68,9 +68,9 @@ function followCamera(dt, head, dir, right, want) {
 const tmp = new V3(), up = new V3(), q = new THREE.Quaternion(), flip = new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), Math.PI);
 let prevMode = state.mode, kneel = null, facing = 0;
 const turnTo = (a, b, k) => { let d = ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; return a + d * k; };
-function placeAt(x, z, yaw, dt, snap) {
+function placeAt(x, z, yaw, dt, snap, lift = 0) {
   const y = floorH(x, z), r = fig.root;
-  if (snap) r.position.set(x, y, z); else r.position.lerp(tmp.set(x, y, z), 1 - Math.exp(-dt * 12));
+  if (snap) r.position.set(x, y + lift, z); else { r.position.x += (x - r.position.x) * (1 - Math.exp(-dt * 12)); r.position.z += (z - r.position.z) * (1 - Math.exp(-dt * 12)); r.position.y = lift > 0 ? y + lift : r.position.y + (y - r.position.y) * (1 - Math.exp(-dt * 12)); }
   facing = snap ? yaw : turnTo(facing, yaw, 1 - Math.exp(-dt * 9)); r.quaternion.setFromAxisAngle(up.set(0, 1, 0), facing);
 }
 function kneelSpot(plant) {
@@ -93,8 +93,8 @@ export function updateFigure(dt) {
   if (m === 'walk') {
     show = third; const sp = Math.hypot(player.vel.x, player.vel.z);
     const want = sp > 0.3 ? Math.atan2(-player.vel.x, -player.vel.z) : facing;
-    placeAt(player.pos.x, player.pos.z, sp > 0.3 ? want : facing, dt, !r.visible);
-    pose = 'walk'; a.speed = sp; a.alt = player.alt || 0; a.vy = player.vy || 0; a.fly = config.kind === 'bird' && a.alt > 0.15;
+    placeAt(player.pos.x, player.pos.z, sp > 0.3 ? want : facing, dt, !r.visible, fig.creature ? 0 : player.alt || 0); // a person in mid-jump rises with it
+    pose = 'walk'; a.speed = sp; a.alt = player.alt || 0; a.air = player.alt > 0.04; a.vy = player.vy || 0; a.fly = config.kind === 'bird' && a.alt > 0.15;
     if (third) {
       const M = figureMetrics(config), head = tmp.set(player.pos.x, floorH(player.pos.x, player.pos.z) + M.head + 0.25 * (M.head / 0.9) + a.alt, player.pos.z).clone();
       const dir = lookDir(), right = new V3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));

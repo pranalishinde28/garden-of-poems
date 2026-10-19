@@ -33,61 +33,68 @@ const mini = $('#minimap'), miniBtn = $('#minimap-btn');
 
 // ---- drawing the garden ----
 const INK = 'rgba(52,62,42,', WATER = 'rgba(120,163,186,';
-// An illustrated garden map, like a printed park plan: a bright lawn, cream paths, blue water with stone
-// rims, flower beds in their colours, white pergolas, red temples with grey roofs, round trees outside
-// the hedge, everything with a soft drop shadow. The corner map draws the same picture, closer in.
-const COL = { lawn: '#a7d46f', lawn2: '#9bcb62', out: '#c4e39a', path: '#f3e6c6', pathEdge: '#e0cfa6', water: '#6cb8e2', water2: '#a6daf2', stone: '#efe8d6', wood: '#9a6b45', tree: '#4f9a3c', tree2: '#6db84b', roof: '#5b6062', red: '#c0503a', shadow: 'rgba(40,70,20,.22)' };
+// A hand-drawn garden plan, after the owner's references: watercolour washes with ink outlines on
+// parchment, cobbled paths, blue water with lily pads, yellow and red flower beds, round ink-drawn trees
+// with trunks, temples with red walls and grey roofs, and leaf sprigs in the corners.
+const INKC = '#3b3428';
 function drawWorld(g, P, s, full) {
   const at = (x, z) => P(x, z), R = (seed => () => (seed = (seed * 16807) % 2147483647) / 2147483647)(11);
-  const disc = (x, y, r, fill, stroke, lw) => { g.beginPath(); g.arc(x, y, r, 0, 7); if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw || 1; g.stroke(); } };
+  const lw = Math.max(0.8, 0.22 * s);
+  const ink = (w = lw) => { g.strokeStyle = INKC; g.lineWidth = w; g.stroke(); };
+  const fill = c => { g.fillStyle = c; g.fill(); };
+  const circle = (x, y, r) => { g.beginPath(); g.arc(x, y, r, 0, 7); };
+  // a watercolour wash: the base colour, then soft blotches of lighter and darker tints inside the shape
+  const wash = (path, base, tints, n, spread) => { path(); fill(base); g.save(); path(); g.clip(); for (let k = 0; k < n; k++) { const [x, y] = spread(); g.globalAlpha = 0.18; circle(x, y, (2 + R() * 6) * s); fill(tints[k % tints.length]); } g.restore(); g.globalAlpha = 1; };
+  const tree = (x, y, r, c1, c2) => { g.fillStyle = 'rgba(60,50,30,.18)'; circle(x + r * 0.3, y + r * 0.45, r); g.fill(); g.fillStyle = '#7a5434'; g.fillRect(x - r * 0.12, y, r * 0.24, r * 0.75); circle(x, y, r); fill(c1); ink(); circle(x - r * 0.3, y - r * 0.3, r * 0.45); fill(c2); };
   g.lineCap = g.lineJoin = 'round';
-  let [cx, cy] = at(0, 0);
-  // the lawn inside the hedge, with a faint mown texture
-  disc(cx, cy, (WORLD_R + 2) * s, COL.lawn);
-  g.save(); g.beginPath(); g.arc(cx, cy, WORLD_R * s, 0, 7); g.clip(); g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 2.2 * s;
-  for (let k = -WORLD_R; k < WORLD_R; k += 4) { const [x0, y0] = at(k, -WORLD_R), [x1, y1] = at(k + 30, WORLD_R); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
-  g.restore();
-  // the hedge ring with hydrangeas inside it, and round trees beyond
-  for (let k = 0; k < 200; k++) { const a = k / 200 * Math.PI * 2, [x, y] = at(Math.cos(a) * (WORLD_R + 3), Math.sin(a) * (WORLD_R + 3)); disc(x + 0.4 * s, y + 0.5 * s, 2.1 * s, COL.shadow); disc(x, y, 2.1 * s, '#4f8a3a'); disc(x - 0.5 * s, y - 0.6 * s, 1.1 * s, '#64a548'); }
-  const hyd = ['#6f8fe0', '#f19bbc', '#b98fe0', '#ffffff', '#e05a9a'];
-  for (let k = 0; k < 200; k++) { const a = R() * Math.PI * 2, r = 66.5 + R() * 4.5; if (Math.abs(Math.cos(a) * r) < 5.5 && Math.sin(a) > 0) continue; const [x, y] = at(Math.cos(a) * r, Math.sin(a) * r); disc(x, y, 0.75 * s, '#3f7a36'); disc(x, y - 0.15 * s, 0.45 * s, hyd[k % 5]); }
-  if (full) for (let k = 0; k < 90; k++) { const a = R() * Math.PI * 2, r = WORLD_R + 7 + R() * 26, [x, y] = at(Math.cos(a) * r, Math.sin(a) * r), t = (1.6 + R() * 1.6) * s; disc(x + 0.5 * s, y + 0.7 * s, t, COL.shadow); disc(x, y, t, k % 3 ? COL.tree : '#3f8a34'); disc(x - t * 0.3, y - t * 0.35, t * 0.5, COL.tree2); }
-  // the main path: from the gate, through the wisteria walk, to the pond, then paths of stepping stones
-  { const [x0, y0] = at(0, 52), [x1, y1] = at(0, POND_R + 1); g.strokeStyle = COL.pathEdge; g.lineWidth = 3.4 * s; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); g.strokeStyle = COL.path; g.lineWidth = 2.8 * s; g.stroke(); }
-  stones.forEach(st => { const [x, y] = at(st.x, st.z); disc(x, y, Math.max(1.4, 0.95 * s), COL.path, COL.pathEdge, 0.6); });
-  // the stream, banked with stone, and the pond with its rim and lilies
+  const [cx, cy] = at(0, 0);
+  // the garden: a soft-edged watercolour lawn, outlined in ink, on the parchment
+  const edge = () => { g.beginPath(); for (let k = 0; k <= 90; k++) { const a = k / 90 * Math.PI * 2, r = (WORLD_R + 4 + Math.sin(a * 7) * 1.2 + Math.sin(a * 13 + 1) * 0.6) * s; k ? g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r) : g.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); } g.closePath(); };
+  wash(edge, '#9fc27a', ['#c7dc98', '#7fae5a', '#b4d08a', '#6f9e4e'], 140, () => { const a = R() * 6.28, r = Math.sqrt(R()) * WORLD_R; return at(Math.cos(a) * r, Math.sin(a) * r); });
+  edge(); ink(lw * 1.4);
+  // the hedge: a ring of ink-outlined bushes with hydrangea blooms on the inside
+  for (let k = 0; k < 120; k++) { const a = k / 120 * Math.PI * 2, [x, y] = at(Math.cos(a) * (WORLD_R + 1.5), Math.sin(a) * (WORLD_R + 1.5)); circle(x, y, 1.9 * s); fill(k % 2 ? '#5f8e45' : '#6f9e50'); ink(lw * 0.7); }
+  const hyd = ['#7c9be6', '#f2a0c0', '#c09ae6', '#ffffff', '#e66aa2'];
+  for (let k = 0; k < 150; k++) { const a = R() * Math.PI * 2, r = 66.5 + R() * 4; if (Math.abs(Math.cos(a) * r) < 5.5 && Math.sin(a) > 0) continue; const [x, y] = at(Math.cos(a) * r, Math.sin(a) * r); circle(x, y, 0.55 * s); fill(hyd[k % 5]); }
+  // trees beyond the hedge (only on the full map, where there is room)
+  if (full) for (let k = 0; k < 70; k++) { const a = R() * Math.PI * 2, r = WORLD_R + 8 + R() * 20, [x, y] = at(Math.cos(a) * r, Math.sin(a) * r); tree(x, y, (1.7 + R() * 1.4) * s, k % 3 ? '#5e9444' : '#4b7f3a', '#86b75e'); }
+  // cobbled paths: the walk from the gate to the pond, then the stepping stones, each stone inked
+  const cobble = (x, y, r) => { circle(x, y, r); fill(['#d8cdb4', '#cfc3a8', '#e2d8c0'][Math.floor(R() * 3)]); ink(lw * 0.6); };
+  for (let z = 52; z > POND_R + 1; z -= 0.9) for (const dx of [-1, 0, 1]) { const [x, y] = at(dx * 0.95 + (R() - 0.5) * 0.3, z + (R() - 0.5) * 0.3); cobble(x, y, 0.5 * s); }
+  stones.forEach(st => { const [x, y] = at(st.x, st.z); cobble(x, y, Math.max(1.2, 0.8 * s)); });
+  // the stream and the pond: blue washes with an ink bank, lily pads, a few ripples
   const stream = w => { g.beginPath(); RIVER.forEach((p, i) => { if (Math.hypot(p.x, p.z) > WORLD_R + 6) return; const [x, y] = at(p.x, p.z); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.lineWidth = w; g.stroke(); };
-  g.strokeStyle = COL.stone; stream(5.4 * s); g.strokeStyle = COL.water; stream(3.8 * s); g.strokeStyle = COL.water2; stream(1.2 * s);
-  disc(cx, cy, (POND_R + 1.2) * s, COL.stone, '#d8cfb8', 1);
-  { const gr = g.createRadialGradient(cx - POND_R * s * 0.3, cy - POND_R * s * 0.3, 1, cx, cy, POND_R * s); gr.addColorStop(0, COL.water2); gr.addColorStop(1, COL.water); disc(cx, cy, POND_R * s, gr); }
-  for (let k = 0; k < 9; k++) { const a = R() * 6.28, r = R() * POND_R * 0.8, [x, y] = at(Math.cos(a) * r, Math.sin(a) * r); disc(x, y, 0.7 * s, '#5f9a48'); }
-  // bridges: planks and two rails
-  BRIDGES.forEach(b => { const [x0, y0] = at(b.x - b.D.x * b.half, b.z - b.D.z * b.half), [x1, y1] = at(b.x + b.D.x * b.half, b.z + b.D.z * b.half); g.strokeStyle = '#6e4a30'; g.lineWidth = 2.6 * s; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); g.strokeStyle = COL.wood; g.lineWidth = 1.8 * s; g.stroke(); });
-  // flower beds in their colours, edged with a low hedge
-  if (featOn('tulips')) TULIPS.forEach(t => {
-    const [x0, y0] = at(t.x0, t.z0), [x1, y1] = at(t.x1, t.z1), cols = ['#e24a3f', '#f2c53a', '#f08bb2', '#fbf4e4', '#a66be0'];
-    g.fillStyle = COL.shadow; g.fillRect(x0 + 0.4 * s, y0 + 0.5 * s, x1 - x0, y1 - y0); g.fillStyle = '#4c8a38'; g.fillRect(x0 - 0.4 * s, y0 - 0.4 * s, x1 - x0 + 0.8 * s, y1 - y0 + 0.8 * s);
-    const n = Math.max(3, Math.round((x1 - x0) / Math.max(2.5, s * 1.1))); for (let i = 0; i < n; i++) { g.fillStyle = cols[i % 5]; g.fillRect(x0 + (x1 - x0) * i / n, y0, (x1 - x0) / n * 0.82, y1 - y0); }
+  g.strokeStyle = INKC; stream(4.2 * s + lw * 2); g.strokeStyle = '#6fa9c7'; stream(4.2 * s); g.strokeStyle = 'rgba(255,255,255,.45)'; stream(1 * s);
+  wash(() => circle(cx, cy, POND_R * s), '#6fa9c7', ['#9fcbe0', '#5a8fb0'], 30, () => { const a = R() * 6.28, r = R() * POND_R; return at(Math.cos(a) * r, Math.sin(a) * r); });
+  circle(cx, cy, POND_R * s); ink(lw * 1.4); circle(cx, cy, (POND_R + 0.9) * s); ink(lw * 0.6);
+  for (let k = 0; k < 10; k++) { const a = R() * 6.28, r = R() * POND_R * 0.8, [x, y] = at(Math.cos(a) * r, Math.sin(a) * r); g.beginPath(); g.arc(x, y, 0.75 * s, 0.4, 6.0); g.lineTo(x, y); g.closePath(); fill('#7aa65a'); ink(lw * 0.5); }
+  // bridges: planks across, inked
+  BRIDGES.forEach(b => { const [x0, y0] = at(b.x - b.D.x * b.half, b.z - b.D.z * b.half), [x1, y1] = at(b.x + b.D.x * b.half, b.z + b.D.z * b.half); g.strokeStyle = INKC; g.lineWidth = 2.4 * s + lw * 2; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); g.strokeStyle = '#a77a52'; g.lineWidth = 2.4 * s; g.stroke(); });
+  // flower beds: warm yellow and red plots with small blooms
+  if (featOn('tulips')) TULIPS.forEach((t, i) => {
+    const [x0, y0] = at(t.x0, t.z0), [x1, y1] = at(t.x1, t.z1);
+    g.beginPath(); g.rect(x0, y0, x1 - x0, y1 - y0); fill(i % 2 ? '#e8634f' : '#f2c95a'); ink();
+    for (let k = 0; k < Math.max(6, (x1 - x0) * (y1 - y0) / (9 * s * s)); k++) { circle(x0 + R() * (x1 - x0), y0 + R() * (y1 - y0), 0.42 * s); fill(['#ffffff', '#c23a52', '#f7e48a', '#a65ad8'][k % 4]); }
   });
-  if (featOn('roses')) { const [x, y] = at(ROSE_GARDEN.x, ROSE_GARDEN.z); disc(x, y, 7.8 * s, null, COL.path, 1.6 * s); for (let i = 0; i < 26; i++) { const a = i / 26 * 6.28, r = (i % 2 ? 3.6 : 5.8) * s; disc(x + Math.cos(a) * r + 0.3 * s, y + Math.sin(a) * r + 0.4 * s, 0.9 * s, COL.shadow); disc(x + Math.cos(a) * r, y + Math.sin(a) * r, 0.9 * s, '#3f7a36'); disc(x + Math.cos(a) * r, y + Math.sin(a) * r - 0.2 * s, 0.5 * s, '#d63a4a'); } }
-  if (featOn('wisteria')) { const [x0, y0] = at(-1.9, 20.1), [x1, y1] = at(1.9, 33.1); g.fillStyle = '#b59ae6'; g.fillRect(x0, y0, x1 - x0, y1 - y0); g.strokeStyle = '#ffffff'; g.lineWidth = Math.max(1, 0.25 * s); for (let z = 20.5; z < 33; z += 1.3) { const [a0, b0] = at(-1.9, z), [a1] = at(1.9, z); g.beginPath(); g.moveTo(a0, b0); g.lineTo(a1, b0); g.stroke(); } }
-  // white pergola swings, each with a coral bench
-  if (featOn('swings')) swings.forEach(sw => { const p = sw.g.position, [x, y] = at(p.x, p.z); g.save(); g.translate(x, y); g.rotate(-sw.g.rotation.y); const w = 2.9 * s, d = 2.3 * s; g.fillStyle = COL.shadow; g.fillRect(-w / 2 + 0.4 * s, -d / 2 + 0.5 * s, w, d); g.fillStyle = '#ffffff'; g.fillRect(-w / 2, -d / 2, w, d); g.fillStyle = '#d85a43'; g.fillRect(-w * 0.3, -d * 0.15, w * 0.6, d * 0.3); g.strokeStyle = '#d9d2c4'; g.lineWidth = 0.6; g.strokeRect(-w / 2, -d / 2, w, d); g.restore(); });
-  // the writing bench in its bed, the gate's arch
-  { const [x, y] = at(BENCH.x, BENCH.z); g.save(); g.translate(x, y); g.rotate(-Math.atan2(-BENCH.x, -BENCH.z)); disc(0, -0.35 * s, 2.6 * s, '#8a5c3c'); g.fillStyle = '#ffffff'; g.fillRect(-1.1 * s, -0.35 * s, 2.2 * s, 0.7 * s); g.restore(); }
-  { const [x, y] = at(0, 39.2); g.strokeStyle = '#f0a7c0'; g.lineWidth = Math.max(2, 1.1 * s); g.beginPath(); g.arc(x, y, 3.1 * s, Math.PI * 1.05, Math.PI * 1.95); g.stroke(); disc(x - 3 * s, y, 0.6 * s, '#5e4634'); disc(x + 3 * s, y, 0.6 * s, '#5e4634'); }
-  // the fountain: a stone octagon, blue water, a white jet
-  { const [x, y] = at(FOUNTAIN.x, FOUNTAIN.z); disc(x + 0.4 * s, y + 0.5 * s, 3.9 * s, COL.shadow); g.beginPath(); for (let k = 0; k < 8; k++) { const a = k / 8 * 6.28 + Math.PI / 8; g.lineTo(x + Math.cos(a) * 3.9 * s, y + Math.sin(a) * 3.9 * s); } g.closePath(); g.fillStyle = '#cfc8b8'; g.fill(); disc(x, y, 3.0 * s, COL.water); disc(x, y, 1.2 * s, '#e8e2d2'); disc(x, y, 0.5 * s, '#ffffff'); }
-  // temples: red walls under grey hipped roofs, seen from above
-  const temple = (L, w, d) => { const [x, y] = at(L.x, L.z); g.save(); g.translate(x, y); g.rotate(-Math.atan2(-L.x, -L.z)); w *= s; d *= s;
-    g.fillStyle = COL.shadow; g.fillRect(-w / 2 + 0.6 * s, -d / 2 + 0.8 * s, w, d); g.fillStyle = COL.red; g.fillRect(-w / 2, -d / 2, w, d);
-    g.fillStyle = COL.roof; g.beginPath(); g.moveTo(-w / 2 - 0.5 * s, -d / 2 - 0.5 * s); g.lineTo(w / 2 + 0.5 * s, -d / 2 - 0.5 * s); g.lineTo(w / 2 + 0.5 * s, d / 2 + 0.5 * s); g.lineTo(-w / 2 - 0.5 * s, d / 2 + 0.5 * s); g.closePath(); g.fill();
-    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(-w / 2 - 0.5 * s, -d / 2 - 0.5 * s); g.lineTo(w / 2 + 0.5 * s, d / 2 + 0.5 * s); g.moveTo(w / 2 + 0.5 * s, -d / 2 - 0.5 * s); g.lineTo(-w / 2 - 0.5 * s, d / 2 + 0.5 * s); g.stroke();
-    disc(0, 0, Math.min(w, d) * 0.16, '#d2a347'); g.restore(); };
+  if (featOn('roses')) { const [x, y] = at(ROSE_GARDEN.x, ROSE_GARDEN.z); circle(x, y, 7.6 * s); fill('#f2c95a'); ink(); for (let i = 0; i < 22; i++) { const a = i / 22 * 6.28, r = (i % 2 ? 3.5 : 5.6) * s, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r; circle(px, py, 1 * s); fill('#5f8e45'); ink(lw * 0.5); circle(px, py - 0.2 * s, 0.55 * s); fill('#d23a4a'); } }
+  if (featOn('wisteria')) { const [x0, y0] = at(-1.9, 20.1), [x1, y1] = at(1.9, 33.1); g.beginPath(); g.rect(x0, y0, x1 - x0, y1 - y0); fill('#b9a0e2'); ink(); }
+  // swings: white pergolas with a coral bench
+  if (featOn('swings')) swings.forEach(sw => { const p = sw.g.position, [x, y] = at(p.x, p.z); g.save(); g.translate(x, y); g.rotate(-sw.g.rotation.y); const w = 2.9 * s, d = 2.3 * s; g.beginPath(); g.rect(-w / 2, -d / 2, w, d); fill('#fbf7ee'); ink(); g.fillStyle = '#d85a43'; g.fillRect(-w * 0.3, -d * 0.15, w * 0.6, d * 0.3); g.restore(); });
+  // the writing bench in its mulch bed, the gate's blossom arch
+  { const [x, y] = at(BENCH.x, BENCH.z); g.save(); g.translate(x, y); g.rotate(-Math.atan2(-BENCH.x, -BENCH.z)); g.beginPath(); g.ellipse(0, -0.35 * s, 3 * s, 2.1 * s, 0, 0, 7); fill('#9a6b45'); ink(); g.beginPath(); g.rect(-1.1 * s, -0.35 * s, 2.2 * s, 0.7 * s); fill('#ffffff'); ink(lw * 0.6); g.restore(); }
+  { const [x, y] = at(0, 39.2); g.beginPath(); g.arc(x, y, 3.1 * s, Math.PI * 1.05, Math.PI * 1.95); g.strokeStyle = INKC; g.lineWidth = 1.5 * s; g.stroke(); g.strokeStyle = '#f2a8c2'; g.lineWidth = 1.1 * s; g.stroke(); }
+  // the fountain: a stone octagon, water, a statue at the centre
+  { const [x, y] = at(FOUNTAIN.x, FOUNTAIN.z); g.beginPath(); for (let k = 0; k < 8; k++) { const a = k / 8 * 6.28 + Math.PI / 8; g.lineTo(x + Math.cos(a) * 3.9 * s, y + Math.sin(a) * 3.9 * s); } g.closePath(); fill('#cbc3b0'); ink(); circle(x, y, 3 * s); fill('#6fa9c7'); ink(lw * 0.7); circle(x, y, 1.2 * s); fill('#e4ddcc'); ink(lw * 0.7); circle(x, y, 0.45 * s); fill('#8a8478'); }
+  // temples: red walls, grey hipped roofs with their ridge lines, a gold finial
+  const temple = (L, w, d) => { const [x, y] = at(L.x, L.z); g.save(); g.translate(x, y); g.rotate(-Math.atan2(-L.x, -L.z)); w *= s; d *= s; const o = 0.6 * s;
+    g.fillStyle = 'rgba(60,50,30,.2)'; g.fillRect(-w / 2 - o + 0.6 * s, -d / 2 - o + 0.8 * s, w + 2 * o, d + 2 * o);
+    g.beginPath(); g.rect(-w / 2 - o, -d / 2 - o, w + 2 * o, d + 2 * o); fill('#6c7072'); ink();
+    g.beginPath(); g.moveTo(-w / 2 - o, -d / 2 - o); g.lineTo(0, 0); g.lineTo(w / 2 + o, -d / 2 - o); g.moveTo(-w / 2 - o, d / 2 + o); g.lineTo(0, 0); g.lineTo(w / 2 + o, d / 2 + o); ink(lw * 0.7);
+    g.beginPath(); g.rect(-w / 2 - o, d / 2 + o - 0.5 * s, w + 2 * o, 0.5 * s); fill('#c0503a'); circle(0, 0, Math.min(w, d) * 0.12); fill('#d6a84a'); ink(lw * 0.5); g.restore(); };
   temple(LANDMARKS.pagoda, 7, 7); temple(LANDMARKS.bell, 5, 5); temple(LANDMARKS.shrine, 6.6, 9);
-  { const L = LANDMARKS.shrine, a = Math.atan2(-L.x, -L.z), [x, y] = at(L.x + Math.sin(a) * 12.4, L.z + Math.cos(a) * 12.4); g.save(); g.translate(x, y); g.rotate(-a); g.strokeStyle = COL.red; g.lineWidth = Math.max(1.6, 0.5 * s); g.beginPath(); g.moveTo(-2.4 * s, 0); g.lineTo(2.4 * s, 0); g.stroke(); g.restore(); }
-  if (sign.visible) { const [x, y] = at(sign.position.x, sign.position.z); g.fillStyle = '#7a5a40'; g.fillRect(x - 1.2 * s, y - 0.3 * s, 2.4 * s, 0.6 * s); }
+  { const L = LANDMARKS.shrine, a = Math.atan2(-L.x, -L.z), [x, y] = at(L.x + Math.sin(a) * 12.4, L.z + Math.cos(a) * 12.4); g.save(); g.translate(x, y); g.rotate(-a); g.beginPath(); g.moveTo(-2.4 * s, 0); g.lineTo(2.4 * s, 0); g.strokeStyle = '#c0503a'; g.lineWidth = Math.max(1.6, 0.6 * s); g.stroke(); g.restore(); }
 }
+
 // ---- the place icons: white line glyphs in brown medallions, as on a printed park map ----
 const GLYPHS = {
   bench: '<path d="M5 11h14M6 11v6M18 11v6M5 15h14M7 7h10v4"/>', pond: '<path d="M4 13c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5M7 9l2 2-2 2"/><circle cx="16" cy="9" r="1.2"/>',
@@ -104,7 +111,7 @@ let P = null, S = 1, prevMode = 'walk', openedFrom = null;
 function layout() {
   const r = stage.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
   cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); cv.style.width = r.width + 'px'; cv.style.height = r.height + 'px';
-  S = Math.min(r.width, r.height) / (2 * 60); const cx = r.width / 2, cy = r.height / 2 - 3 * S;
+  S = Math.min(r.width, r.height) / (2 * 78); const cx = r.width / 2, cy = r.height / 2; // the whole garden and its hedge fit
   P = (x, z) => [cx + x * S, cy + (z - 2) * S];
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, r.width, r.height);
   drawWorld(g, P, S, true);

@@ -53,7 +53,7 @@ export function setNightUI() {
   setSkyButton('h-night', m, LIGHT_TIP[m], 'change to ' + LIGHT_TIP[next].toLowerCase(), 'L');
 }
 $('#h-night').onclick = () => { if (state.visiting) { toast('You are visiting. The light belongs to this garden.'); return; } setSetting('light', NEXT_LIGHT[state.lightMode || 'day']); }; // kept with the garden, like Customize
-export function setSoundUI() { $('#h-sound').setAttribute('aria-pressed', Music.muted ? 'false' : 'true'); $('#i-snd').hidden = Music.muted; $('#i-mute').hidden = !Music.muted; $('#h-sound').dataset.tip = Music.muted ? 'Music is off' : 'Music is on'; }
+export function setSoundUI() { $('#h-sound').setAttribute('aria-pressed', Music.muted ? 'false' : 'true'); $('#i-snd').hidden = Music.muted; $('#i-mute').hidden = !Music.muted; $('#h-sound').dataset.tip = Music.muted ? 'Music is off · turn it on (U)' : 'Music is on · turn it off (U)'; $('#h-sound').classList.toggle('muted', Music.muted); }
 $('#h-sound').onclick = () => { Music.setMuted(!Music.muted); setSoundUI(); if (!state.visiting) { SETTINGS.music = Music.muted ? 'off' : (Music.mode === 'own' ? 'own' : 'piano'); persistSettings(); } };
 export function setMusicMenu() { $('#m-piano').hidden = Music.mode !== 'own'; $('#m-own .t').textContent = Music.mode === 'own' ? 'Choose other music files' : 'Play my own music'; }
 const fileInput = $('#file-music');

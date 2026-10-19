@@ -50,7 +50,10 @@ export function walk(dt) {
     else { player.vy = Math.max(player.vy - 4 * dt, player.alt > 0.02 ? -1.6 : 0); }
   }
   else if (kind === 'cat') { if (up && player.alt < 0.01 && !player.jumpHeld) player.vy = 3.1; player.jumpHeld = up; player.vy -= 9.8 * dt; }
-  else player.vy = 0;
+  else { // a girl or a boy jumps with Space
+    if (up && player.alt < 0.01 && !player.jumpHeld) player.vy = 3.6;
+    player.jumpHeld = up; player.vy -= 9.8 * dt;
+  }
   player.alt = clamp(player.alt + player.vy * dt, 0, 24); if (player.alt === 0 && player.vy < 0) player.vy = 0;
   if (kind !== 'bird') player.flying = false;
   const flying = kind === 'bird' && player.alt > 0.15, high = player.alt > 3.2;

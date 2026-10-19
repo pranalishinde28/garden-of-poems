@@ -200,6 +200,17 @@ async function main() {
       await sleep(900); await page.evaluate(() => document.querySelector('#steps-skip')?.click());
       for (const [b, n] of [['#h-you', 'you'], ['#h-custom', 'garden'], ['#h-gardens', 'gardens']]) { await page.click(b); await sleep(1300); await page.screenshot({ path: join(root, `dev/shots/panel-${n}.png`) }); await page.keyboard.press('Escape'); await sleep(900); }
     }
+    else if (FLOW === 'jump') { // every kind jumps with Space
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); window.__garden.setThirdPerson(true); });
+      for (const kind of ['girl', 'boy', 'cat']) {
+        await page.evaluate(k => window.__garden.setAvatar({ kind: k }), kind); await sleep(800);
+        await page.keyboard.down('Space'); await sleep(180); const top = await page.evaluate(() => window.__garden.player.alt); await page.keyboard.up('Space');
+        if (kind === 'girl') await page.screenshot({ path: join(root, 'dev/shots/jump-girl.png') });
+        await sleep(1200); const back = await page.evaluate(() => window.__garden.player.alt);
+        console.log(`  ${kind}: up to ${top.toFixed(2)} m, back to ${back.toFixed(2)}`); if (!(top > 0.2) || back > 0.01) errors.push(kind + ' did not jump and land');
+      }
+    }
     else if (FLOW === 'parasol') { // your figure with a parasol, from behind, at the gate
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(1200); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden; g.setAvatar({ extra: 'parasol', outfit: 'kimono', cloth: '#2c3d6b', accent: '#f2c46a', hairStyle: 'bob' }); g.setThirdPerson(true); });
