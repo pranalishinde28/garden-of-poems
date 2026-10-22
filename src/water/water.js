@@ -91,7 +91,7 @@ const riverGeo = (() => {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aFlow', new THREE.Float32BufferAttribute(fl, 2)); g.setAttribute('aEdge', new THREE.Float32BufferAttribute(ed, 1)); g.setIndex(idx); g.computeBoundingSphere();
   return g;
 })();
-export const river = new THREE.Mesh(riverGeo, waterMat(true)); river.position.y = WATER_Y; river.frustumCulled = false; scene.add(river);
+export const river = new THREE.Mesh(riverGeo, waterMat(true)); river.material.side = THREE.DoubleSide; river.position.y = WATER_Y; river.frustumCulled = false; scene.add(river);
 
 /* lily pads and water lilies */
 (function lilies() {

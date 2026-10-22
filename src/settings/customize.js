@@ -317,6 +317,7 @@ const customPanel = $('#custom');
   customPanel.querySelectorAll('.seg[data-k] button').forEach(b => { b.onclick = () => setSetting(b.parentElement.dataset.k, b.dataset.v); });
 })();
 // four well-known places come ready: you type only your name there, and the address is made for you
+const BADGE = { Instagram: ['IG', '#c13584'], Facebook: ['f', '#1877f2'], Substack: ['S', '#ff6719'], Goodreads: ['g', '#5c4122'] };
 export const PRESETS = [
   { name: 'Instagram', host: /(^|\.)instagram\.com$/, make: h => `https://instagram.com/${h}`, read: u => u.pathname.split('/')[1], hint: 'yourname' },
   { name: 'Facebook', host: /(^|\.)facebook\.com$/, make: h => `https://facebook.com/${h}`, read: u => u.pathname.split('/')[1], hint: 'yourname' },
@@ -338,12 +339,16 @@ function renderPresets(links) {
   const box = $('#c-presets'); box.innerHTML = '';
   PRESETS.forEach((P, i) => {
     let h = ''; for (const l of links) { try { const u = new URL(l.url); if (P.host.test(u.hostname.replace(/^www\./, ''))) { h = P.read(u) || ''; l._used = true; break; } } catch (e) { /* skip */ } }
-    const row = document.createElement('label'); row.className = 'c-pre'; row.dataset.i = i;
-    const name = document.createElement('span'); name.className = 'c-pre-n'; name.textContent = P.name;
-    const pre = document.createElement('span'); pre.className = 'c-pre-u'; pre.textContent = P.make('').replace(/^https:\/\/(www\.)?/, '').replace(/\/$/, '/');
-    const inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = P.hint; inp.value = h; inp.maxLength = 60; inp.autocomplete = 'off'; inp.setAttribute('aria-label', `Your ${P.name} name`);
-    if (P.name === 'Substack') { row.classList.add('sub'); pre.textContent = ''; const post = document.createElement('span'); post.className = 'c-pre-u'; post.textContent = '.substack.com'; inp.addEventListener('change', saveLinks); row.append(name, inp, post); }
-    else { inp.addEventListener('change', saveLinks); row.append(name, pre, inp); }
+    // a row: the place's badge and name, then one field holding its address with your name in it
+    const row = document.createElement('label'); row.className = 'c-pre'; row.dataset.i = i; row.style.setProperty('--b', BADGE[P.name][1]);
+    const name = document.createElement('span'); name.className = 'c-pre-n'; name.innerHTML = `<b class="c-badge">${BADGE[P.name][0]}</b>`; name.append(P.name);
+    const field = document.createElement('span'); field.className = 'c-field';
+    const inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = 'yourname'; inp.value = h; inp.maxLength = 60; inp.autocomplete = 'off'; inp.spellcheck = false; inp.setAttribute('aria-label', `Your ${P.name} name`);
+    inp.addEventListener('change', saveLinks);
+    const pre = document.createElement('span'); pre.className = 'c-pre-u';
+    if (P.name === 'Substack') { pre.textContent = '.substack.com'; field.append(inp, pre); } else { pre.textContent = P.make('').replace(/^https:\/\/(www\.)?/, ''); field.append(pre, inp); }
+    if (h) { const ok = document.createElement('span'); ok.className = 'c-ok'; ok.textContent = '✓'; ok.title = 'On the board at the gate'; field.append(ok); }
+    row.append(name, field);
     box.appendChild(row);
   });
 }

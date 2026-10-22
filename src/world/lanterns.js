@@ -113,7 +113,7 @@ const TW = 640, TH = 256, TC = TW / 2;
 const titleCanvas = () => { const c = document.createElement('canvas'); c.width = TW; c.height = TH; return c; };
 for (let r = 0; r < WALL.rows; r++) for (let c = 0; c < WALL.cols; c++) {
   const cv = titleCanvas(), tex = new THREE.CanvasTexture(cv);
-  const mat = new THREE.MeshLambertMaterial({ map: tex, emissive: '#fff1d6', emissiveMap: tex, emissiveIntensity: 0.25, color: '#ffffff' }); wallMats.push(mat);
+  const mat = new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffcf8a', emissiveMap: tex, emissiveIntensity: 0.25, color: '#ffffff' }); wallMats.push(mat);
   const g = new THREE.Group(); g.position.set(-1.7 + c * 0.85, 2.75 - r * 0.9, 0.0); wall.add(g);
   const body = new THREE.Mesh(bodyGeo, mat); body.scale.setScalar(1.45); body.rotation.y = Math.PI; g.add(body); // u = 0.5 faces the path
   for (const dy of [0.38, -0.38]) { const rim = new THREE.Mesh(rimGeo, M('#1f1b18')); rim.scale.setScalar(1.45); rim.position.y = dy; g.add(rim); }
@@ -179,10 +179,45 @@ export function releaseSkyLantern(at) {
 addTick(() => {
   const k = Math.max(state.night, (state.dusk || 0) * 0.7 * (1 - state.night));
   glowing.forEach(m => { m.emissiveIntensity = m === parasolMat ? 0.16 + k * 0.32 : 0.22 + k * 0.75; }); // parasols are lit from below, softly; the lanterns keep their colour
-  wallMats.forEach(m => { m.emissiveIntensity = 0.24 + k * 0.58; }); // the titles stay readable when lit
+  // the wall's lanterns glow gently, warm rather than white, so the titles stay easy to read at night
+  wallMats.forEach(m => { m.emissiveIntensity = 0.14 + k * 0.34; }); // the titles stay readable when lit
   cardMat.emissiveIntensity = 1 + k * 3.2; // the cherry blossom glows pink in the lantern light, as in the night photographs
   lanternGlowU.uOpacity.value = 0.04 + k * 0.6;
   floaters.forEach(f => { const a = f.a + T * f.sp; f.g.position.set(Math.cos(a) * f.r, WATER_Y + 0.02 + Math.sin(T * 1.2 + f.ph) * 0.015, Math.sin(a) * f.r); f.g.rotation.y = a; });
   return true;
 }, true);
 export const LANTERN_WALL = WALL;
+
+// ---- 6. fairy lights in every poem tree: warm strands hanging through the crown, twinkling ----
+const fairyU = { uTime: { value: 0 }, uOpacity: { value: 0 } };
+const fairyMat = pointsMat(fairyU, `${POINT_VS_HEAD}uniform float uTime;attribute float aPh;varying float vTw;
+  void main(){vec3 p=position;p.x+=sin(uTime*.8+aPh*6.)*.02;vec4 mv=modelViewMatrix*vec4(p,1.);gl_Position=projectionMatrix*mv;
+    vTw=.55+.45*sin(uTime*(1.5+fract(aPh*7.)*2.)+aPh*30.);gl_PointSize=min(1.1*uScale/-mv.z,64.);}`,
+  `uniform float uOpacity;varying float vTw;void main(){vec2 q=gl_PointCoord-.5;float d=length(q);
+    float core=smoothstep(.16,0.,d),halo=pow(smoothstep(.5,0.,d),3.)*.5,rays=(smoothstep(.04,0.,abs(q.x))+smoothstep(.04,0.,abs(q.y)))*smoothstep(.5,.05,d)*.45;
+    gl_FragColor=vec4(vec3(1.,.86,.6)+core*.3,(core+halo+rays)*uOpacity*vTw);}`, true);
+const fairy = new THREE.Points(new THREE.BufferGeometry(), fairyMat); fairy.frustumCulled = false; fairy.layers.set(2); scene.add(fairy);
+let fairyKey = '';
+function stringFairyLights() {
+  const list = [...plants.values()].filter(p => !p.dying && p.target !== 0);
+  const key = list.map(p => p.poem.id).join('|'); if (key === fairyKey) return; fairyKey = key;
+  const pos = [], ph = [];
+  list.forEach(pl => {
+    const R = rng([...String(pl.poem.id)].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0), c = pl.root.position, h = pl.h || 3, rad = Math.max(1.2, (pl.radius || 2.5) * 0.7);
+    for (let s = 0; s < 14; s++) { // strands hanging from the branches, longer toward the outside of the crown
+      const a = R() * 6.28, r = Math.sqrt(R()) * rad, x = c.x + Math.cos(a) * r, z = c.z + Math.sin(a) * r, top = c.y + h * (0.72 + R() * 0.15), len = 0.9 + (r / rad) * 1.4 + R() * 0.5;
+      const n = 8 + Math.floor(len * 6);
+      for (let k = 0; k < n; k++) { const t = k / n; pos.push(x + (R() - .5) * 0.12, top - t * len, z + (R() - .5) * 0.12); ph.push(R()); }
+    }
+    for (let k = 0; k < 40; k++) { const a = R() * 6.28, u = R(), r = rad * (0.4 + 0.6 * Math.sqrt(u)); pos.push(c.x + Math.cos(a) * r, c.y + h * (0.55 + R() * 0.4), c.z + Math.sin(a) * r); ph.push(R()); } // and some wound through the crown
+  });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aPh', new THREE.Float32BufferAttribute(ph, 1));
+  fairy.geometry.dispose(); fairy.geometry = g;
+}
+let fairyClock = 99;
+addTick(dt => {
+  fairyClock += dt; if (fairyClock > 2) { fairyClock = 0; stringFairyLights(); }
+  const k = Math.max(state.night, (state.dusk || 0) * 0.75 * (1 - state.night));
+  fairyU.uTime.value = T; fairyU.uOpacity.value = 0.08 + k * 0.92; fairy.visible = fairyU.uOpacity.value > 0.02;
+  return true;
+}, true);

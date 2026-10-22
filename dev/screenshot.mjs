@@ -90,6 +90,11 @@ const VIEWS = {
   'wall-night': { pos: [5.6, 1.8, 20.2], look: [11.6, 1.9, 20.2], season: 'spring', light: 'night', samples: true },
   'pond-night': { pos: [7, 2.4, 10], look: [0, -0.3, 0], season: 'spring', light: 'night', samples: true },
   'sky-night': { pos: [6, 2, 16], look: [-30, 30, -60], season: 'spring', light: 'night', samples: true },
+  'creek': { pos: [-1, 3, -10], look: [-4, -0.6, -22] },
+  'creek2': { pos: [-9, 2.5, -36], look: [-8, -0.8, -48] },
+  'fairy-night': { pos: [12, 2.2, 16], look: [4, 2.6, 4], season: 'spring', light: 'night', samples: true },
+  'qr-face': { pos: [4.6, 2.05, 41.4], look: [6.3, 2.05, 38.6], links: [{ label: 'Instagram', url: 'https://instagram.com/garden.of.poems' }, { label: 'Facebook', url: 'https://facebook.com/gardenofpoems' }, { label: 'Substack', url: 'https://gardenofpoems.substack.com' }, { label: 'Goodreads', url: 'https://www.goodreads.com/gardenofpoems' }] },
+  'fairy-close': { pos: [-2.6, 1.6, -6.5], look: [-6, 2.8, -13], season: 'spring', light: 'night', samples: true },
   'gate-back': { pos: [0, 1.7, 33], look: [0, 1.5, 50] },
   'entrance-high': { pos: [7, 7, 48], look: [0, 1.5, 30] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
@@ -205,6 +210,8 @@ async function main() {
     else if (FLOW === 'panels') { // the two customize boxes and the gardens box
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(900); await page.evaluate(() => document.querySelector('#steps-skip')?.click());
+      await page.evaluate(() => window.__garden.setSetting('links', [{ label: 'Instagram', url: 'https://instagram.com/prana_._' }]));
+      await page.click('#h-custom'); await sleep(1300); await page.evaluate(() => document.querySelector('#c-presets').scrollIntoView({ block: 'center' })); await sleep(400); await page.screenshot({ path: join(root, 'dev/shots/panel-links.png') }); await page.keyboard.press('Escape'); await sleep(900);
       for (const [b, n] of [['#h-you', 'you'], ['#h-custom', 'garden'], ['#h-gardens', 'gardens']]) { await page.click(b); await sleep(1300); await page.screenshot({ path: join(root, `dev/shots/panel-${n}.png`) }); await page.keyboard.press('Escape'); await sleep(900); }
     }
     else if (FLOW === 'jump') { // every kind jumps with Space
@@ -217,6 +224,14 @@ async function main() {
         await sleep(1200); const back = await page.evaluate(() => window.__garden.player.alt);
         console.log(`  ${kind}: up to ${top.toFixed(2)} m, back to ${back.toFixed(2)}`); if (!(top > 0.2) || back > 0.01) errors.push(kind + ' did not jump and land');
       }
+    }
+    else if (FLOW === 'minimap') { // hide the corner map, then bring it back
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await sleep(800);
+      await page.screenshot({ path: join(root, 'dev/shots/mini-on.png') }); await page.click('#minimap-hide'); await sleep(500);
+      const hidden = await page.$eval('#minimap-btn', b => b.hidden); await page.screenshot({ path: join(root, 'dev/shots/mini-off.png') });
+      await page.click('#minimap-show'); await sleep(500); const back = await page.$eval('#minimap-btn', b => !b.hidden);
+      console.log('  hidden: ' + hidden + ', back: ' + back); if (!hidden || !back) errors.push('the corner map did not hide and return');
     }
     else if (FLOW === 'parasol') { // your figure with a parasol, from behind, at the gate
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });

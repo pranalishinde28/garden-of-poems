@@ -160,7 +160,7 @@
   <label class="f" for="c-desc">Welcome line</label>
   <input type="text" id="c-desc" maxlength="280" placeholder="Poems from my first year in Tokyo" autocomplete="off">
   <label class="f">Socials and portfolio links</label>
-  <p class="c-note">Each link also gets its own board with a QR code, to the right of the gate, so visitors can scan it and find you.</p>
+  <p class="c-note">Type just your name. Each link shows on the “Find me here!” board to the right of the gate, with a QR code visitors can scan.</p>
   <div id="c-presets"></div>
   <div id="c-links"></div>
   <p class="g-err" id="c-linkerr" role="alert"></p>
@@ -259,6 +259,8 @@
   <div id="map-places" role="list" aria-label="Places"></div>
   <div id="map-legend" aria-hidden="true"></div>
 </section>
+<button id="minimap-hide" aria-label="Hide the small map" title="Hide the small map" hidden>×</button>
+<button id="minimap-show" aria-label="Show the small map" title="Show the small map" hidden><svg viewBox="0 0 24 24"><path d="M3.5 6.5l5.5-2 6 2 5.5-2v13l-5.5 2-6-2-5.5 2z"/><path d="M9 4.5v13M15 6.5v13"/></svg></button>
 <button id="minimap-btn" aria-label="Open the map" hidden><canvas id="minimap" width="264" height="264"></canvas></button>
 <section id="helpsheet" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
   <button class="x" id="help-close" aria-label="Close">×</button>

@@ -261,6 +261,9 @@ const miniFrame = now => {
   requestAnimationFrame(miniFrame);
   const show = state.minimap && (state.mode === 'walk' || state.mode === 'swing') && !document.body.classList.contains('sr-open');
   if (miniBtn.hidden === show) miniBtn.hidden = !show;
+  // a small × hides it; a little map button brings it back (the same choice as in You)
+  const wantShow = (state.mode === 'walk' || state.mode === 'swing') && !document.body.classList.contains('sr-open') && !document.body.classList.contains('panel-open');
+  hideBtn.hidden = !(show && wantShow); showBtn.hidden = !(wantShow && !state.minimap);
   if (!show || now - miniAt < 110) return; miniAt = now;
   if (now - worldAt > 5000) { redrawWorld(); worldAt = now; }
   const g = mini.getContext('2d'), N = mini.width, R = N / 2, span = 26, k = N / (2 * span);
@@ -274,4 +277,8 @@ const miniFrame = now => {
 };
 requestAnimationFrame(miniFrame);
 miniBtn.onclick = () => openMap();
+const hideBtn = $('#minimap-hide'), showBtn = $('#minimap-show');
+const setMini = on => { state.minimap = on; try { localStorage.setItem('garden-of-poems:minimap', on ? '1' : '0'); } catch (e) {} const c = document.getElementById('av-minimap'); if (c) c.checked = on; };
+hideBtn.onclick = () => setMini(false);
+showBtn.onclick = () => setMini(true);
 if (isTouch) miniBtn.classList.add('touch');

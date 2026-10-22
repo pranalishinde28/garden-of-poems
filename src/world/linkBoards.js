@@ -36,7 +36,7 @@ function paint(cv, links, own) {
   g.strokeStyle = 'rgba(35,22,14,.22)'; g.lineWidth = 3; for (let i = 0; i < 30; i++) { const y = R() * H; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(W * .3, y + (R() - .5) * 40, W * .7, y + (R() - .5) * 40, W, y + (R() - .5) * 18); g.stroke(); }
   g.strokeStyle = 'rgba(240,226,200,.55)'; g.lineWidth = 5; g.strokeRect(32, 32, W - 64, H - 64);
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#f5ead6';
-  g.font = '600 104px "Cormorant Garamond", Georgia, serif'; g.fillText('Find me', W / 2, 112);
+  g.font = '700 96px "Cormorant Garamond", Georgia, serif'; g.fillText('Find me here!', W / 2, 108);
   if (!links.length) {
     g.font = 'italic 500 66px "Cormorant Garamond", Georgia, serif';
     g.font = 'italic 500 54px "Cormorant Garamond", Georgia, serif';
@@ -49,9 +49,10 @@ function paint(cv, links, own) {
   links.forEach((l, i) => {
     const r = Math.floor(i / cols), c = i % cols, x0 = 40 + c * cw + 10, y0 = top + r * ch + 8, w = cw - 20, h = ch - 16, k = linkKind(l.url, l.label);
     g.fillStyle = '#f7f1e3'; g.fillRect(x0, y0, w, h);
-    const big = rows === 1, band = big ? 84 : 58; g.fillStyle = k.col; g.fillRect(x0, y0, w, band);
-    g.fillStyle = '#ffffff'; g.font = `700 ${big ? 60 : 44}px "Cormorant Garamond", Georgia, serif`; g.fillText(k.name, x0 + w / 2, y0 + band / 2 + 3);
-    const handle = (l.label && l.label !== k.name ? l.label : handleOf(l.url)).slice(0, 22), hh = big ? 58 : 42;
+    // a tall band in the platform's colour, so the name reads from the path
+    const big = rows === 1, band = big ? 120 : 92; g.fillStyle = k.col; g.fillRect(x0, y0, w, band);
+    g.fillStyle = '#ffffff'; { let fs = big ? 88 : 66; do { g.font = `700 ${fs}px "Cormorant Garamond", Georgia, serif`; fs -= 4; } while (g.measureText(k.name).width > w - 24 && fs > 30); } g.fillText(k.name, x0 + w / 2, y0 + band / 2 + 3);
+    const handle = (l.label && l.label !== k.name ? l.label : handleOf(l.url)).slice(0, 22), hh = big ? 64 : 48;
     const size = Math.min(w - 60, h - band - hh - 30), qr = qrcode(0, 'M'); qr.addData(l.url); qr.make();
     const n = qr.getModuleCount(), cell = size / n, qx = x0 + (w - size) / 2, qy = y0 + band + 14;
     // a colourful code: the platform's colour, deepened so phones still read it, the three corner eyes darker
@@ -62,7 +63,7 @@ function paint(cv, links, own) {
       if (isEye(a, b)) g.fillRect(qx + b * cell, qy + a * cell, Math.ceil(cell), Math.ceil(cell));
       else { g.beginPath(); g.arc(qx + (b + 0.5) * cell, qy + (a + 0.5) * cell, cell * 0.48, 0, 7); g.fill(); }
     }
-    g.fillStyle = '#3b2f24'; g.font = `600 ${big ? 46 : 34}px "Cormorant Garamond", Georgia, serif`; g.fillText(handle, x0 + w / 2, y0 + h - hh / 2 - 4);
+    g.fillStyle = '#3b2f24'; g.font = `600 ${big ? 50 : 38}px "Cormorant Garamond", Georgia, serif`; g.fillText(handle, x0 + w / 2, y0 + h - hh / 2 - 4);
   });
 }
 
