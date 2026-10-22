@@ -95,6 +95,8 @@ const VIEWS = {
   'fairy-night': { pos: [12, 2.2, 16], look: [4, 2.6, 4], season: 'spring', light: 'night', samples: true },
   'qr-face': { pos: [4.6, 2.05, 41.4], look: [6.3, 2.05, 38.6], links: [{ label: 'Instagram', url: 'https://instagram.com/garden.of.poems' }, { label: 'Facebook', url: 'https://facebook.com/gardenofpoems' }, { label: 'Substack', url: 'https://gardenofpoems.substack.com' }, { label: 'Goodreads', url: 'https://www.goodreads.com/gardenofpoems' }] },
   'fairy-close': { pos: [-2.6, 1.6, -6.5], look: [-6, 2.8, -13], season: 'spring', light: 'night', samples: true },
+  'sea-stream': { pos: [-4, 4, -58], look: [-14, -0.5, -82], view: 'sea', season: 'spring' },
+  'sea-night': { pos: [8, 2.6, 16], look: [-25, 2, -200], view: 'sea', season: 'spring', light: 'night' },
   'gate-back': { pos: [0, 1.7, 33], look: [0, 1.5, 50] },
   'entrance-high': { pos: [7, 7, 48], look: [0, 1.5, 30] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one

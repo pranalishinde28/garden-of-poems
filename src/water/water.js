@@ -9,6 +9,7 @@ import { makeKoi } from './koiModel.js';
 export const reflCam = new THREE.PerspectiveCamera();
 export const texMat = new THREE.Matrix4();
 export const waterU = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
+  uRiverMax: { value: 1e4 },
   uTime: { value: 0 }, uNight: { value: 0 }, uRain: { value: 0 }, uDeep: { value: C('#1d3634') }, uShallow: { value: C('#4f5d40') },
   uLightDir: { value: new V3() }, uLightCol: { value: new THREE.Color() }, uRip: { value: new THREE.Vector4(0, 0, -100, 0) },
   uTexMat: { value: texMat }, tRefl: { value: null }
@@ -22,7 +23,7 @@ function waterMat(river) {
       void main(){vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;vR=uTexMat*w;vFlow=aFlow;vEdge=aEdge;vec4 mvPosition=viewMatrix*w;gl_Position=projectionMatrix*mvPosition;
       #include <fog_vertex>
       }`,
-    fragmentShader: `uniform sampler2D tRefl;uniform float uTime,uNight,uRain;uniform vec3 uDeep,uShallow,uLightDir,uLightCol;uniform vec4 uRip;
+    fragmentShader: `uniform sampler2D tRefl;uniform float uRiverMax,uTime,uNight,uRain;uniform vec3 uDeep,uShallow,uLightDir,uLightCol;uniform vec4 uRip;
       varying vec3 vW;varying vec4 vR;varying vec2 vFlow;varying float vEdge;
       #include <fog_pars_fragment>
       float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
@@ -38,7 +39,7 @@ function waterMat(river) {
       void main(){
         float r=length(vW.xz);
         #ifdef RIVER
-        if(r<8.)discard;
+        if(r<8.||r>uRiverMax)discard; // by the sea the stream ends at the garden's edge, before the sand
         #else
         if(r>8.)discard;
         #endif
@@ -68,6 +69,9 @@ function waterMat(river) {
         float a=max(mix(0.8,0.97,f),edge*0.4);
         #else
         float a=max(mix(0.6,0.97,f),edge*0.5);
+        #endif
+        #ifdef RIVER
+        a*=smoothstep(uRiverMax,uRiverMax-5.,r); // by the sea the stream thins away into the sand
         #endif
         gl_FragColor=vec4(c,a);
         #include <fog_fragment>
