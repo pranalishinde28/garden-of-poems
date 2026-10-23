@@ -3,6 +3,7 @@ import { toast } from '../ui/helpers.js';
 import { closePanel, openPanel } from '../ui/reading.js';
 import { Cloud, NEEDS_UPDATE, db, changeUsername, deleteAccount, exportGarden, listGardens, ownPoems, removedPoems, restoreRemoved, saveGardenSettings, suggestedGardens, syncNow, usernameAvailable } from './cloud.ts';
 import { state } from '../core/state.js';
+import { captchaOn, mountCaptcha, resetCaptcha } from './captcha.js';
 import { late, provide } from '../core/late.js';
 
 // names other modules reach through late (see core/late.js)
@@ -52,6 +53,7 @@ function renderAccount() {
     const user = mode === 'up' ? field('Username for your garden link (a-z, 0-9, _)', 'text', 'username', 'username') : null;
     const email = field('Email', 'email', 'email', 'email');
     const pass = field('Password', 'password', 'password', mode === 'up' ? 'new-password' : 'current-password');
+    const cap = el('div', 'g-captcha'), captcha = mountCaptcha(cap); if (captchaOn()) f.append(cap);
     const err = el('p', 'g-err'); err.setAttribute('role', 'alert');
     const submit = el('button', 'g-btn', mode === 'up' ? 'Create account' : 'Sign in'); submit.type = 'submit';
     f.append(err, submit);
@@ -60,20 +62,21 @@ function renderAccount() {
       const em = email.value.trim(), pw = pass.value;
       if (!/^\S+@\S+\.\S+$/.test(em)) { err.textContent = 'Enter a valid email address.'; return; }
       if (pw.length < 8) { err.textContent = 'Use a password of at least 8 characters.'; return; }
+      const captchaToken = captcha(); if (captchaOn() && !captchaToken) { err.textContent = 'Tick the box to show you are a person, then try again.'; return; }
       submit.disabled = true;
       try {
         if (mode === 'up') {
           const un = user.value.trim().toLowerCase();
           if (!/^[a-z0-9_]{3,24}$/.test(un)) throw new Error('Usernames are 3 to 24 characters: lowercase letters, numbers and _.');
           if (!(await usernameAvailable(un))) throw new Error('That username is taken. Try another.');
-          const { data, error } = await Cloud.sb.auth.signUp({ email: em, password: pw, options: { data: { username: un, display_name: disp.value.trim().slice(0, 60) }, emailRedirectTo: siteURL() } });
+          const { data, error } = await Cloud.sb.auth.signUp({ email: em, password: pw, options: { data: { username: un, display_name: disp.value.trim().slice(0, 60) }, emailRedirectTo: siteURL(), captchaToken } });
           if (error) throw error;
           if (!data.session) { box.innerHTML = ''; box.append(el('h3', '', 'Check your email'), el('p', '', `We sent a confirmation link to ${em}. Open it on this device to finish creating your account.`)); return; }
         } else {
-          const { error } = await Cloud.sb.auth.signInWithPassword({ email: em, password: pw });
+          const { error } = await Cloud.sb.auth.signInWithPassword({ email: em, password: pw, options: { captchaToken } });
           if (error) throw error;
         }
-      } catch (e2) { err.textContent = e2.message || 'Something went wrong. Try again.'; }
+      } catch (e2) { err.textContent = /captcha/i.test(e2.message || '') ? 'The check that you are human expired. Tick the box again.' : (e2.message || 'Something went wrong. Try again.'); resetCaptcha(); }
       submit.disabled = false;
     };
     box.append(f);
@@ -82,7 +85,7 @@ function renderAccount() {
     box.append(sw);
     if (mode === 'in') {
       const fg = el('button', 'g-link', 'Forgot your password?');
-      fg.onclick = async () => { const em = email.value.trim(); if (!/^\S+@\S+\.\S+$/.test(em)) { err.textContent = 'Type your email above first.'; return; } const { error } = await Cloud.sb.auth.resetPasswordForEmail(em, { redirectTo: siteURL() }); err.textContent = error ? error.message : 'If that email has an account, a reset link is on its way.'; };
+      fg.onclick = async () => { const em = email.value.trim(); if (!/^\S+@\S+\.\S+$/.test(em)) { err.textContent = 'Type your email above first.'; return; } const captchaToken = captcha(); if (captchaOn() && !captchaToken) { err.textContent = 'Tick the box to show you are a person first.'; return; } const { error } = await Cloud.sb.auth.resetPasswordForEmail(em, { redirectTo: siteURL(), captchaToken }); resetCaptcha(); err.textContent = error ? error.message : 'If that email has an account, a reset link is on its way.'; };
       box.append(fg);
     }
     return;

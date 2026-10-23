@@ -695,3 +695,4 @@ body.on-swing #visitbar{bottom:calc(env(safe-area-inset-bottom,0px) + 96px)}
 body.panel-open #toast{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 22px)}
 body.panel-open #visitbar{opacity:0;pointer-events:none}
 #youpanel .av-row > span,#youpanel .av-row > label,#custom .c-row > span{font-weight:700}
+.g-captcha{margin:.9rem 0 .2rem;min-height:78px}

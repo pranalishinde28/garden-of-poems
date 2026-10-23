@@ -249,6 +249,16 @@ async function main() {
       const third = await page.evaluate(() => window.__garden.state.thirdPerson), t1 = await page.$eval('#sw-view', b => b.textContent);
       console.log(`  button "${t0}" → "${t1}", watching yourself: ${third}`); if (!third) errors.push('the swing view did not change');
     }
+    else if (FLOW === 'lowend') { // an older laptop: the CPU six times slower, a 1280×720 screen; frame times per quality and what Auto picks
+      const cdp = await page.target().createCDPSession(); await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 });
+      await page.setViewport({ width: 1280, height: 720 });
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 300000, polling: 500 });
+      await sleep(1500); await page.evaluate(() => document.querySelector('#steps-skip')?.click());
+      const measure = () => page.evaluate(() => new Promise(res => { const t = []; let last = performance.now(), n = 0; const f = now => { t.push(now - last); last = now; if (++n < 90) requestAnimationFrame(f); else { t.sort((a, b) => a - b); res({ medianMs: +t[45].toFixed(1), fps: +(1000 / t[45]).toFixed(1) }); } }; requestAnimationFrame(f); }));
+      for (const q of ['high', 'medium', 'low']) { await page.evaluate(q => window.__garden.chooseQuality(q), q); await sleep(1500); await page.keyboard.down('KeyW'); console.log(`  ${q.padEnd(6)} walking ${JSON.stringify(await measure())}`); await page.keyboard.up('KeyW'); }
+      await page.evaluate(() => window.__garden.chooseQuality('auto')); await page.keyboard.down('KeyW'); await sleep(12000); await page.keyboard.up('KeyW');
+      console.log(`  Auto settled on: ${await page.evaluate(() => window.__garden.quality.level)}; then ${JSON.stringify(await measure())}`);
+    }
     else if (FLOW === 'parasol') { // your figure with a parasol, from behind, at the gate
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(1200); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden; g.setAvatar({ extra: 'parasol', outfit: 'kimono', cloth: '#2c3d6b', accent: '#f2c46a', hairStyle: 'bob' }); g.setThirdPerson(true); });
