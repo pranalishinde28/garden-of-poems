@@ -10,9 +10,22 @@ export const groundMat = new THREE.MeshLambertMaterial({ vertexColors: true, map
 groundMat.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#ifdef USE_MAP\n vec4 t1 = texture2D( map, vUv ); vec4 t2 = texture2D( map, vUv * 0.23 + vec2( 0.37, 0.11 ) ); vec4 texelColor = mix( t1, t2, 0.45 ); texelColor = mapTexelToLinear( texelColor ); diffuseColor *= texelColor;\n#endif'); };
 groundMat.customProgramCacheKey = () => 'ground2';
 export let groundMesh;
+// the ground's grid is squeezed toward the centre (fine in the garden, coarse far out) and reaches r ≈ 208,
+// where it dips under the hills, so no gap shows between them even from high above
+const GSEG = 260, K = 0.000688, remap = u => u * (1 + K * u * u);
+let gH0 = null;
+// the exact height of the ground mesh as drawn (its triangles, not groundH), for things laid on it far out
+export function groundMeshH(x, z) {
+  const inv = v => { let u = v; for (let k = 0; k < 8; k++) u -= (u + K * u * u * u - v) / (1 + 3 * K * u * u); return u; };
+  const ux = inv(x), uz = inv(z), cs = 120 / GSEG, gx = (ux + 60) / cs, gz = (uz + 60) / cs;
+  if (gx < 0 || gz < 0 || gx >= GSEG || gz >= GSEG) return groundH(x, z);
+  const ix = Math.floor(gx), iz = Math.floor(gz), X0 = remap(ix * cs - 60), X1 = remap((ix + 1) * cs - 60), Z0 = remap(iz * cs - 60), Z1 = remap((iz + 1) * cs - 60);
+  const fx = (x - X0) / (X1 - X0), fz = (z - Z0) / (Z1 - Z0), W = GSEG + 1;
+  const ha = gH0[iz * W + ix], hb = gH0[(iz + 1) * W + ix], hc = gH0[(iz + 1) * W + ix + 1], hd = gH0[iz * W + ix + 1];
+  return fx + fz <= 1 ? ha + (hd - ha) * fx + (hb - ha) * fz : hc + (hb - hc) * (1 - fx) + (hd - hc) * (1 - fz);
+}
 (function buildGround() {
-  const g = new THREE.PlaneGeometry(120, 120, 230, 230); g.rotateX(-Math.PI / 2);
-  const K = 0.000463, remap = u => u * (1 + K * u * u);
+  const g = new THREE.PlaneGeometry(120, 120, GSEG, GSEG); g.rotateX(-Math.PI / 2);
   const pos = g.attributes.position, uv = g.attributes.uv, col = new Float32Array(pos.count * 3);
   const cA = C('#5f7843'), cB = C('#7b8a55'), cBank = C('#7a7458'), cMud = C('#4f4a3a'), cD = C('#5a8040') /* the outer lawn stays green (it read as bare earth) */, cHill = C('#5d7440'), t = new THREE.Color();
   for (let i = 0; i < pos.count; i++) {
@@ -27,6 +40,7 @@ export let groundMesh;
     col[i * 3] = t.r; col[i * 3 + 1] = t.g; col[i * 3 + 2] = t.b;
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  gH0 = new Float32Array(pos.count); for (let i = 0; i < pos.count; i++) gH0[i] = pos.getY(i);
   g.computeVertexNormals();
   groundMesh = new THREE.Mesh(g, groundMat); groundMesh.receiveShadow = true; scene.add(groundMesh);
 })();

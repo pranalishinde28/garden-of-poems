@@ -20,11 +20,10 @@ function lookIntoGorge() {
   late.closePops(); setCue(null);
   back = { pos: camera.position.clone(), yaw: player.yaw };
   state.mode = 'gorge';
-  const pos = gorgeWorld(114, 1.0, GORGE.floor + 2.1);
-  const look = gorgeWorld(FALLS.along - 2, FALLS.side * (gorgeHalf(FALLS.along) - 1.2), GORGE.floor + 9.5);
-  // up over the saddle at the near end, then down to the water
-  const over = gorgeWorld(GORGE.r0 - 6, 0, GORGE.floor + 20), mid = gorgeWorld(GORGE.r0 + 30, 0, GORGE.floor + 8);
-  camTween(over, mid, 2.2, () => { if (state.mode === 'gorge') camTween(pos, look, 2.2); });
+  // down the meadow and out over the pool, low like a boat, looking up the canyon to the falls
+  const pos = gorgeWorld(GORGE.r0 - 7, 3.5, GORGE.floor + 2.4);
+  const look = gorgeWorld(FALLS.along - 4, FALLS.side * (gorgeHalf(FALLS.along) - 3), GORGE.floor + 10);
+  camTween(pos, look, clamp(2.4 + camera.position.distanceTo(pos) * 0.03, 2.6, 3.8));
   pill.hidden = false; requestAnimationFrame(() => pill.classList.add('show'));
   $('#gv-back').focus({ preventScroll: true });
 }
@@ -32,9 +31,9 @@ function stepBack() {
   if (state.mode !== 'gorge') return;
   pill.classList.remove('show'); setTimeout(() => { if (!pill.classList.contains('show')) pill.hidden = true; }, 500);
   const to = back ? back.pos.clone() : new V3(LOOKOUT.x, 0, LOOKOUT.z); to.y = floorH(to.x, to.z) + 1.6;
-  const look = gorgeWorld(GORGE.r0 + 10, 0, to.y + 6), over = gorgeWorld(GORGE.r0 - 6, 0, GORGE.floor + 20);
+  const look = gorgeWorld(GORGE.r0 + 20, 0, to.y + 5);
   state.mode = 'cinematic';
-  camTween(over, gorgeWorld(GORGE.r0 - 30, 0, 4), 2.0, () => camTween(to, look, 2.0, () => { state.mode = 'walk'; syncPlayerFromCamera(); }));
+  camTween(to, look, 2.6, () => { state.mode = 'walk'; syncPlayerFromCamera(); });
 }
 $('#gv-back').onclick = stepBack;
 addEventListener('keydown', e => {

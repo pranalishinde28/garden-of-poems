@@ -21,20 +21,36 @@ function baseH(x, z) {
   h *= smooth(9, 22, r);
   h -= (1 - smooth(5.5, 9, r)) * 1.0;
   h += smooth(72, 100, r) * 4 + smooth(85, 165, r) * (5 + 3.5 * Math.sin(x * 0.031) + 3.5 * Math.cos(z * 0.027));
+  h -= smooth(182, 206, r) * 24; // the ground's far edge tucks under the hills (world/ground.js)
   return h;
 }
-// Takachiho Gorge, beyond the hedge to the east: a narrow valley cut into the outer hills (world/gorge.js
-// builds its cliffs, waterfall and water). In the gorge's own frame, along = distance out from the centre
-// on its axis and across = sideways from its centre line, which bends right as it goes in, so the far end
-// stays out of sight. It is widest at the mouth.
+// Takachiho Gorge, beyond the hedge to the east (world/gorge.js builds it). In the gorge's own frame, along =
+// distance out from the centre on its axis and across = sideways from its centre line, which bends right
+// as it goes in so the far end stays hidden. A meadow valley runs from the lookout down to a pool at the
+// gorge's mouth; the canyon is wide at the pool and narrows to a slot at the far end.
 export const GORGE = { a: 0.12, r0: 104, r1: 186, floor: 0.6 };
-export const gorgeBend = u => smooth(126, 186, u) * 20;
-export const gorgeHalf = u => 4.4 + 3.2 * (1 - smooth(104, 130, u)) - 1.4 * smooth(170, 186, u);
+export const gorgeBend = u => smooth(130, 186, u) * 26;
+export const gorgeHalf = u => 12 + 7 * (1 - smooth(GORGE.r0, GORGE.r0 + 26, u)) - 8 * smooth(160, 184, u);
 export const gorgeLocal = (x, z) => { const c = Math.cos(GORGE.a), s = Math.sin(GORGE.a), along = x * c + z * s; return { along, across: -x * s + z * c - gorgeBend(along) }; };
 export const gorgeWorld = (along, across, y = 0) => { const c = Math.cos(GORGE.a), s = Math.sin(GORGE.a), v = across + gorgeBend(along); return new V3(along * c - v * s, y, along * s + v * c); };
+// the pool at the mouth: an irregular oval, its near shore about 20 m beyond the lookout
+export function gorgePool(u, v) { const du = (u - (GORGE.r0 - 6)) / 12, dv = v / 19, a = Math.atan2(dv, du); return Math.hypot(du, dv) * (1 + 0.1 * Math.sin(a * 3 + 1) + 0.05 * Math.sin(a * 7 + 2)); }
+function gorgeCarve(x, z, h) {
+  const g = gorgeLocal(x, z), u = g.along, a = Math.abs(g.across), A0 = GORGE.r0;
+  if (u < 74 || u > GORGE.r1 + 8) return h;
+  // the meadow from the lookout down to the pool
+  const kv = (1 - smooth(9, 24, a)) * smooth(74, 80, u) * (1 - smooth(A0 + 2, A0 + 12, u));
+  if (kv > 0) h = lerp(h, Math.min(h, 0.95), kv);
+  // the canyon floor
+  if (u > A0 - 4) { const w = gorgeHalf(Math.max(u, A0)), k = (1 - smooth(w, w + 9, a)) * smooth(A0 - 4, A0 + 2, u); if (k > 0) h = lerp(h, GORGE.floor - 0.7, k); }
+  // the pool
+  const kb = 1 - smooth(0.8, 1.05, gorgePool(u, g.across));
+  if (kb > 0) h = lerp(h, GORGE.floor - 0.9, kb);
+  return h;
+}
 export function groundH(x, z) {
   let h = baseH(x, z);
-  if (x > 60) { const g = gorgeLocal(x, z); if (g.along > 88 && g.along < GORGE.r1 + 6) { const w = gorgeHalf(g.along), k = (1 - smooth(w, w + 9, Math.abs(g.across))) * smooth(90, 104, g.along); if (k > 0) h = lerp(h, GORGE.floor - 0.7, k); } }
+  if (x > 60) h = gorgeCarve(x, z, h);
   const rd = riverDist(x, z);
   if (rd < 4) h = lerp(h, -0.95, 1 - smooth(1.3, 3.5, rd));
   return h;
