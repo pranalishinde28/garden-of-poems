@@ -215,6 +215,10 @@ async function main() {
       await sleep(900); await page.evaluate(() => document.querySelector('#steps-skip')?.click());
       await page.evaluate(() => window.__garden.setSetting('links', [{ label: 'Instagram', url: 'https://instagram.com/prana_._' }]));
       await page.click('#h-custom'); await sleep(1300); await page.evaluate(() => document.querySelector('#c-presets').scrollIntoView({ block: 'center' })); await sleep(400); await page.screenshot({ path: join(root, 'dev/shots/panel-links.png') }); await page.keyboard.press('Escape'); await sleep(900);
+      // one box at a time: open Gardens, then You on top of it; only You should stay open
+      await page.click('#h-gardens'); await sleep(1100); await page.click('#h-you'); await sleep(1300);
+      const open = await page.$$eval('.panel.open', ps => ps.map(p => p.id)); console.log('  open after Gardens then You: ' + open.join(', ')); if (open.length !== 1) errors.push('boxes overlap: ' + open.join(', '));
+      await page.screenshot({ path: join(root, 'dev/shots/panel-one.png') }); await page.keyboard.press('Escape'); await sleep(900);
       for (const [b, n] of [['#h-you', 'you'], ['#h-custom', 'garden'], ['#h-gardens', 'gardens']]) { await page.click(b); await sleep(1300); await page.screenshot({ path: join(root, `dev/shots/panel-${n}.png`) }); await page.keyboard.press('Escape'); await sleep(900); }
     }
     else if (FLOW === 'jump') { // every kind jumps with Space

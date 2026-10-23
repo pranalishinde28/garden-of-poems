@@ -676,3 +676,22 @@ body.on-swing #minimap-hide{bottom:calc(env(safe-area-inset-bottom,0px) + 208px)
 #swingui #sw-view[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:transparent}
 @media (max-width:1100px){#swingui .sw-hint{display:none}#swingui{padding-left:.5rem}}
 #sw-view .short{display:none}@media (max-width:640px){#sw-view .long{display:none}#sw-view .short{display:inline}#swingui button{padding:.35rem .55rem .42rem;font-size:.92rem}}
+
+/* visiting: the way home sits at the bottom centre, above everything, and the top bar has a house button too */
+#visitbar{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 22px);z-index:42;font-size:1.1rem;font-weight:600;box-shadow:0 10px 30px rgba(20,24,16,.35)}
+#visitbar button{display:inline-flex;align-items:center;gap:.4rem;font-style:normal;font-weight:700;font-size:1.05rem;padding:.45rem 1.1rem .5rem;background:#1f5a3a;color:#fff}
+#visitbar button svg,#h-home-garden svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#hud #h-home-garden{background:#1f5a3a;color:#fff}
+body.on-swing #visitbar{bottom:calc(env(safe-area-inset-bottom,0px) + 96px)}
+
+/* legibility: inside every box the text is a weight heavier and the soft ink darker */
+.panel,#menu-pop,#sky-pop,#time-pop,#steps,#toast{--ink-soft:rgba(43,51,34,.88)}
+.panel{font-weight:600}
+.panel p,.panel label,.panel .c-note,.panel small,.panel .g-m,.panel .g-d,.panel dd,.panel .n-empty,.panel input,.panel .seg button,.panel .g-link,#menu small,#menu button,#skymenu .seg button,#toast,#steps p{font-weight:600}
+.panel h2{font-weight:700}
+.panel .c-note,.panel .g-d,.panel dd,#menu small{color:rgba(43,51,34,.86)}
+.panel input::placeholder{color:rgba(43,51,34,.5)}
+/* while a box is open, messages appear at the bottom, clear of it */
+body.panel-open #toast{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 22px)}
+body.panel-open #visitbar{opacity:0;pointer-events:none}
+#youpanel .av-row > span,#youpanel .av-row > label,#custom .c-row > span{font-weight:700}

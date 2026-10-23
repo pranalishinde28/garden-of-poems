@@ -24,6 +24,7 @@
 </div>
 
 <nav id="hud" aria-label="Garden controls" hidden>
+  <button class="tip" id="h-home-garden" data-tip="Back to my garden" aria-label="Back to my garden" hidden><svg viewBox="0 0 24 24"><path d="M4 11.5L12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5"/></svg></button>
   <button class="tip" id="h-write" data-tip="Write at the bench (N)" aria-label="Write a poem at the bench">
     <svg viewBox="0 0 24 24"><path d="M12 2.5v2.2M9 6.2h6l-.6 1.6H9.6zM8.4 7.8h7.2l.9 9.2a1.6 1.6 0 0 1-1.6 1.8H9.1a1.6 1.6 0 0 1-1.6-1.8z"/><path d="M12 11.2c-1.1 1.2-1.3 2.4 0 3.8 1.3-1.4 1.1-2.6 0-3.8z"/><path d="M9 21.3h6"/></svg>
   </button>
@@ -99,7 +100,7 @@
     <div class="sr-opts"><span class="seg" role="group" aria-label="Order"><button data-o="new">Newest first</button><button data-o="near">Near me</button></span><button id="sr-auto" aria-pressed="false">Keep swinging</button></div>
   </div>
 </section>
-<div id="visitbar" hidden><span>Visiting <em id="visit-name"></em></span><button id="visit-home">Return to my garden</button></div>
+<div id="visitbar" hidden><span>Visiting <em id="visit-name"></em></span><button id="visit-home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5L12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5"/></svg>Back to my garden</button></div>
 <section id="gardens" class="panel" tabindex="-1" role="dialog" aria-labelledby="g-title" hidden>
   <button id="g-close" aria-label="Close">×</button>
   <h2 id="g-title">Gardens</h2>

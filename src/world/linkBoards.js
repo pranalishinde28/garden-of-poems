@@ -27,7 +27,7 @@ const KINDS = [
 ];
 export function linkKind(url, label) {
   let host = ''; try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (e) { /* not a URL */ }
-  if (label === 'My garden' && /[?&]garden=/.test(url)) return { name: 'My garden', col: '#1f5a3a', host };
+  if ((label === 'My garden' || label === 'This garden') && /[?&]garden=/.test(url)) return { name: label, col: '#1f5a3a', host };
   for (const [re, name, col] of KINDS) if (re.test(host)) return { name, col, host };
   return { name: label || host || 'My website', col: '#5a4634', host };
 }
@@ -95,7 +95,7 @@ export function drawLinkBoards() {
   const own = !state.visiting, links = ((own ? SETTINGS.links : state.visiting.sign.links) || []).filter(l => l && /^https?:\/\//i.test(l.url)).slice(0, 5);
   // a public garden gets its own code first, so a visitor can come back to it (or share it)
   const user = own ? (Cloud.garden && Cloud.garden.is_public && Cloud.profile && Cloud.profile.username) : state.visiting.username;
-  if (user) links.unshift({ label: 'My garden', url: siteURL() + '?garden=' + encodeURIComponent(user), garden: true });
+  if (user) links.unshift({ label: own ? 'My garden' : 'This garden', url: siteURL() + '?garden=' + encodeURIComponent(user), garden: true });
   const k = JSON.stringify([own, links]); if (k === key) return; key = k;
   paint(cv, links, own); tex.needsUpdate = true;
 }
