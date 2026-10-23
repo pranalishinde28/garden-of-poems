@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { C, V3, rng } from '../core/util.js';
-import { groundH, riverDist } from '../world/terrain.js';
+import { gorgeLocal, groundH, riverDist } from '../world/terrain.js';
 import { scene } from '../world/renderer.js';
 import { DS, GEO } from '../world/geometry.js';
 import { decor, stoneNear } from '../world/paths.js';
@@ -36,6 +36,7 @@ const HUES = [['#5b7fd6', '#7d9be6', '#4e6ec4'], ['#f08fb5', '#f6a9c6', '#e477a2
       if (R() > chance) continue;
       const a = (i + (R() - 0.5) * 0.6) / n * Math.PI * 2, r = r0 + (R() - 0.5) * 1.0, x = Math.cos(a) * r, z = Math.sin(a) * r;
       if (Math.abs(x) < 5.5 && z > 0) continue; // the way in at the gate
+      if (x > 50 && Math.abs(gorgeLocal(x, z).across) < 4.8) continue; // the way out to the gorge lookout
       if (riverDist(x, z) < 4.6 || stoneNear(x, z, 1.0)) continue;
       if (decor.some(o => o.collide > 0 && Math.hypot(o.x - x, o.z - z) < o.collide + 1.2)) continue;
       spots.push({ x, z, s: 1.25 + R() * 0.55, hue: Math.floor(R() * HUES.length) }); // fuller bushes, about a metre high

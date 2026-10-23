@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { C, V3, clamp, rng } from '../core/util.js';
-import { BRIDGES, RIVER, WATER_Y, bridgeH, groundH, riverDist } from './terrain.js';
+import { BRIDGES, RIVER, WATER_Y, bridgeH, gorgeLocal, groundH, riverDist } from './terrain.js';
 import { scene } from './renderer.js';
 import { glowTex } from './textures.js';
 import { GEO, M, Merge, VC, part, rockGeo } from './geometry.js';
@@ -172,6 +172,7 @@ function boulder(x, z, s, seed) {
   for (let i = 0; i < HN; i++) {
     const a = i / HN * 6.28 + R() * 0.02, r = 75 + R() * 2.5, x = Math.cos(a) * r, z = Math.sin(a) * r;
     if ((Math.abs(x) < 3.5 && z > 0) || riverDist(x, z) < 4.5) continue;
+    if (Math.abs(gorgeLocal(x, z).across) < 6.5 && x > 0) continue; // the hedge opens onto Takachiho Gorge
     d.position.set(x, groundH(x, z) + 0.15, z); d.scale.set(2.2 + R() * 0.9, 0.85 + R() * 0.35, 1.9 + R() * 0.8); d.rotation.set(0, R() * 6, 0); d.updateMatrix();
     hm.setMatrixAt(hi, d.matrix); hm.setColorAt(hi, hc[Math.floor(R() * 4)]); hi++;
   }

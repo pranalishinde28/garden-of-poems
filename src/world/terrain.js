@@ -23,8 +23,18 @@ function baseH(x, z) {
   h += smooth(72, 100, r) * 4 + smooth(85, 165, r) * (5 + 3.5 * Math.sin(x * 0.031) + 3.5 * Math.cos(z * 0.027));
   return h;
 }
+// Takachiho Gorge, beyond the hedge to the east: a narrow valley cut into the outer hills (world/gorge.js
+// builds its cliffs, waterfall and water). In the gorge's own frame, along = distance out from the centre
+// on its axis and across = sideways from its centre line, which bends right as it goes in, so the far end
+// stays out of sight. It is widest at the mouth.
+export const GORGE = { a: 0.12, r0: 104, r1: 186, floor: 0.6 };
+export const gorgeBend = u => smooth(126, 186, u) * 20;
+export const gorgeHalf = u => 4.4 + 3.2 * (1 - smooth(104, 130, u)) - 1.4 * smooth(170, 186, u);
+export const gorgeLocal = (x, z) => { const c = Math.cos(GORGE.a), s = Math.sin(GORGE.a), along = x * c + z * s; return { along, across: -x * s + z * c - gorgeBend(along) }; };
+export const gorgeWorld = (along, across, y = 0) => { const c = Math.cos(GORGE.a), s = Math.sin(GORGE.a), v = across + gorgeBend(along); return new V3(along * c - v * s, y, along * s + v * c); };
 export function groundH(x, z) {
   let h = baseH(x, z);
+  if (x > 60) { const g = gorgeLocal(x, z); if (g.along > 88 && g.along < GORGE.r1 + 6) { const w = gorgeHalf(g.along), k = (1 - smooth(w, w + 9, Math.abs(g.across))) * smooth(90, 104, g.along); if (k > 0) h = lerp(h, GORGE.floor - 0.7, k); } }
   const rd = riverDist(x, z);
   if (rd < 4) h = lerp(h, -0.95, 1 - smooth(1.3, 3.5, rd));
   return h;

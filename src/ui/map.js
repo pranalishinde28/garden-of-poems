@@ -13,6 +13,7 @@ import { ROSE_GARDEN } from '../plants/flowerGardens.js';
 import { FOUNTAIN } from '../world/fountain.js';
 import { LANDMARKS } from '../world/shrines.js';
 import { LANTERN_WALL } from '../world/lanterns.js';
+import { LOOKOUT } from '../world/gorge.js';
 import { GATE } from '../settings/customize.js';
 import { blocked, camTween, floorH, player } from '../player/camera.js';
 import { keys } from './input.js';
@@ -108,7 +109,7 @@ const GLYPHS = {
   bell: '<path d="M8 17V11a4 4 0 0 1 8 0v6M6 17h12M12 7V5M11 20h2"/>',
   lantern: '<path d="M12 3v2M9 5h6M9 19h6M8 8c0-1.6 1.8-3 4-3s4 1.4 4 3v8c0 1.6-1.8 3-4 3s-4-1.4-4-3z"/><path d="M8 10h8M8 14h8"/>',
 };
-const glyphFor = name => /lantern/i.test(name) ? 'lantern' : /bench/i.test(name) ? 'bench' : /pond/i.test(name) ? 'pond' : /swing/i.test(name) ? 'swing' : /gate/i.test(name) ? 'gate' : /tulip/i.test(name) ? 'tulip' : /rose/i.test(name) ? 'rose' : /stream/i.test(name) ? 'stream' : /fountain/i.test(name) ? 'fountain' : /shrine/i.test(name) ? 'torii' : /pagoda/i.test(name) ? 'pagoda' : /bell/i.test(name) ? 'bell' : 'gate';
+const glyphFor = name => /lantern/i.test(name) ? 'lantern' : /bench/i.test(name) ? 'bench' : /pond/i.test(name) ? 'pond' : /swing/i.test(name) ? 'swing' : /gate/i.test(name) ? 'gate' : /tulip/i.test(name) ? 'tulip' : /rose/i.test(name) ? 'rose' : /stream|gorge/i.test(name) ? 'stream' : /fountain/i.test(name) ? 'fountain' : /shrine/i.test(name) ? 'torii' : /pagoda/i.test(name) ? 'pagoda' : /bell/i.test(name) ? 'bell' : 'gate';
 const medal = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${GLYPHS[glyphFor(name)]}</svg>`;
 
 // ---- the full map ----
@@ -135,6 +136,7 @@ function places() {
   { const [dx, dz] = toPond(FOUNTAIN.x, FOUNTAIN.z); L.push({ name: 'The fountain', hint: 'toss a coin, make a wish', x: FOUNTAIN.x, z: FOUNTAIN.z, stand: [FOUNTAIN.x - dx * 4, FOUNTAIN.z - dz * 4], face: [FOUNTAIN.x, FOUNTAIN.z], side: 'r' }); }
   const before = (Lm, d, name, hint, side) => { const a = Math.atan2(-Lm.x, -Lm.z); L.push({ name, hint, x: Lm.x, z: Lm.z, stand: [Lm.x + Math.sin(a) * d, Lm.z + Math.cos(a) * d], face: [Lm.x, Lm.z], side }); };
   { const W = LANTERN_WALL; L.push({ name: 'The lantern wall', hint: 'your newest poems, lit', x: W.x, z: W.z, stand: [W.x - 4.5, W.z], face: [W.x, W.z], side: 'r' }); }
+  if (SETTINGS.view !== 'sea') { const r = Math.hypot(LOOKOUT.x, LOOKOUT.z), k = (r - 3) / r; L.push({ name: 'The gorge lookout', hint: 'Takachiho Gorge and its falls', x: LOOKOUT.x, z: LOOKOUT.z, stand: [LOOKOUT.x * k, LOOKOUT.z * k], face: [LOOKOUT.x * 2, LOOKOUT.z * 2], side: 'l' }); }
   before(LANDMARKS.shrine, 15, 'The shrine', 'ring the bell, make a wish', 'r');
   before(LANDMARKS.pagoda, 9, 'The pagoda', 'three storeys, and a lantern each side', 'r');
   before(LANDMARKS.bell, 5.5, 'The bell tower', 'strike the temple bell', 'l');

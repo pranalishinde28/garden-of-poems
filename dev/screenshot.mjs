@@ -91,6 +91,13 @@ const VIEWS = {
   'pond-night': { pos: [7, 2.4, 10], look: [0, -0.3, 0], season: 'spring', light: 'night', samples: true },
   'sky-night': { pos: [6, 2, 16], look: [-30, 30, -60], season: 'spring', light: 'night', samples: true },
   'creek': { pos: [-1, 3, -10], look: [-4, -0.6, -22] },
+  'gorge-far': { pos: [22, 2.2, 4], look: [119, 11, 14.4], season: 'spring' },
+  'gorge-deck': { pos: [68.5, 1.8, 8.2], look: [119, 10, 14.4], season: 'spring' },
+  'gorge-in': { pos: [113.1, 2.7, 14.6], look: [142.8, 10.1, 18.4], season: 'spring' },
+  'gorge-in-autumn': { pos: [113.1, 2.7, 14.6], look: [142.8, 10.1, 18.4], season: 'autumn' },
+  'gorge-in-night': { pos: [113.1, 2.7, 14.6], look: [142.8, 10.1, 18.4], season: 'spring', light: 'night' },
+  'gorge-high': { pos: [40, 34, -14], look: [130, 8, 22], season: 'spring' },
+  'gorge-sea': { pos: [22, 2.2, 4], look: [119, 11, 14.4], season: 'spring', view: 'sea' },
   'creek2': { pos: [-9, 2.5, -36], look: [-8, -0.8, -48] },
   'fairy-night': { pos: [12, 2.2, 16], look: [4, 2.6, 4], season: 'spring', light: 'night', samples: true },
   'qr-face': { pos: [4.6, 2.05, 41.4], look: [6.3, 2.05, 38.6], links: [{ label: 'Instagram', url: 'https://instagram.com/garden.of.poems' }, { label: 'Facebook', url: 'https://facebook.com/gardenofpoems' }, { label: 'Substack', url: 'https://gardenofpoems.substack.com' }, { label: 'Goodreads', url: 'https://www.goodreads.com/gardenofpoems' }] },
@@ -184,6 +191,18 @@ async function main() {
       await page.click('#fv-back'); await sleep(2500); const after = await page.evaluate(() => window.__garden.state.mode);
       console.log(`  cue "${cue}", looking: ${mode}, after stepping back: ${after}`); if (mode !== 'fountain' || after !== 'walk') errors.push('fountain view did not open or close');
       await page.evaluate(() => { const g = window.__garden; g.state.mode = 'cinematic'; g.camera.position.set(4.2, 1.6, 4.8); g.curLook.set(0, -0.4, 0); g.camera.lookAt(g.curLook); }); await sleep(1200); await page.screenshot({ path: join(root, 'dev/shots/pond-koi.png') });
+    }
+    else if (FLOW === 'gorge') { // walk to the lookout, look into the gorge (E), then step back
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const p = window.__garden.player; p.pos.set(70.1, 0, 8.4); p.yaw = Math.atan2(70.1 - 120, 8.4 - 14.4); p.pitch = 0.04; });
+      await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/gorge-lookout.png') });
+      const cue = await page.$eval('#cue', e => e.textContent.trim()); await page.keyboard.press('KeyE');
+      await sleep(2000); await page.screenshot({ path: join(root, 'dev/shots/gorge-glide.png') });
+      await sleep(5000); await page.screenshot({ path: join(root, 'dev/shots/gorge-look.png') });
+      const mode = await page.evaluate(() => window.__garden.state.mode);
+      await page.click('#gv-back'); await sleep(6000); const after = await page.evaluate(() => window.__garden.state.mode);
+      await page.screenshot({ path: join(root, 'dev/shots/gorge-back.png') });
+      console.log(`  cue "${cue}", looking: ${mode}, after stepping back: ${after}`); if (mode !== 'gorge' || after !== 'walk' || !/Takachiho/.test(cue)) errors.push('gorge view did not open or close');
     }
     else if (FLOW === 'creatures') { // be a bird: take off over the garden; be a cat: trot and pounce
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
