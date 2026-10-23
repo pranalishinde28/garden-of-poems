@@ -6,6 +6,7 @@ import { wisTexP, wisTexW } from './textures.js';
 import { windify } from './wind.js';
 import { BARK, DS, GEO, M, Merge, VC, part } from './geometry.js';
 import { BENCH, decor, regBegin } from './paths.js';
+import { AUTUMN_PALS, GREEN_PALS, mapleMat } from '../plants/autumnLeaves.js';
 
 /* ================= wisteria arbors ================= */
 export const wisGeoBase = (() => { const g = GEO.card.clone(); g.translate(0, -0.5, 0); return g; })();
@@ -13,6 +14,10 @@ export const wisMatP = windify(new THREE.MeshLambertMaterial({ map: wisTexP, alp
 export const wisMatW = windify(new THREE.MeshLambertMaterial({ map: wisTexW, alphaTest: 0.42, side: DS, emissive: '#22201c' }), 0.031, 'const');
 // the leafy roofs, bare in winter (settings/customize.js updateVeils)
 export const arborLeaves = [];
+// the arbors' leaf cards through the year
+export function setArborSeason(theme) {
+  arborLeaves.forEach(m => { if (!m.isInstancedMesh) return; const pal = (theme === 'autumn' ? AUTUMN_PALS[0].concat(AUTUMN_PALS[1]) : GREEN_PALS[theme === 'monsoon' ? 0 : 2]).map(C); for (let i = 0; i < m.count; i++) m.setColorAt(i, pal[(i * 7) % pal.length]); m.instanceColor.needsUpdate = true; });
+}
 function wisteriaArbor(o) {
   const g = new THREE.Group(); g.position.set(o.x, groundH(o.x, o.z), o.z); g.rotation.y = o.ry; scene.add(g);
   const post = M('#5a4636'), H = o.h || 2.7, L = o.len, W = o.wid, R = rng(o.seed || 1);
@@ -27,10 +32,15 @@ function wisteriaArbor(o) {
     let prev = new V3(p.x + 0.12, 0, p.z); for (let s = 1; s <= 8; s++) { const y = s / 8 * H, a = s * 1.3 + k; const nx = new V3(p.x + Math.cos(a) * 0.14, y, p.z + Math.sin(a) * 0.14); tr.limb(prev, nx, 0.07 - s * 0.005, 0.065 - s * 0.005, C('#6a5648')); prev = nx; }
   });
   const tm = tr.build(); if (tm) { const m = new THREE.Mesh(tm, BARK); m.castShadow = true; g.add(m); }
-  // leaf canopy
-  const lv = new Merge(), nLeaf = Math.round(L * W * 3.4);
-  for (let i = 0; i < nLeaf; i++) lv.add(GEO.ico, new V3(-L / 2 - 0.25 + R() * (L + 0.5), H + 0.16 + R() * 0.22, -W / 2 - 0.25 + R() * (W + 0.5)), new V3(0.34 + R() * 0.3, 0.12 + R() * 0.07, 0.34 + R() * 0.3), C(['#5f7f3e', '#6f8c48', '#86a35a', '#7a9850'][Math.floor(R() * 4)]));
-  const lm = new THREE.Mesh(lv.build(), VC); lm.castShadow = true; g.add(lm); arborLeaves.push(lm);
+  // leaf canopy: leaf cards over the rafters, green, then red and gold in autumn, bare in winter
+  // (it was smooth green pads, which read as unfinished); shares mapleMat, so every instance gets a colour
+  const nLeaf = Math.round(L * W * 10), cg = GEO.card.clone(); cg.boundingSphere = new THREE.Sphere(new V3(0, H, 0), Math.max(L, W) + 2);
+  const lm = new THREE.InstancedMesh(cg, mapleMat, nLeaf), dl = new THREE.Object3D();
+  for (let i = 0; i < nLeaf; i++) {
+    dl.position.set(-L / 2 - 0.3 + R() * (L + 0.6), H + 0.12 + R() * 0.3, -W / 2 - 0.3 + R() * (W + 0.6)); dl.rotation.set(R() * 6.28, R() * 6.28, R() * 6.28); dl.scale.setScalar(0.42 + R() * 0.3); dl.updateMatrix();
+    lm.setMatrixAt(i, dl.matrix); lm.setColorAt(i, C(GREEN_PALS[1][i % 4]));
+  }
+  lm.castShadow = true; g.add(lm); arborLeaves.push(lm);
   // racemes: two crossed cards each, denser at the edges where they hang free
   const n = Math.round(L * W * (o.density || 17)), white = o.white ?? 0.22;
   const list = { P: [], W: [] };
@@ -63,7 +73,7 @@ function wisteriaArbor(o) {
 regBegin('wisteria');
 // Only two arbors: the one over the writing bench and the entrance tunnel. Free-standing ones read as confusing poles.
 (function buildArbors() {
-  wisteriaArbor({ x: BENCH.x, z: BENCH.z, ry: Math.atan2(-BENCH.x, -BENCH.z), len: 3.6, wid: 2.5, h: 2.6, seed: 3, density: 22, white: 0.15 });
+  // (the bench has its own white arch now: decor.js)
   wisteriaArbor({ x: 0, z: 26.6, ry: Math.PI / 2, len: 13, wid: 3.6, h: 2.9, seed: 5, density: 19, white: 0.25, long: 1.15 });
 })();
 

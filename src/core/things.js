@@ -4,6 +4,7 @@
 
 export const things = [];
 // near: { x, z, r } — within r metres the walk cue offers it (press E)
+export const unregThing = t => { const i = things.indexOf(t); if (i >= 0) things.splice(i, 1); };
 export function regThing(root, label, act, near) {
   const t = { root, label, act, near };
   root.traverse(o => { o.userData.thing = t; });

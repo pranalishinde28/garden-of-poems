@@ -49,3 +49,13 @@ export function bridgeH(x, z) {
   return null;
 }
 
+
+/* the shore, when the garden looks out to sea (world/horizon.js turns it on): the sand slopes from the
+   garden's edge into the water, and you may walk down it and wade until the sea is about a metre deep */
+export const SEA_Y = -0.9, SHORE_MAX_R = 112;
+export const shore = { on: false };
+export function beachH(x, z) {
+  const r = Math.hypot(x, z), k = smooth(70, 80, r);
+  return (1 - k) * groundH(x, z) + k * Math.max(-9, 0.35 - (r - 80) * 0.09) + Math.sin(x * 0.11 + z * 0.07) * 0.08 * k;
+}
+export const seaDepth = (x, z) => shore.on && Math.hypot(x, z) > 70 ? Math.max(0, SEA_Y - beachH(x, z)) : 0;

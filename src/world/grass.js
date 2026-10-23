@@ -8,6 +8,7 @@ import { BENCH, inTulip, stoneNear } from './paths.js';
 
 /* ================= grass ================= */
 export const grassChunks = [];
+const wildflowers = { m: null };
 export const trampleU = { uPlayer: { value: new V3(0, 0, -999) } };
 export let grassMat;
 (function buildGrass() {
@@ -51,7 +52,9 @@ export let grassMat;
   }
   const d = new THREE.Object3D();
   chunks.forEach(ch => {
-    const m = new THREE.InstancedMesh(g, grassMat, ch.items.length);
+    // bounds for the whole 22 m patch: with the one tuft's bounds, a patch vanished whenever its centre left the view
+    const cg = g.clone(); cg.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.5, 0), CELL * 0.75 + 2);
+    const m = new THREE.InstancedMesh(cg, grassMat, ch.items.length);
     m.position.set(ch.cx, 0, ch.cz);
     ch.items.forEach((it, i) => {
       d.position.set(it.x - ch.cx, groundH(it.x, it.z) - 0.03, it.z - ch.cz); d.rotation.set(0, it.ry, 0); d.scale.set(it.w, it.h, it.w);
@@ -71,21 +74,47 @@ export let grassMat;
     d.position.set(x, groundH(x, z) + 0.22 + R() * 0.25, z); d.rotation.set(R(), R(), R()); d.scale.set(1, 0.6, 1).multiplyScalar(0.7 + R() * 0.7);
     d.updateMatrix(); fm.setMatrixAt(i, d.matrix); fm.setColorAt(i, fc[Math.floor(R() * fc.length)]);
   }
-  fm.frustumCulled = false; fm.layers.set(2); scene.add(fm);
+  fm.frustumCulled = false; fm.layers.set(2); scene.add(fm); wildflowers.m = fm;
 
   // reeds along the pond and river
-  const RN = 260, rm = new THREE.InstancedMesh(GEO.cone, windify(new THREE.MeshLambertMaterial({ color: '#66773f' }), 0.1, 'blade'), RN);
+  // fewer, leaning every way and of every height, a deeper green, and cattails on some (they were even rows of sticks)
+  const RN = 170, rm = new THREE.InstancedMesh(GEO.cone, windify(new THREE.MeshLambertMaterial({ color: '#58703a' }), 0.1, 'blade'), RN);
+  const cat = new THREE.InstancedMesh(GEO.sph, new THREE.MeshLambertMaterial({ color: '#6a4a2c' }), RN); let ci = 0;
   let ri = 0;
   for (let i = 0; i < RN * 3 && ri < RN; i++) {
     let x, z;
     if (R() < 0.55) { const a = R() * 6.28, r = 7.0 + R() * 1.5; x = Math.cos(a) * r; z = Math.sin(a) * r; }
     else { const p = RIVER[5 + Math.floor(R() * 60)], side = R() < .5 ? -1 : 1, o = 1.3 + R() * 0.9; const a = R() * 6.28; x = p.x + Math.cos(a) * o * side; z = p.z + Math.sin(a) * o; }
     const y = groundH(x, z); if (y > WATER_Y + 0.35 || y < WATER_Y - 0.45 || stoneNear(x, z, 0.6) || bridgeH(x, z) !== null) continue;
-    d.position.set(x, y - 0.05, z); d.rotation.set((R() - .5) * 0.15, 0, (R() - .5) * 0.15); d.scale.set(0.012, 0.9 + R() * 1.0, 0.012);
+    const tx = (R() - .5) * 0.4, tz = (R() - .5) * 0.4, hgt = 0.6 + Math.pow(R(), 1.6) * 1.3;
+    d.position.set(x, y - 0.05, z); d.rotation.set(tx, R() * 6.28, tz); d.scale.set(0.016, hgt, 0.016);
     d.updateMatrix(); rm.setMatrixAt(ri++, d.matrix);
+    if (R() < 0.22) { const top = new THREE.Vector3(0, hgt * 0.82, 0).applyEuler(new THREE.Euler(tx, 0, tz)); d.position.set(x + top.x, y - 0.05 + top.y, z + top.z); d.scale.set(0.03, 0.11, 0.03); d.updateMatrix(); cat.setMatrixAt(ci++, d.matrix); }
   }
   rm.count = ri; rm.frustumCulled = false; scene.add(rm);
+  cat.count = ci; cat.frustumCulled = false; scene.add(cat);
 })();
+// nothing grows inside a pool, a court or a floor: grass and wildflowers within rad go (modules built later
+// call this for what they lay down, since the grass is planted first)
+export function clearArea(x, z, rad) {
+  const d = new THREE.Object3D(), zero = new THREE.Matrix4().makeScale(0, 0, 0), v = new THREE.Vector3();
+  grassChunks.forEach(ch => {
+    if (Math.abs(ch.cx - x) > 12 + rad || Math.abs(ch.cz - z) > 12 + rad) return;
+    let changed = false;
+    ch.items.forEach((it, i) => { if (Math.hypot(it.x - x, it.z - z) < rad) { ch.m.setMatrixAt(i, zero); it.cut = true; changed = true; } });
+    if (changed) ch.m.instanceMatrix.needsUpdate = true;
+  });
+  const fm = wildflowers.m; if (!fm) return;
+  for (let i = 0; i < fm.count; i++) { fm.getMatrixAt(i, d.matrix); v.setFromMatrixPosition(d.matrix); if (Math.hypot(v.x - x, v.z - z) < rad) fm.setMatrixAt(i, zero); }
+  fm.instanceMatrix.needsUpdate = true;
+}
+// the same for a rectangle w × d centred at (x, z), turned by ry (a court or a gravel yard)
+export function clearRect(x, z, w, d, ry) {
+  const c = Math.cos(ry), s = Math.sin(ry), zero = new THREE.Matrix4().makeScale(0, 0, 0), m4 = new THREE.Matrix4(), v = new THREE.Vector3();
+  const inside = (px, pz) => { const dx = px - x, dz = pz - z, lx = dx * c - dz * s, lz = dx * s + dz * c; return Math.abs(lx) < w / 2 && Math.abs(lz) < d / 2; };
+  grassChunks.forEach(ch => { let changed = false; ch.items.forEach((it, i) => { if (inside(it.x, it.z)) { ch.m.setMatrixAt(i, zero); it.cut = true; changed = true; } }); if (changed) ch.m.instanceMatrix.needsUpdate = true; });
+  const fm = wildflowers.m; if (fm) { for (let i = 0; i < fm.count; i++) { fm.getMatrixAt(i, m4); v.setFromMatrixPosition(m4); if (inside(v.x, v.z)) fm.setMatrixAt(i, zero); } fm.instanceMatrix.needsUpdate = true; }
+}
 export function clearGrass(x, z, rad) {
   const d = new THREE.Object3D();
   grassChunks.forEach(ch => {

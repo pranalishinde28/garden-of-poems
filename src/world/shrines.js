@@ -8,6 +8,7 @@ import { Kit, PAL, brackets, hipRoof, lantern, pagoda, rafters, railing, roofMat
 import { SFX } from '../animals/animals.js';
 import { addTick, regThing } from '../core/things.js';
 import { late } from '../core/late.js';
+import { clearRect } from './grass.js';
 
 /* ================= inside the garden: a pagoda, a bell tower, and a Shinto shrine ================= */
 // Out past the poem regions, so they never crowd a tree: the pagoda and the bell tower beyond the Wild
@@ -29,8 +30,9 @@ const PAGODA = { x: 41, z: -31 };
   const g = site(PAGODA.x, PAGODA.z), kit = new Kit();
   pagoda(kit, 3, 4.3, { h0: 2.6, h: 1.95 });
   lantern(kit, -4.6, 5.2, 1.1); lantern(kit, 4.6, 5.2, 1.1);
+  torii(kit, 3.4, 4.0, 10.5); // the approach to the pagoda passes under a torii
   kit.build(g, VC, ROOF);
-  block(g, 0, 0, 6.2, 4.6); block(g, -4.6, 5.2, 0.6, 0.35); block(g, 4.6, 5.2, 0.6, 0.35);
+  block(g, 0, 0, 6.2, 4.6); for (const sx of [-1, 1]) block(g, sx * 1.75, 10.5, 0.4, 0.3); block(g, -4.6, 5.2, 0.6, 0.35); block(g, 4.6, 5.2, 0.6, 0.35);
 })();
 
 /* ---------- the bell tower (shōrō) ---------- */
@@ -52,6 +54,7 @@ const bellParts = {};
   kit.geo(hipRoof(6.8, 6.8, 1.9, 0.7), 0, 4.85, 0, '#ffffff', undefined, 0, 0, 0, true);
   kit.rbox(2.2, 0.32, 0.34, 0, 6.72, 0, '#bdbdbd'); // ridge
   railing(kit, 4.8, 4.8, 0.86, PAL.red, 0);
+  torii(kit, 2.8, 3.5, 6.6);
   kit.build(g, VC, ROOF);
   // the bell: bronze, banded, with its rows of nipples and the dragon loop on top
   const bell = new THREE.Group(); bell.position.set(0, 4.0, 0); g.add(bell);
@@ -72,7 +75,7 @@ const bellParts = {};
   for (const x of [-0.35, 0.45]) sm.limb(new V3(x, 0, 0), new V3(x, -1.0, 0), 0.02, 0.02, C('#d8cfb4'));
   const sMesh = new THREE.Mesh(sm.build(), VC); sMesh.castShadow = true; striker.add(sMesh);
   Object.assign(bellParts, { bell, striker });
-  block(g, 0, 0, 4.4, 3.2);
+  block(g, 0, 0, 4.4, 3.2); for (const sx of [-1, 1]) block(g, sx * 1.45, 6.6, 0.4, 0.3);
   const w = toWorld(g, 0, 3.2);
   regThing(g, 'Strike the temple bell', strikeBell, { x: w.x, z: w.z, r: 4.2 });
 })();
@@ -99,6 +102,7 @@ const shrineParts = {};
 (function buildShrine() {
   const g = site(SHRINE.x, SHRINE.z), kit = new Kit();
   kit.box(9.5, 0.1, 17, 0, 0.06, 2, '#cbc3b0'); // the raked gravel court
+  { const c = toWorld(g, 0, 2); clearRect(c.x, c.z, 9.5, 17, g.rotation.y); }
   for (let z = 13.5; z > 3.6; z -= 1.05) kit.box(1.5, 0.08, 0.82, 0, 0.12, z, PAL.stone); // sandō paving
   // the honden, the inner sanctuary: raised on posts, plain hinoki, a thatched gable with chigi and katsuogi
   const hz = -5.2;

@@ -150,10 +150,12 @@ export function updateSeed(dt) {
     const want = p.clone().addScaledVector(s.flat, -5.5); want.y = Math.max(p.y + 1.6, floorH(want.x, want.z) + 1.4);
     camera.position.lerp(want, k); curLook.lerp(p, 1 - Math.exp(-dt * 5)); camera.lookAt(curLook);
     if (s.t >= 1) {
-      s.landed = true; seedObj.visible = false; fireBurst(s.end);
+      s.landed = true; seedObj.visible = false; fireBurst(s.end); if (late.releaseSkyLantern) late.releaseSkyLantern(s.end); // a lantern rises for every new poem
       s.plant.target = 1; s.plant.speed = 1 / 3.2; s.plant.pulse = 1.4;
       rebuildPetals();
-      toast(s.first ? 'Something is growing here now.' : `“${s.poem.title}” has been planted.`, 5000);
+      // a quiet celebration: the message, a lantern rising, and now and then a word about how the garden has grown
+      const n = late.poemCount ? late.poemCount() : 0, milestone = { 5: 'Five poems. A small grove is gathering.', 10: 'Ten poems. The garden is becoming a place.', 25: 'Twenty-five poems. Someone could get lost here, happily.', 50: 'Fifty poems. A whole landscape of you.' }[n];
+      toast(s.first ? 'Something is growing here now. A lantern rises for it.' : milestone || `“${s.poem.title}” has been planted, and a lantern rises for it.`, 5600);
     }
   } else {
     s.after += dt;

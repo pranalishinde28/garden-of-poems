@@ -1,6 +1,6 @@
 # The Garden of Poems
 
-A walkable 3D garden where every poem grows into a cherry tree. Each person signs in to their own garden, keeps it private or opens it to visitors, and can wander other people's public gardens, leave hearts and kind notes, and find gardens suggested for them.
+A walkable 3D garden where every poem grows into a cherry tree, lit at dusk by paper lanterns and painted parasols, under a sky of stars. Each person signs in to their own garden, keeps it private or opens it to visitors, and can wander other people's public gardens, leave hearts and kind notes, and find gardens suggested for them.
 
 The app is a static site built with Vite and Three.js, with a Supabase database for accounts and storage. Without Supabase keys it still runs, saving one garden on the device.
 
@@ -86,6 +86,10 @@ The sliders button at the top opens **Customize**. Everything there is saved wit
 For a quick change of weather, the **⋯** menu has **Let it rain** and **Let the sky clear**. Rain greys the sky, ripples the pond and plays a soft rain sound (silenced with the music button).
 
 In autumn, wisteria gives way to hanging veils of red and yellow leaves, including the pink veils over the swings.
+
+## In the garden
+
+Write at the white bench marked "Sit here", and a sky lantern rises as your poem is planted. Walk among the cherry trees and read them; find your newest poems written on the lantern wall; look into the fountain for the koi; ring the shrine bell; swing on the white pergola swings; be a girl, a boy, a cat or a bird. Season, light (day, sunset, night), horizon (Mount Fuji or the sea) and weather are under the sun-and-cloud button.
 
 ## Keys
 

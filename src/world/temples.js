@@ -34,6 +34,8 @@ function gate(x, z) { const kit = new Kit(); torii(kit, 8.4, 9); kit.build(place
 bigPagoda(40, -96, 1.05);
 hall(-66, -104);
 gate(-44, -86);
+gate(31, -80); // a torii on the way up to the great pagoda
+gate(-80, -106); // and one before the small pagoda
 bigPagoda(-92, -122, 0.62); // a smaller pagoda, further back on the left
 templeGroup.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
 

@@ -9,9 +9,10 @@ import { blossomTex, canvasTex, mapleTex, wisTexP, wisTexW } from '../world/text
 import { windify } from '../world/wind.js';
 import { DS, GEO, M, Merge, VC, part } from '../world/geometry.js';
 import { REG, decor, featOn } from '../world/paths.js';
+import { stoneLantern } from '../world/decor.js';
 import { createPlant, nightGlow, plants, removePlant, setShadowDirty } from '../plants/registry.js';
 import { koi } from '../water/water.js';
-import { wisMatP, wisMatW, wisGeoBase, arborLeaves } from '../world/arbors.js';
+import { wisMatP, wisMatW, wisGeoBase, arborLeaves, setArborSeason } from '../world/arbors.js';
 import { SPAWN } from '../player/camera.js';
 const SPAWN_Z = SPAWN.pos.z;
 import { swingVeilMat, swingVeilTex } from '../world/swings.js';
@@ -48,7 +49,7 @@ let settingsTimer = null;
 export function persistSettings() {
   if (state.visiting) return;
   try { localStorage.setItem(settingsKey(), JSON.stringify(SETTINGS)); } catch (e) {}
-  if (Cloud.user) { clearTimeout(settingsTimer); settingsTimer = setTimeout(() => saveGardenSettings({ settings: SETTINGS, theme: THEME === 'autumn' || THEME === 'winter' ? 'autumn' : 'spring' }), 900); }
+  if (Cloud.user) { clearTimeout(settingsTimer); settingsTimer = setTimeout(() => saveGardenSettings({ settings: SETTINGS, theme: THEME === 'autumn' ? 'autumn' : 'spring' }), 900); }
 }
 export function applyVisibility() {
   // in winter the flower beds rest under the snow (the choices themselves are kept)
@@ -60,7 +61,10 @@ export function applyVisibility() {
   setShadowDirty(true);
 }
 function applyWeather() { state.showerAt = T; late.setRainUI(); }
-export function applyLight() { state.nightTarget = SETTINGS.light === 'day' ? 0 : SETTINGS.light === 'night' ? 1 : ((h => (h >= 18.5 || h < 5.5) ? 1 : 0)(new Date().getHours() + new Date().getMinutes() / 60)); late.setNightUI(); }
+// day, sunset or night; 'auto' follows the clock (sunset from five to half past six, and at dawn)
+export const lightByClock = () => { const h = new Date().getHours() + new Date().getMinutes() / 60; return h >= 18.5 || h < 5.5 ? 'night' : (h >= 17 || h < 7) ? 'sunset' : 'day'; };
+export function setLightMode(mode) { state.lightMode = mode; state.nightTarget = mode === 'night' ? 1 : 0; state.duskTarget = mode === 'sunset' ? 1 : 0; late.setNightUI(); }
+export function applyLight() { setLightMode(SETTINGS.light === 'auto' ? lightByClock() : SETTINGS.light); }
 function rebuildAllPlants() {
   [...plants.values()].filter(p => !p.dying).forEach(pl => { const tg = pl.target; removePlant(pl); const np = createPlant(pl.poem, { visible: tg === 1 }); np.target = tg; });
   rebuildPetals(); rebuildConnections(); applyThemeMaterials();
@@ -83,8 +87,9 @@ export function setSetting(k, v) {
   else if (k === 'light') applyLight();
   else if (k === 'weather') applyWeather();
   else if (k === 'music') applyMusic(v);
+  else if (k === 'links') drawBoard();
   else applyVisibility();
-  persistSettings(); renderCustom();
+  persistSettings(); renderCustom(); if (late.setRainUI) late.setRainUI(); // the sky buttons show the change
 }
 
 /* veils: wisteria in spring, autumn leaves in autumn; pink veils over the swings */
@@ -108,7 +113,7 @@ export function updateVeils() {
   // winter: the wisteria and the swing veils are bare
   [wisMatP, wisMatW, swingVeilMat].forEach(m => { m.needsUpdate = true; m.visible = THEME !== 'winter'; });
   arborLeaves.forEach(l => { l.visible = THEME !== 'winter'; });
-  setArchSeason(THEME);
+  setArchSeason(THEME); setAzaleaSeason(THEME); setArborSeason(THEME);
 }
 
 /* the gate: a deep double arch heavy with blossom, the garden's name hanging from its crown */
@@ -137,7 +142,7 @@ export const archPlaque = new THREE.Group();
     if (onPost) { const sx = R() < 0.5 ? -1 : 1, y = Math.pow(R(), 0.7) * post; p = new V3(sx * w, y, (R() - 0.5) * 1.0); n = new V3(sx, 0, 0); if (y < 0.5 && R() < 0.6) continue; }
     else { const t = R(), c = curve(t); p = c.clone().setZ((R() - 0.5) * 1.2); n = new V3(c.x / (w * w), (c.y - post) / (rise * rise), 0).normalize(); }
     p.addScaledVector(n, (R() - 0.3) * 0.26);
-    if (R() < 0.35) puff(leaf, p.clone().add(new V3((R() - .5) * 0.2, (R() - .5) * 0.2, 0)), 0.1 + R() * 0.12, leafC[i % 4]);
+    // (no leaf balls: the blossom cards cover the frame, and green balls stayed green in autumn)
     const nb = onPost ? 2 + Math.floor(R() * 2) : 5 + Math.floor(R() * 3);
     for (let k = 0; k < nb; k++) {
       const q = p.clone().addScaledVector(n, 0.05 + R() * 0.22); q.z = (R() - 0.5) * 1.5; q.x += (R() - .5) * 0.3; q.y += (R() - .5) * 0.25;
@@ -146,7 +151,7 @@ export const archPlaque = new THREE.Group();
     // winter lays snow along the top of the frame instead
     if (!onPost && n.y > 0.35 && R() < 0.5) { const k = 0.1 + R() * 0.1; snow.add(GEO.ico, p.clone().addScaledVector(n, 0.06).setZ((R() - 0.5) * 1.0), new V3(k * 1.6, k * 0.5, k * 1.3), C(R() < 0.5 ? '#f4f7fa' : '#e3eaf0')); }
   }
-  const lm = new THREE.Mesh(leaf.build(), VC); g.add(lm); arborLeaves.push(lm);
+  const lg = leaf.build(); if (lg) { const lm = new THREE.Mesh(lg, VC); g.add(lm); arborLeaves.push(lm); }
   const sm = new THREE.Mesh(snow.build(), VC); sm.visible = false; g.add(sm);
   const cg = GEO.card.clone(); cg.boundingSphere = new THREE.Sphere(new V3(0, post, 0), w + 2);
   const cm = new THREE.InstancedMesh(cg, archCardMat, cards.length), dd = new THREE.Object3D(), tints = ['#ffffff', '#fff0f4', '#fbe3ea', '#ffe8ee', '#f6d2de'].map(C);
@@ -190,6 +195,33 @@ export function setArchSeason(theme) {
   });
 }
 
+/* clipped azalea mounds and a tall lantern to the right of the gate, so the first view is balanced */
+const azalea = { leafMat: new THREE.MeshLambertMaterial({ vertexColors: true }), flowers: null, snow: null };
+(function buildAzaleas() {
+  const R = rng(57), leaf = new Merge(), fl = new Merge(), sn = new Merge();
+  const spots = [[5.2, 37.6, 0.85], [6.6, 36.6, 1.15], [8.3, 36.2, 1.3], [10.0, 35.4, 1.1], [7.4, 38.4, 0.75], [9.4, 37.6, 0.95], [11.4, 34.2, 1.2]];
+  spots.forEach(([x, z, s]) => {
+    const y = groundH(x, z);
+    // each mound: overlapping clipped domes, flattened like a pruned karikomi
+    for (let k = 0; k < 18; k++) {
+      const a = R() * 6.28, r = Math.sqrt(R()) * 0.6 * s, h = (0.5 + R() * 0.25) * s * (1 - r / (1.4 * s));
+      const p = new V3(x + Math.cos(a) * r, y + h * 0.45, z + Math.sin(a) * r), w = (0.32 + R() * 0.18) * s;
+      leaf.add(GEO.dode, p, new V3(w, h * 0.6, w), C(['#3f6a35', '#4a7a3c', '#365e30', '#557f40'][k % 4]));
+      for (let f = 0; f < 12; f++) { const u = new V3(R() - .5, R() * 0.8 + 0.2, R() - .5).normalize(); fl.add(GEO.ico, p.clone().add(new V3(u.x * w * 0.95, u.y * h * 0.6, u.z * w * 0.95)), new V3(0.07, 0.05, 0.07), C(['#f07aa6', '#f59ac0', '#e9628f', '#fbd3e2'][f % 4])); }
+      sn.add(GEO.ico, p.clone().add(new V3(0, h * 0.42, 0)), new V3(w * 0.85, h * 0.22, w * 0.85), C('#f2f6f9'));
+    }
+    decor.push({ x, z, r: 0.9 * s, collide: 0.75 * s });
+  });
+  const lm = new THREE.Mesh(leaf.build(), azalea.leafMat); lm.castShadow = true; lm.receiveShadow = true; scene.add(lm);
+  azalea.flowers = new THREE.Mesh(fl.build(), VC); scene.add(azalea.flowers);
+  azalea.snow = new THREE.Mesh(sn.build(), VC); azalea.snow.visible = false; scene.add(azalea.snow);
+  stoneLantern(10.9, 37.9, 1.45, -0.7);
+})();
+export function setAzaleaSeason(theme) {
+  azalea.flowers.visible = theme === 'spring'; azalea.snow.visible = theme === 'winter';
+  azalea.leafMat.color.set(theme === 'winter' ? '#c4cdcd' : '#ffffff'); // evergreen: only winter's frost dulls them
+}
+
 /* the sign at the gate: big enough to read from where you arrive */
 export const board = new THREE.Group();
 (function buildBoard() {
@@ -230,17 +262,26 @@ export function drawBoard() {
   woodGrain(g, W, H, 19, '#6f553f');
   g.strokeStyle = 'rgba(240,226,200,.55)'; g.lineWidth = 5; g.strokeRect(32, 32, W - 64, H - 64);
   g.fillStyle = '#f5ead6'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-  fitFont(g, info.name, W - 180, 600, 156, 84); g.fillText(info.name, W / 2, 200);
-  let y = 200;
-  if (info.by) { g.font = serif(400, 70, 'italic '); g.fillStyle = 'rgba(245,234,214,.88)'; y += 92; g.fillText('a garden by ' + info.by, W / 2, y); }
-  if (info.desc) { g.font = serif(400, 62, 'italic '); g.fillStyle = '#f5ead6'; wrapText(g, info.desc, W - 220).slice(0, 2).forEach(l => { y += 80; g.fillText(l, W / 2, y); }); }
-  const links = (info.links || []).filter(l => safeUrl(l.url)).slice(0, 4);
-  y += 52; g.strokeStyle = 'rgba(245,234,214,.4)'; g.lineWidth = 3; g.beginPath(); g.moveTo(W * 0.3, y); g.lineTo(W * 0.7, y); g.stroke();
+  fitFont(g, info.name, W - 180, 600, 150, 84); g.fillText(info.name, W / 2, 190);
+  let y = 190;
+  // everything under the name is large enough to read from the path (it used to be a third of this)
+  if (info.by) { fitFont(g, 'a garden by ' + info.by, W - 200, 400, 104, 64); g.font = 'italic ' + g.font; g.fillStyle = 'rgba(245,234,214,.92)'; y += 125; g.fillText('a garden by ' + info.by, W / 2, y); }
+  if (info.desc) { g.font = serif(400, 88, 'italic '); g.fillStyle = '#f5ead6'; wrapText(g, info.desc, W - 200).slice(0, 2).forEach(l => { y += 104; g.fillText(l, W / 2, y); }); }
+  const links = (info.links || []).filter(l => safeUrl(l.url)).slice(0, 6);
+  y += 58; g.strokeStyle = 'rgba(245,234,214,.45)'; g.lineWidth = 4; g.beginPath(); g.moveTo(W * 0.3, y); g.lineTo(W * 0.7, y); g.stroke();
   g.fillStyle = '#f5ead6';
-  if (links.length) { links.forEach(l => { y += 72; fitFont(g, `${l.label || hostOf(l.url)}  ·  ${hostOf(l.url)}`, W - 200, 500, 58, 36); g.fillText(`${l.label || hostOf(l.url)}  ·  ${hostOf(l.url)}`, W / 2, y); }); g.font = serif(400, 48, 'italic '); g.fillStyle = 'rgba(245,234,214,.75)'; g.fillText('Click the sign to open these links', W / 2, H - 70); }
-  else if (info.own) { g.font = serif(400, 64, 'italic '); g.fillStyle = 'rgba(245,234,214,.85)'; y += 92; g.fillText('Add your name, a welcome line and links', W / 2, y); y += 80; g.fillText('with Customize at the top of the screen.', W / 2, y); }
+  // the links, by name, large enough to read from the path; their codes are on the board across the arch
+  if (links.length) {
+    g.font = serif(600, 116); const names = links.map(l => late.linkKind ? late.linkKind(l.url, l.label).name : (l.label || hostOf(l.url)));
+    const lines = []; let cur = '';
+    names.forEach(n => { const t = cur ? cur + '  ·  ' + n : n; if (g.measureText(t).width > W - 160 && cur) { lines.push(cur); cur = n; } else cur = t; }); if (cur) lines.push(cur);
+    lines.slice(0, 2).forEach(l => { y += 130; g.fillText(l, W / 2, y); });
+    g.font = serif(500, 76, 'italic '); g.fillStyle = 'rgba(245,234,214,.9)'; g.fillText('Click to open · codes on the board opposite', W / 2, Math.min(H - 56, y + 112));
+  }
+  else if (info.own) { g.font = serif(400, 84, 'italic '); g.fillStyle = 'rgba(245,234,214,.88)'; wrapText(g, 'Add your name, a welcome line and links with Customize.', W - 200).slice(0, 2).forEach(l => { y += 100; g.fillText(l, W / 2, y); }); }
   board.userData.tex.needsUpdate = true;
   drawPlaque(info.name);
+  if (late.drawLinkBoards) late.drawLinkBoards(); // the QR boards follow the same links
 }
 function drawPlaque(name) {
   const cv = archPlaque.userData.cv, g = cv.getContext('2d'), W = cv.width, H = cv.height;
@@ -275,16 +316,46 @@ const customPanel = $('#custom');
   mk($('#c-scene'), SCENE_LABELS, ''); mk($('#c-show'), SHOW_LABELS, 'show.');
   customPanel.querySelectorAll('.seg[data-k] button').forEach(b => { b.onclick = () => setSetting(b.parentElement.dataset.k, b.dataset.v); });
 })();
-function linkRows() { return [...$('#c-links').querySelectorAll('.c-link')].map(r => ({ label: r.querySelector('.c-l').value.trim().slice(0, 40), url: r.querySelector('.c-u').value.trim().slice(0, 200) })); }
+// four well-known places come ready: you type only your name there, and the address is made for you
+const BADGE = { Instagram: ['IG', '#c13584'], Facebook: ['f', '#1877f2'], Substack: ['S', '#ff6719'], Goodreads: ['g', '#5c4122'] };
+export const PRESETS = [
+  { name: 'Instagram', host: /(^|\.)instagram\.com$/, make: h => `https://instagram.com/${h}`, read: u => u.pathname.split('/')[1], hint: 'yourname' },
+  { name: 'Facebook', host: /(^|\.)facebook\.com$/, make: h => `https://facebook.com/${h}`, read: u => u.pathname.split('/')[1], hint: 'yourname' },
+  { name: 'Substack', host: /\.substack\.com$/, make: h => `https://${h}.substack.com`, read: u => u.hostname.split('.')[0], hint: 'yourname' },
+  { name: 'Goodreads', host: /(^|\.)goodreads\.com$/, make: h => `https://www.goodreads.com/${h}`, read: u => u.pathname.replace(/^\//, ''), hint: 'yourname' },
+];
+const handleClean = v => v.trim().replace(/^@/, '').replace(/^https?:\/\/\S*?\//, '').replace(/[^A-Za-z0-9._\-\/]/g, '').slice(0, 60);
+function linkRows() {
+  const pre = [...$('#c-presets').querySelectorAll('.c-pre')].map(r => { const h = handleClean(r.querySelector('input').value), P = PRESETS[+r.dataset.i]; return h ? { label: P.name, url: P.make(h) } : null; }).filter(Boolean);
+  const own = [...$('#c-links').querySelectorAll('.c-link')].map(r => ({ label: r.querySelector('.c-l').value.trim().slice(0, 40), url: r.querySelector('.c-u').value.trim().slice(0, 200) }));
+  return pre.concat(own);
+}
 function saveLinks() {
   const rows = linkRows(), bad = rows.filter(r => r.url && !safeUrl(r.url));
-  $('#c-linkerr').textContent = bad.length ? 'Links need to start with https:// (for example https://instagram.com/yourname).' : '';
+  $('#c-linkerr').textContent = bad.length ? 'Other links need to start with https:// (for example https://yourname.com).' : '';
   SETTINGS.links = rows.filter(r => safeUrl(r.url)).slice(0, 6); persistSettings(); drawBoard();
+}
+function renderPresets(links) {
+  const box = $('#c-presets'); box.innerHTML = '';
+  PRESETS.forEach((P, i) => {
+    let h = ''; for (const l of links) { try { const u = new URL(l.url); if (P.host.test(u.hostname.replace(/^www\./, ''))) { h = P.read(u) || ''; l._used = true; break; } } catch (e) { /* skip */ } }
+    // a row: the place's badge and name, then one field holding its address with your name in it
+    const row = document.createElement('label'); row.className = 'c-pre'; row.dataset.i = i; row.style.setProperty('--b', BADGE[P.name][1]);
+    const name = document.createElement('span'); name.className = 'c-pre-n'; name.innerHTML = `<b class="c-badge">${BADGE[P.name][0]}</b>`; name.append(P.name);
+    const field = document.createElement('span'); field.className = 'c-field';
+    const inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = 'yourname'; inp.value = h; inp.maxLength = 60; inp.autocomplete = 'off'; inp.spellcheck = false; inp.setAttribute('aria-label', `Your ${P.name} name`);
+    inp.addEventListener('change', saveLinks);
+    const pre = document.createElement('span'); pre.className = 'c-pre-u';
+    if (P.name === 'Substack') { pre.textContent = '.substack.com'; field.append(inp, pre); } else { pre.textContent = P.make('').replace(/^https:\/\/(www\.)?/, ''); field.append(pre, inp); }
+    if (h) { const ok = document.createElement('span'); ok.className = 'c-ok'; ok.textContent = '✓'; ok.title = 'On the board at the gate'; field.append(ok); }
+    row.append(name, field);
+    box.appendChild(row);
+  });
 }
 function addLinkRow(l) {
   const wrap = $('#c-links'); if (wrap.children.length >= 6) return;
   const row = document.createElement('div'); row.className = 'c-link';
-  const a = document.createElement('input'); a.className = 'c-l'; a.placeholder = 'Instagram'; a.maxLength = 40; a.value = l ? l.label : ''; a.setAttribute('aria-label', 'Link name');
+  const a = document.createElement('input'); a.className = 'c-l'; a.placeholder = 'Name, e.g. My portfolio'; a.maxLength = 40; a.value = l ? l.label : ''; a.setAttribute('aria-label', 'Link name');
   const u = document.createElement('input'); u.className = 'c-u'; u.placeholder = 'https://'; u.maxLength = 200; u.type = 'url'; u.value = l ? l.url : ''; u.setAttribute('aria-label', 'Link address');
   const x = document.createElement('button'); x.className = 'g-link'; x.textContent = 'Remove'; x.onclick = () => { row.remove(); saveLinks(); };
   [a, u].forEach(i => i.addEventListener('change', saveLinks));
@@ -300,7 +371,7 @@ function renderCustom() {
   customPanel.querySelectorAll('.seg[data-k]').forEach(s => s.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', SETTINGS[s.dataset.k] === b.dataset.v ? 'true' : 'false')));
   $('#c-blossom').hidden = SETTINGS.tree !== 'sakura';
   customPanel.querySelectorAll('input[type=checkbox][data-k]').forEach(i => { const k = i.dataset.k; i.checked = k.startsWith('show.') ? SETTINGS.show[k.slice(5)] !== false : !!SETTINGS[k]; });
-  $('#c-links').innerHTML = ''; (SETTINGS.links || []).forEach(addLinkRow); $('#c-linkerr').textContent = '';
+  { const ls = (SETTINGS.links || []).map(l => ({ ...l })); renderPresets(ls); $('#c-links').innerHTML = ''; ls.filter(l => !l._used).forEach(addLinkRow); } $('#c-linkerr').textContent = '';
 }
 function openCustomize() { late.closePops(); renderCustom(); openPanel(customPanel); }
 $('#h-custom').onclick = () => customPanel.classList.contains('open') ? closePanel(customPanel) : openCustomize();

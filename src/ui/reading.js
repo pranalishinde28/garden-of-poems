@@ -28,7 +28,7 @@ export const reader = $('#reader');
 // One behaviour for every panel: focus moves in and comes back when it closes, Tab stays inside,
 // and Esc or a click on the garden closes the settings-like panels (the reader and the editor keep
 // their own closing, and the swing reader never takes focus from the swing).
-const panels = [], CLOSERS = { custom: '#c-close', gardens: '#g-close', signpanel: '#s-close', helpsheet: '#help-close' };
+const panels = [], CLOSERS = { youpanel: '#y-close', custom: '#c-close', gardens: '#g-close', signpanel: '#s-close', helpsheet: '#help-close' };
 export function openPanel(el) {
   el.hidden = false; requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
   if (el.id === 'swreader') return;
@@ -73,14 +73,17 @@ function turnPage(dir, fill) {
   book.querySelectorAll('.leaf.turning,.leaf.under').forEach(n => n.remove());
   const top = leaf.querySelector('.scroll').scrollTop, old = copyOfPage();
   fill();
-  const fresh = copyOfPage(), dur = 760;
+  const fresh = copyOfPage(), dur = 950;
   reader.classList.add('flipping');
   let moving, under = null;
   if (dir > 0) { moving = sheet(old); book.append(moving); settle(top, [moving]); }
   else { under = old; under.className = 'leaf under static'; moving = sheet(fresh); book.append(under, moving); settle(top, [under]); }
   moving.style.setProperty('--dur', dur + 'ms');
-  const frames = dir > 0 ? [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(-180deg)', opacity: 0.6 }] : [{ transform: 'rotateY(-180deg)', opacity: 0.6 }, { transform: 'rotateY(0deg)', opacity: 1 }];
-  moving.animate(frames, { duration: dur, easing: EASE, fill: 'forwards' }).finished.catch(() => {}).then(() => { moving.remove(); under && under.remove(); reader.classList.remove('flipping'); });
+  const frames = dir > 0 ? [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(-95deg) scaleX(1.02)', offset: 0.5 }, { transform: 'rotateY(-180deg)', opacity: 0.5 }] : [{ transform: 'rotateY(-180deg)', opacity: 0.5 }, { transform: 'rotateY(-85deg) scaleX(1.02)', offset: 0.5 }, { transform: 'rotateY(0deg)', opacity: 1 }];
+  // the turning page lifts a little off the spine and throws a shadow across the page beneath
+  const shade = document.createElement('div'); shade.className = 'page-shade'; book.append(shade);
+  shade.animate(dir > 0 ? [{ opacity: 0.55 }, { opacity: 0.25, offset: 0.5 }, { opacity: 0 }] : [{ opacity: 0 }, { opacity: 0.25, offset: 0.5 }, { opacity: 0.55, offset: 0.95 }, { opacity: 0 }], { duration: dur, easing: 'ease-in-out', fill: 'forwards' });
+  moving.animate(frames.map((f, i) => ({ ...f, transform: f.transform + ' translateZ(0)' })), { duration: dur, easing: EASE, fill: 'forwards' }).finished.catch(() => {}).then(() => { moving.remove(); shade.remove(); under && under.remove(); reader.classList.remove('flipping'); });
 }
 // opening: a cloth cover with the garden's name swings open on the first page
 function openCover() {
@@ -145,8 +148,9 @@ export function openPoem(plant, dir = 0) {
   const v = viewFor(plant), d = camera.position.distanceTo(v.pos);
   camTween(v.pos, v.look, clamp(1.3 + d * 0.05, 1.5, 3.4));
   plant.pulse = 1; Music.ducked = true;
-  const wasOpen = reader.classList.contains('open') && !reader.hidden;
-  if (wasOpen && dir) turnPage(dir, () => fillReader(plant.poem, false));
+  const wasOpen = reader.classList.contains('open') && !reader.hidden, changed = wasOpen && $('#r-title').textContent !== plant.poem.title;
+  // any new poem while the book is open turns a page: the arrows say which way, another tree turns forward
+  if (wasOpen && (dir || changed)) turnPage(dir || 1, () => fillReader(plant.poem, false));
   else { fillReader(plant.poem, false); if (!wasOpen) openCover(); }
   openPanel(reader); reader.focus({ preventScroll: true });
 }

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { C, V3, lerp, reduceMotion } from '../core/util.js';
-import { SETTINGS } from '../settings/storage.js';
+import { SETTINGS, THEME } from '../settings/storage.js';
 import { T, state } from '../core/state.js';
 import { SEASON, SKY, scene } from './renderer.js';
 import { skyU } from './sky.js';
@@ -17,35 +17,40 @@ import { airSeason } from '../ui/themes.js';
 /* ================= frame loop ================= */
 export const tmpV = new V3();
 export let seasonTint = SEASON[state.seasonCur].tint.clone(), shadowClock = 0, lastNight = -1;
-const hemiD = { s: C('#d6e6f2'), g: C('#5d6e44') }, hemiN = { s: C('#4f6288'), g: C('#10170f') };
-const dirD = C('#fff0d8'), dirN = C('#a3b7de');
+// daylight: a clear, bright morning. The sun carries the light (warm, strong, real shadows) and the sky
+// only fills them; before, the two were nearly equal and the garden looked overcast
+const hemiD = { s: C('#d4e6f7'), g: C('#83924d') }, hemiN = { s: C('#4f6288'), g: C('#10170f') };
+const dirD = C('#ffefd2'), dirN = C('#a3b7de'), dirS = C('#ffb27a'); // sunset: warm low light
+const hemiS = { s: C('#e9b9b4'), g: C('#5e5640') };
 const RAIN_D = C('#9aa2a6'), RAIN_N = C('#262c33'), rainCol = new THREE.Color();
 const SHOWER = { every: 420, lasts: 140 }; // passing showers: about 2½ minutes of rain in every 7
 function rainWanted() {
   if (SETTINGS.weather === 'rain') return 1;
-  if (SETTINGS.weather === 'showers') return (T - state.showerAt) % SHOWER.every < SHOWER.lasts ? 1 : 0;
+  if (SETTINGS.weather === 'showers' || (SETTINGS.weather === 'clear' && THEME === 'monsoon')) return (T - state.showerAt) % SHOWER.every < SHOWER.lasts ? 1 : 0;
   return 0;
 }
 export function atmosphere(dt) {
   state.night += (state.nightTarget - state.night) * (1 - Math.exp(-dt * 0.7));
+  state.dusk = (state.dusk || 0) + ((state.duskTarget || 0) - (state.dusk || 0)) * (1 - Math.exp(-dt * 0.7));
   state.rain += (rainWanted() - state.rain) * (1 - Math.exp(-dt * 0.3));
-  const n = state.night, r = state.rain;
+  const n = state.night, r = state.rain, k = state.dusk * (1 - n); // k: how much sunset there is
   rainCol.copy(RAIN_D).lerp(RAIN_N, n);
   skyU.uRain.value = r; skyU.uRainCol.value.copy(rainCol); waterU.uRain.value = r; rainU.uRain.value = r; rainU.uNight.value = n;
   document.body.classList.toggle('is-night', n > 0.5);
   seasonTint.lerp(SEASON[airSeason()].tint, 1 - Math.exp(-dt * 0.8));
-  fujiU.uHor.value.copy(scene.fog.color); fujiU.uLight.value.copy(lightDir); fujiU.uNight.value = state.night; lampGlowU.uOpacity.value = 0.04 + state.night * 0.96;
-  skyU.uNight.value = n; skyU.uTime.value = T;
-  const hor = scene.fog.color.copy(SKY.horD).lerp(SKY.horN, n).lerp(rainCol, r * 0.6);
-  scene.fog.near = lerp(lerp(30, 14, n), 9, r * 0.7); scene.fog.far = lerp(lerp(170, 115, n), 85, r * 0.7);
-  mountainU.forEach(u => { u.uHor.value.copy(hor); u.uNight.value = n; });
-  hemi.color.copy(hemiD.s).lerp(hemiN.s, n); hemi.groundColor.copy(hemiD.g).lerp(hemiN.g, n); hemi.intensity = lerp(0.62, 0.42, n) * (1 - r * 0.12);
-  dirL.color.copy(dirD).lerp(dirN, n).multiply(seasonTint); dirL.intensity = lerp(1.05, 0.36, n) * (1 - r * 0.65);
-  sunDir.set(0.6 + Math.sin(T * 0.008) * 0.1, 0.48 + Math.sin(T * 0.011) * 0.04, 0.64).normalize();
+  fujiU.uHor.value.copy(scene.fog.color); fujiU.uLight.value.copy(lightDir); fujiU.uNight.value = state.night; if (fujiU.uDusk) fujiU.uDusk.value = state.dusk * (1 - state.night); lampGlowU.uOpacity.value = 0.04 + state.night * 0.96;
+  skyU.uNight.value = n; skyU.uTime.value = T; skyU.uDusk.value = k;
+  const hor = scene.fog.color.copy(SKY.horD).lerp(SKY.horS, k * 0.85).lerp(SKY.horN, n).lerp(rainCol, r * 0.6);
+  scene.fog.near = lerp(lerp(55, 14, n), 9, r * 0.7); scene.fog.far = lerp(lerp(300, 115, n), 85, r * 0.7); // clear air by day
+  mountainU.forEach(u => { u.uHor.value.copy(hor); u.uNight.value = n; if (u.uDusk) u.uDusk.value = k; if (u.uLight) u.uLight.value.copy(sunDir); });
+  hemi.color.copy(hemiD.s).lerp(hemiS.s, k).lerp(hemiN.s, n); hemi.groundColor.copy(hemiD.g).lerp(hemiS.g, k).lerp(hemiN.g, n); hemi.intensity = lerp(lerp(0.5, 0.66, k), 0.42, n) * (1 - r * 0.12) + r * 0.08;
+  dirL.color.copy(dirD).lerp(dirS, k).lerp(dirN, n).multiply(seasonTint); dirL.intensity = lerp(lerp(1.45, 1.25, k), 0.36, n) * (1 - r * 0.7);
+  // a morning sun by day; at sunset it sinks low in the west, beside Fuji, so the glow is in the view
+  sunDir.set(lerp(0.6 + Math.sin(T * 0.008) * 0.1, -0.78, k), lerp(0.44 + Math.sin(T * 0.011) * 0.03, 0.085, k), lerp(0.64, -0.62, k)).normalize();
   skyU.uSunDir.value.copy(sunDir); skyU.uMoonDir.value.copy(moonDir);
   lightDir.copy(n < 0.5 ? sunDir : moonDir);
   dirL.position.copy(lightDir).multiplyScalar(120);
-  waterU.uLightDir.value.copy(lightDir); waterU.uLightCol.value.copy(n < 0.5 ? C('#fff2dc') : C('#c8d8f4')).multiplyScalar((n < 0.5 ? 1 - n * 1.6 : (n - 0.5) * 1.2) * (1 - r * 0.85));
+  waterU.uLightDir.value.copy(lightDir); waterU.uLightCol.value.copy(n < 0.5 ? C('#fff2dc').lerp(C('#ffa45a'), k) : C('#c8d8f4')).multiplyScalar((n < 0.5 ? 1 - n * 1.6 : (n - 0.5) * 1.2) * (1 - r * 0.85));
   waterU.uNight.value = n;
   waterU.fogColor.value.copy(scene.fog.color); waterU.fogNear.value = scene.fog.near; waterU.fogFar.value = scene.fog.far;
   ffU.uOpacity.value = (0.02 + n * 0.95) * (1 - r * 0.85);

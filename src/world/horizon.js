@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { C, clamp, rng, smooth } from '../core/util.js';
-import { groundH } from './terrain.js';
+import { groundH, shore } from './terrain.js';
+import { beachThings } from './beach.js';
 import { scene } from './renderer.js';
 import { groundMesh, mountainMeshes } from './ground.js';
 import { fujiMesh } from './fuji.js';
@@ -16,7 +17,8 @@ import { hedges } from './decor.js';
 const SEA_Y = -0.9;
 const pos = groundMesh.geometry.attributes.position, col = groundMesh.geometry.attributes.color;
 const outer = [];
-const sandDry = C('#f6e7bd'), sandWet = C('#cbb88e'), sandUnder = C('#9a8d70'), t = new THREE.Color();
+// warm sand that holds its colour in the sun
+const sandDry = C('#d9c08c'), sandWet = C('#b39d72'), sandUnder = C('#8c7f62'), t = new THREE.Color();
 for (let i = 0; i < pos.count; i++) {
   const x = pos.getX(i), z = pos.getZ(i), r = Math.hypot(x, z);
   if (r < 68) continue;
@@ -31,7 +33,7 @@ for (let i = 0; i < pos.count; i++) {
 const seaU = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uTime: { value: 0 } }]);
 seaU.uLightDir = waterU.uLightDir; seaU.uLightCol = waterU.uLightCol; seaU.uNight = waterU.uNight; seaU.uTime = waterU.uTime; seaU.fogColor = waterU.fogColor;
 const sea = new THREE.Mesh(new THREE.CircleGeometry(1600, 96).rotateX(-Math.PI / 2), new THREE.ShaderMaterial({
-  uniforms: seaU, fog: false, transparent: true, depthWrite: false, // its own slow haze, so the islands sit on it
+  uniforms: seaU, fog: false, transparent: true, depthWrite: false, // its own slow haze
   vertexShader: `varying vec3 vW;
     void main(){vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
   fragmentShader: `uniform float uTime,uNight;uniform vec3 uLightDir,uLightCol,fogColor;varying vec3 vW;
@@ -59,14 +61,6 @@ const sea = new THREE.Mesh(new THREE.CircleGeometry(1600, 96).rotateX(-Math.PI /
 }));
 sea.position.y = SEA_Y; sea.visible = false; sea.layers.set(2); scene.add(sea);
 
-// a few far islands, so the line where sea meets sky reads as sea
-const islands = new THREE.Group(); islands.visible = false; scene.add(islands);
-[[-0.35, 520, 60, 22], [0.4, 640, 90, 30], [2.2, 560, 45, 16], [3.4, 700, 120, 34], [4.6, 600, 70, 20]].forEach(([a, d, w, h], i) => {
-  const g = new THREE.SphereGeometry(1, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2); g.scale(w, h, w * 0.6);
-  // drawn outside the fog in colours that already carry the distance
-  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: ['#9fb4bc', '#a9bcc2', '#97adb6'][i % 3], fog: false }));
-  m.position.set(Math.cos(a) * d, SEA_Y - 2, Math.sin(a) * d); m.rotation.y = a; islands.add(m);
-});
 
 // the beach itself: a ring of sand over the ground's beach shape, with a wavy edge where the grass ends
 const beach = (() => {
@@ -88,8 +82,9 @@ const beach = (() => {
 
 let current = 'fuji';
 export function applyHorizon(view, fujiOn) {
-  const seaView = view === 'sea';
-  sea.visible = seaView; islands.visible = seaView; beach.visible = seaView;
+  const seaView = view === 'sea'; shore.on = seaView; beachThings.visible = seaView;
+  sea.visible = seaView; beach.visible = seaView;
+  waterU.uRiverMax.value = seaView ? 71 : 1e4; // the stream stops at the lawn's edge; the sea takes over
   mountainMeshes.forEach(m => { m.visible = !seaView; });
   fujiMesh.forEach(m => { m.visible = !seaView && fujiOn; });
   templeGroup.visible = !seaView;

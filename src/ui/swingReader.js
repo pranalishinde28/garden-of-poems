@@ -2,7 +2,7 @@ import { $, monthYear } from '../core/util.js';
 import { state } from '../core/state.js';
 import { visiblePoems } from './filter.js';
 import { openPanel, closePanel, regionLabel } from './reading.js';
-import { provide } from '../core/late.js';
+import { late, provide } from '../core/late.js';
 
 /* ================= reading while swinging ================= */
 // A quiet reader docked to the side (a bottom sheet on phones). The swing keeps working while it's
@@ -26,7 +26,7 @@ function render() {
   const p = sr.list[sr.i], none = !p;
   $('#sr-title').textContent = none ? 'Nothing grows here yet' : p.title;
   const body = $('#sr-body'); body.innerHTML = '';
-  const text = none ? 'Write a poem at the bench under the wisteria, then come back and read it here.' : p.content.replace(/\s+$/, '');
+  const text = none ? 'Write a poem at the white bench (“Sit here”), then come back and read it here.' : p.content.replace(/\s+$/, '');
   let n = 0;
   text.split('\n').forEach(line => {
     const d = document.createElement('div');
@@ -73,4 +73,4 @@ $('#sr-close').onclick = () => closeSwingReader();
 $('#sr-prev').onclick = () => stepSwingReader(-1);
 $('#sr-next').onclick = () => stepSwingReader(1);
 panel.querySelectorAll('[data-o]').forEach(b => { b.onclick = () => { if (sr.order === b.dataset.o) return; sr.order = b.dataset.o; sr.list = ordered(); sr.i = 0; render(); }; });
-$('#sr-auto').onclick = () => { state.swingAuto = !state.swingAuto; render(); };
+$('#sr-auto').onclick = () => { late.toggleKeepSwinging(); render(); };

@@ -41,20 +41,19 @@ const VIEWS = {
   'autumn-tunnel': { pos: [0, 1.7, 35.5], look: [0, 1.5, 17], season: 'autumn' },
   'autumn-swings': { pos: [-13.5, 1.7, 15.5], look: [-21, 1.5, 24.5], season: 'autumn' },
   'season-spring': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'spring', samples: true },
-  'season-summer': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'summer', samples: true },
+  'season-monsoon': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'monsoon', samples: true },
   'season-autumn': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'autumn', samples: true },
-  'season-winter': { pos: [10, 9, 34], look: [-2, 1, 4], season: 'winter', samples: true },
   'fuji-view': { pos: [8, 2.6, 16], look: [-25, 14, -200], season: 'spring' },
   'fuji-high': { pos: [4, 14, 44], look: [-20, 10, -200], season: 'spring' },
-  'fuji-winter': { pos: [8, 2.6, 16], look: [-25, 14, -200], season: 'winter' },
   'sea-view': { pos: [8, 2.6, 16], look: [-25, 2, -200], season: 'spring', view: 'sea' },
-  'sea-high': { pos: [4, 26, 60], look: [-10, -2, -60], season: 'summer', view: 'sea' },
+  'sea-high': { pos: [4, 26, 60], look: [-10, -2, -60], season: 'monsoon', view: 'sea' },
   'sea-gate': { pos: [30, 3, 55], look: [140, -4, 90], season: 'spring', view: 'sea' },
   'lineup': { lineup: true, pos: [0, 0.95, 40.2], look: [0, 0.62, 36.6] },
+  'kinds': { kinds: true, pos: [0.2, 0.75, 38.6], look: [0.2, 0.4, 36.6] },
+  'kinds-walk': { kinds: 'walk', pos: [0.2, 0.75, 38.6], look: [0.2, 0.4, 36.6] },
   'spawn': { pos: [0, 1.7, 49], look: [0, 1.15, 20] },
   'gate-close': { pos: [1.2, 2.2, 44], look: [0, 3, 39] },
   'gate-autumn': { pos: [1.2, 2.2, 44], look: [0, 3, 39], season: 'autumn' },
-  'gate-winter': { pos: [1.2, 2.2, 44], look: [0, 3, 39], season: 'winter' },
   'top': { pos: [0, 130, 0.01], look: [0, 0, 0] },
   'fountain': { pos: [16.5, 2.4, -3.5], look: [11, 0.9, -10.2] },
   'fountain-close': { pos: [13.6, 1.6, -7.2], look: [11, 1.0, -10.2] },
@@ -62,6 +61,42 @@ const VIEWS = {
   'shrine-close': { pos: [-39.6, 1.7, -3.4], look: [-45.7, 2.3, -3.9] },
   'pagoda': { pos: [25, 3, -19], look: [41, 7, -31] },
   'bell': { pos: [24, 2.2, -35.6], look: [29, 3.2, -43] },
+  'day-fuji': { pos: [8, 2.6, 16], look: [-25, 14, -200], season: 'spring' },
+  'sunset-fuji': { pos: [8, 2.6, 16], look: [-25, 14, -200], season: 'spring', light: 'sunset' },
+  'sunset-gate': { pos: [0, 1.7, 49], look: [0, 1.6, 20], season: 'spring', light: 'sunset' },
+  'day-high': { pos: [4, 14, 44], look: [-20, 10, -200], season: 'spring' },
+  'sunset-high': { pos: [4, 14, 44], look: [-20, 10, -200], season: 'autumn', light: 'sunset' },
+  'swing-close': { pos: [-12.4, 1.7, 13.6], look: [-19, 1.4, 21] },
+  'swing-sunset': { pos: [-12.4, 1.7, 13.6], look: [-19, 1.4, 21], light: 'sunset' },
+  'swing-night': { pos: [-12.4, 1.7, 13.6], look: [-19, 1.4, 21], light: 'night' },
+  'peacocks': { pos: [30, 1.8, 15], look: [25.5, 0.9, 21.5], fan: true },
+  'trees-a': { pos: [14, 3.2, 20], look: [4, 2.6, 6], season: 'spring', samples: true },
+  'trees-b': { pos: [-18, 3.5, -6], look: [-8, 2.5, -14], season: 'spring', samples: true },
+  'trees-c': { pos: [20, 4, -2], look: [24, 2.5, -14], season: 'spring', samples: true },
+  'trees-d': { pos: [-4, 3, 20], look: [-14, 2.5, 30], season: 'autumn', samples: true },
+  'bench-front': { pos: [-5.6, 1.7, 8.3], look: [-9.4, 1.0, 12.6] },
+  'beach-castle': { pos: [27, 2.2, 74], look: [33, 0.2, 73], view: 'sea', season: 'spring' },
+  'beach-wide': { pos: [-20, 3.5, -62], look: [-40, 0, -88], view: 'sea', season: 'spring' },
+  'beach-sunset': { pos: [30, 2, 70], look: [60, 0.5, 70], view: 'sea', season: 'spring', light: 'sunset' },
+  'qr-boards': { pos: [0, 1.7, 49], look: [0, 1.6, 20], links: [{ label: 'Instagram', url: 'https://instagram.com/garden.of.poems' }, { label: 'Facebook', url: 'https://facebook.com/gardenofpoems' }, { label: 'Substack', url: 'https://gardenofpoems.substack.com' }, { label: 'Goodreads', url: 'https://www.goodreads.com/gardenofpoems' }] },
+  'qr-close': { pos: [3.2, 1.9, 43.5], look: [6.3, 2, 38.6], links: [{ label: 'Instagram', url: 'https://instagram.com/garden.of.poems' }, { label: 'Facebook', url: 'https://facebook.com/gardenofpoems' }, { label: 'Substack', url: 'https://gardenofpoems.substack.com' }, { label: 'Goodreads', url: 'https://www.goodreads.com/gardenofpoems' }] },
+  'board-close': { pos: [-3.2, 1.9, 43.5], look: [-6.3, 2, 38.6], links: [{ label: 'Instagram', url: 'https://instagram.com/garden.of.poems' }, { label: 'Facebook', url: 'https://facebook.com/gardenofpoems' }, { label: 'Substack', url: 'https://gardenofpoems.substack.com' }, { label: 'Goodreads', url: 'https://www.goodreads.com/gardenofpoems' }] },
+  'edge': { pos: [40, 4, 40], look: [58, 0.5, 30] },
+  'edge-high': { pos: [30, 18, 30], look: [55, 0, 40] },
+  'fest-day': { pos: [0, 1.7, 47], look: [0, 3.2, 22], season: 'spring' },
+  'fest-night': { pos: [0, 1.7, 47], look: [0, 3.2, 22], season: 'spring', light: 'night' },
+  'canopy-under': { pos: [3.5, 1.6, 34], look: [0, 4.6, 22], season: 'spring', light: 'sunset' },
+  'canopy-night': { pos: [3.5, 1.6, 34], look: [0, 4.6, 22], season: 'spring', light: 'night' },
+  'wall-night': { pos: [5.6, 1.8, 20.2], look: [11.6, 1.9, 20.2], season: 'spring', light: 'night', samples: true },
+  'pond-night': { pos: [7, 2.4, 10], look: [0, -0.3, 0], season: 'spring', light: 'night', samples: true },
+  'sky-night': { pos: [6, 2, 16], look: [-30, 30, -60], season: 'spring', light: 'night', samples: true },
+  'creek': { pos: [-1, 3, -10], look: [-4, -0.6, -22] },
+  'creek2': { pos: [-9, 2.5, -36], look: [-8, -0.8, -48] },
+  'fairy-night': { pos: [12, 2.2, 16], look: [4, 2.6, 4], season: 'spring', light: 'night', samples: true },
+  'qr-face': { pos: [4.6, 2.05, 41.4], look: [6.3, 2.05, 38.6], links: [{ label: 'Instagram', url: 'https://instagram.com/garden.of.poems' }, { label: 'Facebook', url: 'https://facebook.com/gardenofpoems' }, { label: 'Substack', url: 'https://gardenofpoems.substack.com' }, { label: 'Goodreads', url: 'https://www.goodreads.com/gardenofpoems' }] },
+  'fairy-close': { pos: [-2.6, 1.6, -6.5], look: [-6, 2.8, -13], season: 'spring', light: 'night', samples: true },
+  'sea-stream': { pos: [-4, 4, -58], look: [-14, -0.5, -82], view: 'sea', season: 'spring' },
+  'sea-night': { pos: [8, 2.6, 16], look: [-25, 2, -200], view: 'sea', season: 'spring', light: 'night' },
   'gate-back': { pos: [0, 1.7, 33], look: [0, 1.5, 50] },
   'entrance-high': { pos: [7, 7, 48], look: [0, 1.5, 30] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
@@ -131,6 +166,83 @@ async function main() {
     else if (FLOW === 'refl') { await page.evaluate(() => { const g = window.__garden; g.state.mode = 'cinematic'; g.camera.position.set(7, 2.2, 9); g.curLook.set(0, -0.4, 0); g.camera.lookAt(g.curLook); }); await sleep(2500); console.log('  reflection pixels:', JSON.stringify(await page.evaluate(() => { const g = window.__garden, rt = g.reflRT, out = []; for (const [fx, fy] of [[.5, .5], [.5, .2], [.5, .8], [.2, .5]]) { const b = new Uint8Array(4); g.renderer.readRenderTargetPixels(rt, Math.floor(rt.width * fx), Math.floor(rt.height * fy), 1, 1, b); out.push([...b]); } return { size: [rt.width, rt.height], out }; }))); }
     else if (FLOW === 'quality') await qualityFlow(page);
     else if (FLOW === 'card') await cardFlow(page, browser, url, errors);
+    else if (FLOW === 'autoq') { // Auto quality must not step down while you simply stand still (the garden rests at 20 fps on purpose)
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); window.__garden.chooseQuality('auto'); });
+      await sleep(15000); const still = await page.evaluate(() => window.__garden.quality.level);
+      await page.keyboard.down('KeyW'); await sleep(5000); await page.keyboard.up('KeyW'); const walked = await page.evaluate(() => window.__garden.quality.level);
+      console.log(`  Auto after standing 15 s: ${still}; after walking: ${walked}`); if (still !== 'high') errors.push('Auto stepped down while standing still');
+    }
+    else if (FLOW === 'fountain') { // walk up, look in (E), watch the koi, toss a coin, step back
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const p = window.__garden.player; p.pos.set(14.2, 0, -6.3); p.yaw = Math.atan2(14.2 - 11, -6.3 + 10.2); p.pitch = -0.15; });
+      await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/fountain-near.png') });
+      const cue = await page.$eval('#cue', e => e.textContent.trim()); await page.keyboard.press('KeyE');
+      await sleep(5000); await page.screenshot({ path: join(root, 'dev/shots/fountain-look.png') });
+      const mode = await page.evaluate(() => window.__garden.state.mode); console.log(`  cue "${cue}", mode after E: ${mode}`); await page.click('#fv-coin'); await sleep(1600); await page.screenshot({ path: join(root, 'dev/shots/fountain-coin.png') });
+      await page.click('#fv-back'); await sleep(2500); const after = await page.evaluate(() => window.__garden.state.mode);
+      console.log(`  cue "${cue}", looking: ${mode}, after stepping back: ${after}`); if (mode !== 'fountain' || after !== 'walk') errors.push('fountain view did not open or close');
+      await page.evaluate(() => { const g = window.__garden; g.state.mode = 'cinematic'; g.camera.position.set(4.2, 1.6, 4.8); g.curLook.set(0, -0.4, 0); g.camera.lookAt(g.curLook); }); await sleep(1200); await page.screenshot({ path: join(root, 'dev/shots/pond-koi.png') });
+    }
+    else if (FLOW === 'creatures') { // be a bird: take off over the garden; be a cat: trot and pounce
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden; g.setAvatar({ kind: 'bird', plumage: 'cream' }); g.setThirdPerson(true); });
+      await sleep(1200); await page.keyboard.press('Space'); await page.keyboard.down('KeyW'); await sleep(2600); await page.screenshot({ path: join(root, 'dev/shots/bird-climb.png') });
+      await sleep(2400); await page.screenshot({ path: join(root, 'dev/shots/bird-glide.png') }); const alt = await page.evaluate(() => window.__garden.player.alt.toFixed(1)); await page.keyboard.up('KeyW');
+      await page.evaluate(() => { const g = window.__garden; g.setAvatar({ kind: 'cat', coat: 'siamese' }); g.player.pos.set(0, 0, 46); g.player.yaw = 0; }); await sleep(800);
+      await page.keyboard.down('KeyW'); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/cat-walk.png') }); await page.keyboard.press('Space'); await sleep(250); await page.screenshot({ path: join(root, 'dev/shots/cat-pounce.png') }); await page.keyboard.up('KeyW');
+      await sleep(4500); await page.screenshot({ path: join(root, 'dev/shots/cat-sit.png') });
+      console.log('  after one tap the bird is still flying at ' + alt + ' m'); if (+alt < 4) errors.push('the bird did not stay up');
+    }
+    else if (FLOW === 'boxes') { // the writing page and the menu, at sunset (as the owner saw them)
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); window.__garden.setSetting('light', 'sunset'); }); await sleep(3000);
+      await page.click('#h-sky'); await sleep(700); await page.screenshot({ path: join(root, 'dev/shots/box-sky.png') }); await page.click('#h-sky'); await sleep(500);
+      await page.click('#h-more'); await sleep(700); await page.screenshot({ path: join(root, 'dev/shots/box-menu.png') }); await page.keyboard.press('Escape'); await sleep(500);
+      await page.click('#h-write'); await page.waitForFunction(() => window.__garden.state.mode === 'writing', { timeout: 60000, polling: 300 }); await sleep(2500);
+      await page.type('#e-body', 'The plum tree forgot\nit was night.'); await page.evaluate(() => document.querySelector('#editor').scrollTop = 0); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/box-editor.png') });
+    }
+    else if (FLOW === 'wade') { // by the sea: walk off the lawn, across the sand and into the water
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden; g.setSetting('view', 'sea'); g.player.pos.set(0, 0, 66); g.player.yaw = Math.PI; g.player.pitch = -0.1; });
+      await sleep(1500); await page.keyboard.down('KeyW'); await sleep(9000); await page.keyboard.up('KeyW'); await sleep(600);
+      const st = await page.evaluate(() => { const p = window.__garden.player.pos; return { r: Math.hypot(p.x, p.z).toFixed(1), eye: window.__garden.camera.position.y.toFixed(2) }; });
+      await page.screenshot({ path: join(root, 'dev/shots/wade.png') }); console.log('  walked out to r ' + st.r + ' m, eye at ' + st.eye); if (+st.r < 90) errors.push('could not reach the water');
+    }
+    else if (FLOW === 'panels') { // the two customize boxes and the gardens box
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => document.querySelector('#steps-skip')?.click());
+      await page.evaluate(() => window.__garden.setSetting('links', [{ label: 'Instagram', url: 'https://instagram.com/prana_._' }]));
+      await page.click('#h-custom'); await sleep(1300); await page.evaluate(() => document.querySelector('#c-presets').scrollIntoView({ block: 'center' })); await sleep(400); await page.screenshot({ path: join(root, 'dev/shots/panel-links.png') }); await page.keyboard.press('Escape'); await sleep(900);
+      for (const [b, n] of [['#h-you', 'you'], ['#h-custom', 'garden'], ['#h-gardens', 'gardens']]) { await page.click(b); await sleep(1300); await page.screenshot({ path: join(root, `dev/shots/panel-${n}.png`) }); await page.keyboard.press('Escape'); await sleep(900); }
+    }
+    else if (FLOW === 'jump') { // every kind jumps with Space
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); window.__garden.setThirdPerson(true); });
+      for (const kind of ['girl', 'boy', 'cat']) {
+        await page.evaluate(k => window.__garden.setAvatar({ kind: k }), kind); await sleep(800);
+        await page.keyboard.down('Space'); await sleep(180); const top = await page.evaluate(() => window.__garden.player.alt); await page.keyboard.up('Space');
+        if (kind === 'girl') await page.screenshot({ path: join(root, 'dev/shots/jump-girl.png') });
+        await sleep(1200); const back = await page.evaluate(() => window.__garden.player.alt);
+        console.log(`  ${kind}: up to ${top.toFixed(2)} m, back to ${back.toFixed(2)}`); if (!(top > 0.2) || back > 0.01) errors.push(kind + ' did not jump and land');
+      }
+    }
+    else if (FLOW === 'minimap') { // hide the corner map, then bring it back
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await sleep(800);
+      await page.screenshot({ path: join(root, 'dev/shots/mini-on.png') }); await page.click('#minimap-hide'); await sleep(500);
+      const hidden = await page.$eval('#minimap-btn', b => b.hidden); await page.screenshot({ path: join(root, 'dev/shots/mini-off.png') });
+      await page.click('#minimap-show'); await sleep(500); const back = await page.$eval('#minimap-btn', b => !b.hidden);
+      console.log('  hidden: ' + hidden + ', back: ' + back); if (!hidden || !back) errors.push('the corner map did not hide and return');
+    }
+    else if (FLOW === 'parasol') { // your figure with a parasol, from behind, at the gate
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(1200); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden; g.setAvatar({ extra: 'parasol', outfit: 'kimono', cloth: '#2c3d6b', accent: '#f2c46a', hairStyle: 'bob' }); g.setThirdPerson(true); });
+      await sleep(2500); await page.screenshot({ path: join(root, 'dev/shots/parasol-back.png') });
+      await page.keyboard.down('KeyW'); await sleep(1200); await page.screenshot({ path: join(root, 'dev/shots/parasol-walk.png') }); await page.keyboard.up('KeyW');
+      await page.evaluate(() => { const g = window.__garden; g.setThirdPerson(false); g.state.mode = 'cinematic'; const p = g.player.pos; g.camera.position.set(p.x + 1.6, 1.3, p.z - 2.2); g.curLook.set(p.x, 1.0, p.z); g.camera.lookAt(g.curLook); }); await sleep(800);
+      await page.evaluate(() => { const g = window.__garden; g.setThirdPerson(true); }); await sleep(300); await page.screenshot({ path: join(root, 'dev/shots/parasol-front.png') });
+    }
     else if (FLOW === 'audit') await auditFlow(page, browser, url, errors);
     else if (FLOW === 'swing') { await swingFlow(page, 'desktop'); await swingFlowPhone(browser, url, errors); }
     else if (CHECK) await smoke(page);
@@ -152,6 +264,10 @@ async function shoot(page) {
       await page.click('#enter-sample'); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.poems.length >= 10, { timeout: 180000, polling: 500 });
       await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await sleep(9000);
     }
+    if (v.kinds) await page.evaluate(pose => {
+      // a girl, the boy from the owner's picture, a girl with a pink bow, a siamese cat, a tabby, a cockatiel, a blue bird
+      window.__garden.lineup([{ kind: 'girl' }, { kind: 'boy', hairStyle: 'messy', outfit: 'jacket', cloth: '#3b3a38', accent: '#c9474a', extra: 'scarf', skin: '#a8744f' }, { kind: 'girl', extra: 'bow', hairStyle: 'twintails', cloth: '#efe6d4' }, { kind: 'cat', coat: 'siamese' }, { kind: 'cat', coat: 'tabby' }, { kind: 'bird', plumage: 'cream' }, { kind: 'bird', plumage: 'blue' }], -1.3, 36.6, pose);
+    }, v.kinds === 'walk' ? 'walk' : 'idle');
     if (v.lineup) await page.evaluate(() => {
       const O = [['dress', '#9cc0d6', 'bun', '#1d1a19', '#f3cfb5', 'none'], ['dress', '#e7b7c4', 'twintails', '#5c3f2b', '#fbe3d3', 'parasol'], ['yukata', '#3d4a6b', 'bob', '#1d1a19', '#e2b393', 'none'],
         ['kimono', '#b5603d', 'long', '#8a4f2e', '#c99573', 'none'], ['casual', '#6f8a5a', 'short', '#3a2a20', '#86593b', 'scarf'], ['coat', '#7b5a86', 'tail', '#c49a62', '#f3cfb5', 'hat']];
@@ -173,7 +289,10 @@ async function shoot(page) {
       if (g.SETTINGS.season !== (v.season || 'spring')) g.setSetting('season', v.season || 'spring');
       document.querySelector('#toast')?.classList.remove('show');
       if (g.SETTINGS.view !== (v.view || 'fuji')) g.setSetting('view', v.view || 'fuji');
+      { const L = v.light || 'day'; if (g.SETTINGS.light !== L) g.setSetting('light', L); g.state.dusk = L === 'sunset' ? 1 : 0; g.state.night = L === 'night' ? 1 : 0; }
       g.camera.position.set(...v.pos); g.curLook.set(...v.look); g.camera.lookAt(g.curLook);
+      if (v.links) { g.setSetting('links', v.links); }
+      if (v.fan && g.animals) g.animals.forEach(a => { if (a.fanT !== undefined) { a.fanT = 20; } });
     }, v);
     await sleep(v.season ? 4000 : 2500);
     await page.screenshot({ path: `${out}-${name}.png` });
@@ -313,10 +432,10 @@ async function avatarFlow(page) {
     await page.keyboard.press('KeyV'); await sleep(1500);
     if (!(await page.evaluate(() => window.__garden.state.thirdPerson))) throw new Error('not in third person');
   });
-  await step('change your figure in Customize (live preview)', async () => {
-    await page.click('#h-custom'); await sleep(1200);
+  await step('change your figure in the You box (live preview)', async () => {
+    await page.click('#h-you'); await sleep(1200);
     await page.click('[data-av="outfit"] [data-v="dress"]'); await page.click('[data-av="hairStyle"] [data-v="twintails"]'); await page.click('[data-av="cloth"] button:nth-child(1)'); await sleep(1500);
-    await page.$eval('#custom', e => { e.scrollTop = 0; }); await shot('editor');
+    await page.$eval('#youpanel', e => { e.scrollTop = 0; }); await shot('editor');
     const a = await page.evaluate(() => JSON.parse(localStorage.getItem('garden-of-poems:avatar')));
     if (a.outfit !== 'dress' || a.hairStyle !== 'twintails') throw new Error('not saved: ' + JSON.stringify(a));
     await page.keyboard.press('Escape'); await sleep(900); await page.click('#c-close').catch(() => {}); await sleep(900);
@@ -356,7 +475,7 @@ async function mapFlow(page, browser, url, errors) {
     await sleep(1500); await shot('minimap'); return (await page.$eval('#minimap-btn', b => !b.hidden)) ? 'corner map showing' : 'corner map hidden';
   });
   let target;
-  await step('click 1: open the map', async () => { await page.click('#h-map'); await sleep(900); if (!(await page.$('#mapview.open'))) throw new Error('map did not open'); const n = await page.$$eval('.map-poem', b => b.length), p = await page.$$eval('.map-place', b => b.map(x => x.getAttribute('aria-label'))); await shot('full'); return `${n} poems, places: ${p.join(' | ')}`; });
+  await step('click 1: open the map', async () => { await page.keyboard.press('KeyM'); await sleep(900); if (!(await page.$('#mapview.open'))) throw new Error('map did not open'); const n = await page.$$eval('.map-poem', b => b.length), p = await page.$$eval('.map-place', b => b.map(x => x.getAttribute('aria-label'))); await shot('full'); return `${n} poems, places: ${p.join(' | ')}`; });
   await step('hover a poem shows its title', async () => { const b = (await page.$$('.map-poem'))[3]; await b.hover(); await sleep(400); target = await b.evaluate(e => e.dataset.title); await shot('hover'); return target; });
   await step('click 2: choose it; glide there and read it', async () => {
     const b = (await page.$$('.map-poem'))[3]; await b.click();

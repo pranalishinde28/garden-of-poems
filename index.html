@@ -7,10 +7,10 @@
 <meta name="description" content="Write poems and watch them grow into a garden you can walk through. Keep it private or open it to visitors.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&display=swap" rel="stylesheet"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M16 4c3 4 3 8 0 12-3-4-3-8 0-12zM16 16c4-2 8-1 11 2-4 2-8 1-11-2zM16 16c-4-2-8-1-11 2 4 2 8 1 11-2zM16 16v12%22 fill=%22%23e8b7c8%22 stroke=%22%235a6b45%22 stroke-width=%221.2%22/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M16 4c3 4 3 8 0 12-3-4-3-8 0-12zM16 16c4-2 8-1 11 2-4 2-8 1-11-2zM16 16c-4-2-8-1-11 2 4 2 8 1 11-2zM16 16v12%22 fill=%22%23e8b7c8%22 stroke=%22%235a6b45%22 stroke-width=%221.2%22/%3E%3C/svg%3E">
 </head>
 <body>
-<main id="world"><canvas id="c" tabindex="-1" aria-label="A garden you can walk through. Each plant is a poem. The map (M) lists every poem."></canvas></main>
+<main id="world"><canvas id="c" tabindex="-1" aria-label="A garden you can walk through. Each cherry tree is a poem. The map (M) lists every poem."></canvas></main>
 <div id="vignette"></div>
 
 <div id="intro" role="banner">
@@ -27,14 +27,16 @@
   <button class="tip" id="h-write" data-tip="Write at the bench (N)" aria-label="Write a poem at the bench">
     <svg viewBox="0 0 24 24"><path d="M12 2.5v2.2M9 6.2h6l-.6 1.6H9.6zM8.4 7.8h7.2l.9 9.2a1.6 1.6 0 0 1-1.6 1.8H9.1a1.6 1.6 0 0 1-1.6-1.8z"/><path d="M12 11.2c-1.1 1.2-1.3 2.4 0 3.8 1.3-1.4 1.1-2.6 0-3.8z"/><path d="M9 21.3h6"/></svg>
   </button>
-  <button class="tip" id="h-map" data-tip="Map (M)" aria-label="Open the garden map">
-    <svg viewBox="0 0 24 24"><path d="M3.5 6.5l5.5-2 6 2 5.5-2v13l-5.5 2-6-2-5.5 2z"/><path d="M9 4.5v13M15 6.5v13"/></svg>
-  </button>
-  <button class="tip" id="h-sound" data-tip="Music (U)" aria-label="Toggle music" aria-pressed="true">
+  <span class="hud-sep" aria-hidden="true"></span>
+  <button class="tip" id="h-sky" data-tip="Season, light, horizon and weather" aria-label="Season, light, horizon and weather" aria-haspopup="true" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="8.5" cy="8.5" r="3"/><path d="M8.5 2.8v1.3M2.8 8.5h1.3M4.5 4.5l.9.9M12.5 4.5l-.9.9"/><path d="M9.5 19.5a3.6 3.6 0 0 1 .6-7.1 4.6 4.6 0 0 1 8.7 1.3 3 3 0 0 1-.5 5.8z"/></svg></button>
+  <span class="hud-sep" aria-hidden="true"></span>
+  <button class="tip" id="h-sound" data-tip="Music (U)" aria-label="Music on or off" aria-pressed="true">
     <svg viewBox="0 0 24 24" id="i-snd"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11"/></svg>
-    <svg viewBox="0 0 24 24" id="i-mute" hidden><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+    <svg viewBox="0 0 24 24" id="i-mute" hidden><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11" opacity=".45"/><path class="cut" d="M3.5 3.5l17 17"/></svg>
   </button>
-  <button class="tip" id="h-custom" data-tip="Customize (C)" aria-label="Customize your garden">
+  <button class="tip" id="h-view" data-tip="See yourself (V)" aria-label="Switch to third person" aria-pressed="false"><svg viewBox="0 0 24 24" id="i-view"></svg></button>
+  <button class="tip" id="h-you" data-tip="You: girl, boy, cat or bird (A)" aria-label="You, in the garden: your character"><svg viewBox="0 0 24 24"><circle cx="12" cy="7.5" r="3.4"/><path d="M5 20.5c.8-4.2 3.6-6.6 7-6.6s6.2 2.4 7 6.6"/></svg></button>
+  <button class="tip" id="h-custom" data-tip="Your garden: scenery, flowers, sign (C)" aria-label="Customize your garden">
     <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
   </button>
   <button class="tip" id="h-gardens" data-tip="Public gardens (G)" aria-label="Public gardens">
@@ -46,6 +48,12 @@
   <button class="tip" id="h-more" data-tip="More" aria-label="More options" aria-pressed="false">
     <svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r=".9" fill="currentColor"/><circle cx="12" cy="12" r=".9" fill="currentColor"/><circle cx="18.5" cy="12" r=".9" fill="currentColor"/></svg>
   </button>
+  <div id="sky-keys" hidden>
+  <button class="tip" id="h-theme" data-tip="Season" aria-label="Season"><svg viewBox="0 0 24 24" id="i-season"></svg></button>
+  <button class="tip" id="h-night" data-tip="Light" aria-label="Light"><svg viewBox="0 0 24 24" id="i-light"></svg></button>
+  <button class="tip" id="h-view-horizon" data-tip="Horizon" aria-label="Horizon"><svg viewBox="0 0 24 24" id="i-horizon"></svg></button>
+  <button class="tip" id="h-weather" data-tip="Weather" aria-label="Weather"><svg viewBox="0 0 24 24" id="i-weather"></svg></button>
+  </div>
 </nav>
 <div class="pop" id="time-pop" role="region" aria-label="Walk through time"><div id="timebar" role="radiogroup" aria-label="Show poems from">
   <button role="radio" data-f="today" aria-checked="false">Today</button>
@@ -53,42 +61,42 @@
   <button role="radio" data-f="year" aria-checked="false">This year</button>
   <button role="radio" data-f="all" aria-checked="true">All poems</button>
 </div></div>
+<div class="pop" id="sky-pop" role="region" aria-label="Season, light, horizon and weather"><div id="skymenu">
+  <p class="mh">Season</p><div class="seg" data-k="season"><button data-v="auto">By the calendar</button><button data-v="spring">Spring</button><button data-v="monsoon">Monsoon</button><button data-v="autumn">Autumn</button></div>
+  <p class="mh">Light</p><div class="seg" data-k="light"><button data-v="auto">My clock</button><button data-v="day">Day</button><button data-v="sunset">Sunset</button><button data-v="night">Night</button></div>
+  <p class="mh">Horizon</p><div class="seg" data-k="view"><button data-v="fuji">Mount Fuji</button><button data-v="sea">The sea</button></div>
+  <p class="mh">Weather</p><div class="seg" data-k="weather"><button data-v="clear">Clear</button><button data-v="showers">Passing showers</button><button data-v="rain">Rain</button></div>
+</div></div>
 <div class="pop" id="menu-pop" role="region" aria-label="More"><div id="menu">
   <p class="mh">In the garden</p>
-  <button class="mrow" id="h-time" data-tip="Walk through time (T)" aria-label="Walk through time" aria-pressed="false">
+  <button class="mrow" id="h-map" data-tip="The map (M)" data-hint="every poem and place, and a way to get there" aria-label="Open the garden map">
+    <svg viewBox="0 0 24 24"><path d="M3.5 6.5l5.5-2 6 2 5.5-2v13l-5.5 2-6-2-5.5 2z"/><path d="M9 4.5v13M15 6.5v13"/></svg>
+  </button>
+  <button class="mrow" id="h-time" data-tip="Walk through time (T)" data-hint="show poems from today, this month or year" aria-label="Walk through time" aria-pressed="false">
     <svg viewBox="0 0 24 24"><path d="M6.5 3h11M6.5 21h11M7.5 3c0 4.5 4.5 6 4.5 9s-4.5 4.5-4.5 9M16.5 3c0 4.5-4.5 6-4.5 9s4.5 4.5 4.5 9"/><path d="M9.8 18.6c.8-1 1.4-1.4 2.2-1.4s1.4.4 2.2 1.4"/></svg><span class="lbl"></span>
   </button>
-  <button class="mrow" id="h-theme" data-tip="Autumn" aria-label="Switch to autumn" aria-pressed="false">
-    <svg viewBox="0 0 24 24"><path d="M12 2.8l1.5 3.4 3-1.3-.8 3.4 3.4.5-2.4 2.4 1.9 1.3-3.6.9.4 2.3-3.4-1.5-1.4 1.6-1.4-1.6-3.4 1.5.4-2.3-3.6-.9 1.9-1.3-2.4-2.4 3.4-.5-.8-3.4 3 1.3z"/><path d="M12 15.2V21.5"/></svg><span class="lbl"></span>
-  </button>
-  <button class="mrow" id="h-night" data-tip="Moonlight" aria-label="Toggle moonlight" aria-pressed="false">
-    <svg viewBox="0 0 24 24" id="i-moon"><path d="M19.5 14.6A8 8 0 0 1 9.4 4.5a8 8 0 1 0 10.1 10.1z"/></svg>
-    <svg viewBox="0 0 24 24" id="i-sun" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg><span class="lbl"></span>
-  </button>
-  <button class="mrow" id="h-view" data-tip="See yourself (V)" aria-label="Switch to third person" aria-pressed="false">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="6.2" r="2.4"/><path d="M12 9v6.2M8.6 11.6l3.4-1.4 3.4 1.4M9.6 20.5l2.4-5.3 2.4 5.3"/></svg><span class="lbl"></span>
-  </button>
-  <button class="mrow" id="h-home" data-tip="Return to the gate (B)" aria-label="Return to the gate">
+  <button class="mrow" id="h-home" data-tip="Return to the gate (B)" data-hint="back to where you came in" aria-label="Return to the gate">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 5.5l2.2 6.5L12 18.5 9.8 12z"/><path d="M12 5.5l2.2 6.5H9.8z" fill="currentColor"/></svg><span class="lbl"></span>
   </button>
-  <button id="m-rain" title="P">Let it rain</button>
   <p class="mh">Music</p>
-  <button id="m-own">Play my own music files</button>
-  <button id="m-piano" hidden>Switch back to the piano</button>
-  <p class="mh">This device</p>
-  <button id="m-quality">Quality: Auto</button>
-  <button id="m-cine">Cinematic look: on</button>
-  <button id="m-sample">Plant the sample poems</button>
-  <button id="m-clear" class="danger">Clear the garden</button>
+  <button id="m-own"><span class="t">Play my own music</span><small>from files on this device; never uploaded</small></button>
+  <button id="m-piano" hidden><span class="t">Back to the piano</span><small>the garden's own quiet music</small></button>
+  <p class="mh">On this device</p>
+  <button id="m-quality"><span class="t">Picture: Auto</span><small>press to choose high, medium or low</small></button>
+  <button id="m-cine"><span class="t">Soft film look: on</span><small>glow, colour and grain over the garden</small></button>
+  <button id="m-sample"><span class="t">Plant twelve sample poems</span><small>a few poems to wander among</small></button>
+  <button id="m-clear" class="danger"><span class="t">Clear the garden</span><small>remove every poem here</small></button>
 </div></div>
 
-<div id="swingui" hidden><span>Hold <kbd>W</kbd> or <kbd>Space</kbd> to swing higher. <kbd>R</kbd> to read.</span><button id="sw-read" aria-pressed="false" aria-controls="swreader">Read</button><button id="sw-pump">Swing</button><button id="sw-off">Stand up</button></div>
+<button id="act-btn" hidden aria-label="Fly (hold)">Fly</button>
+<div id="fview" hidden role="region" aria-label="Looking into the fountain"><span>The koi come up to see you.</span><button id="fv-coin">Toss a coin</button><button id="fv-back">Step back</button></div>
+<div id="swingui" hidden><span>Hold <kbd>W</kbd> or <kbd>Space</kbd> to swing higher, <kbd>K</kbd> to keep this pace, <kbd>R</kbd> to read.</span><button id="sw-read" aria-pressed="false" aria-controls="swreader">Read</button><button id="sw-pump">Swing</button><button id="sw-keep" aria-pressed="false" aria-label="Keep swinging at this pace (K)"><span class="long">Keep swinging</span><span class="short">Keep</span></button><button id="sw-off">Stand up</button></div>
 <section id="swreader" class="panel" aria-label="Poems to read on the swing" hidden>
   <div class="sr-head"><span>Reading on the swing</span><button id="sr-close" aria-label="Put the poems away">×</button></div>
   <div class="scroll" aria-live="polite"><h2 id="sr-title"></h2><div id="sr-body"></div><div class="meta"><div class="d" id="sr-date"></div><div id="sr-where"></div></div></div>
   <div class="sr-bar">
     <div class="sr-nav"><button id="sr-prev">Earlier</button><span id="sr-pos"></span><button id="sr-next">Later</button></div>
-    <div class="sr-opts"><span class="seg" role="group" aria-label="Order"><button data-o="new">Newest first</button><button data-o="near">Near me</button></span><button id="sr-auto" aria-pressed="false">Swing by itself</button></div>
+    <div class="sr-opts"><span class="seg" role="group" aria-label="Order"><button data-o="new">Newest first</button><button data-o="near">Near me</button></span><button id="sr-auto" aria-pressed="false">Keep swinging</button></div>
   </div>
 </section>
 <div id="visitbar" hidden><span>Visiting <em id="visit-name"></em></span><button id="visit-home">Return to my garden</button></div>
@@ -117,41 +125,49 @@
     <button id="g-morelist" class="g-link" hidden>More gardens</button>
   </div>
 </section>
-<section id="custom" class="panel" tabindex="-1" role="dialog" aria-labelledby="c-title" hidden>
-  <button id="c-close" class="x" aria-label="Close">×</button>
-  <h2 id="c-title">Customize your garden</h2>
-  <p class="c-note" id="c-note"></p>
+<section id="youpanel" class="panel" tabindex="-1" role="dialog" aria-labelledby="y-title" hidden>
+  <button id="y-close" class="x" aria-label="Close">×</button>
+  <h2 id="y-title">You, in the garden</h2>
+  <p class="c-note">Who you are as you walk. Kept on this device, and with your account when you sign in.</p>
   <div id="c-you">
-    <h3>You, in the garden</h3>
     <div class="av-wrap">
       <canvas id="av-preview" width="320" height="440" aria-label="A preview of your figure"></canvas>
       <div class="av-ctl">
-        <div class="av-row"><span>Skin</span><div class="sw" data-av="skin" role="group" aria-label="Skin tone"></div></div>
-        <div class="av-row"><label for="av-height">Height</label><input type="range" id="av-height" min="0.9" max="1.08" step="0.01"></div>
-        <div class="av-row"><span>Hair</span><div class="seg" data-av="hairStyle" role="group" aria-label="Hair style"></div></div>
-        <div class="av-row"><span></span><div class="sw" data-av="hairColor" role="group" aria-label="Hair colour"></div></div>
-        <div class="av-row"><span>Wearing</span><div class="seg" data-av="outfit" role="group" aria-label="Clothing"></div></div>
-        <div class="av-row"><span></span><div class="sw" data-av="cloth" role="group" aria-label="Clothing colour"></div></div>
-        <div class="av-row"><span>Sash, scarf</span><div class="sw" data-av="accent" role="group" aria-label="Sash, scarf and parasol colour"></div></div>
-        <div class="av-row"><span>Carrying</span><div class="seg" data-av="extra" role="group" aria-label="Something extra"></div></div>
+        <div class="av-row"><span>You are</span><div class="seg" data-av="kind" role="group" aria-label="You are"></div></div>
+        <div class="av-row" data-for="cat"><span>Fur</span><div class="seg" data-av="coat" role="group" aria-label="The cat's fur"></div></div>
+        <div class="av-row" data-for="bird"><span>Feathers</span><div class="seg" data-av="plumage" role="group" aria-label="The bird's feathers"></div></div>
+        <div class="av-row" data-for="person"><span>Skin</span><div class="sw" data-av="skin" role="group" aria-label="Skin tone"></div></div>
+        <div class="av-row" data-for="person"><label for="av-height">Height</label><input type="range" id="av-height" min="0.9" max="1.08" step="0.01"></div>
+        <div class="av-row" data-for="person"><span>Hair</span><div class="seg" data-av="hairStyle" role="group" aria-label="Hair style"></div></div>
+        <div class="av-row" data-for="person"><span></span><div class="sw" data-av="hairColor" role="group" aria-label="Hair colour"></div></div>
+        <div class="av-row" data-for="person"><span>Wearing</span><div class="seg" data-av="outfit" role="group" aria-label="Clothing"></div></div>
+        <div class="av-row" data-for="person"><span></span><div class="sw" data-av="cloth" role="group" aria-label="Clothing colour"></div></div>
+        <div class="av-row" data-for="person"><span>Accent</span><div class="sw" data-av="accent" role="group" aria-label="Accent colour: sash, scarf, collar and parasol"></div></div>
+        <div class="av-row" data-for="person"><span>Accessory</span><div class="seg" data-av="extra" role="group" aria-label="Something extra"></div></div>
       </div>
     </div>
     <div class="c-row"><span>Camera</span><div class="seg" data-av-view role="group" aria-label="Camera"><button data-v="first">Through my eyes</button><button data-v="third">Behind me</button></div></div>
     <label class="matters"><input type="checkbox" id="av-minimap"> A small map in the corner</label>
   </div>
+</section>
+<section id="custom" class="panel" tabindex="-1" role="dialog" aria-labelledby="c-title" hidden>
+  <button id="c-close" class="x" aria-label="Close">×</button>
+  <h2 id="c-title">Your garden</h2>
+  <p class="c-note" id="c-note"></p>
   <h3>The sign at the gate</h3>
   <label class="f" for="c-name">Garden name</label>
   <input type="text" id="c-name" maxlength="60" placeholder="The Garden of Poems" autocomplete="off">
   <label class="f" for="c-desc">Welcome line</label>
   <input type="text" id="c-desc" maxlength="280" placeholder="Poems from my first year in Tokyo" autocomplete="off">
   <label class="f">Socials and portfolio links</label>
+  <p class="c-note">Type just your name. Each link shows on the “Find me here!” board to the right of the gate, with a QR code visitors can scan.</p>
+  <div id="c-presets"></div>
   <div id="c-links"></div>
   <p class="g-err" id="c-linkerr" role="alert"></p>
-  <button class="g-link" id="c-addlink">Add a link</button>
+  <button class="g-link" id="c-addlink">Add another link</button>
   <h3>Scenery</h3>
-  <div class="c-row"><span>Season</span><div class="seg" data-k="season"><button data-v="auto">Follow the calendar</button><button data-v="spring">Spring</button><button data-v="summer">Summer</button><button data-v="autumn">Autumn</button><button data-v="winter">Winter</button></div></div>
-  <div class="c-row"><span>Horizon</span><div class="seg" data-k="view"><button data-v="fuji">Mount Fuji</button><button data-v="sea">The sea</button></div></div>
-  <div class="c-row"><span>Light</span><div class="seg" data-k="light"><button data-v="auto">My clock</button><button data-v="day">Day</button><button data-v="night">Night</button></div></div>
+  <div class="c-row"><span>Season</span><div class="seg" data-k="season"><button data-v="auto">Follow the calendar</button><button data-v="spring">Spring</button><button data-v="monsoon">Monsoon</button><button data-v="autumn">Autumn</button></div></div>
+  <div class="c-row"><span>Light</span><div class="seg" data-k="light"><button data-v="auto">My clock</button><button data-v="day">Day</button><button data-v="sunset">Sunset</button><button data-v="night">Night</button></div></div>
   <div class="c-row"><span>Weather</span><div class="seg" data-k="weather"><button data-v="clear">Clear</button><button data-v="showers">Passing showers</button><button data-v="rain">Rain</button></div></div>
   <div class="c-row"><span>Poem trees</span><div class="seg" data-k="tree"><button data-v="sakura">Cherry blossom</button><button data-v="maple">Red maple</button><button data-v="green">Green leaves</button></div></div>
   <div class="c-row" id="c-blossom"><span>Blossom</span><div class="seg" data-k="blossom"><button data-v="pink">Pink</button><button data-v="white">White</button></div></div>
@@ -243,6 +259,8 @@
   <div id="map-places" role="list" aria-label="Places"></div>
   <div id="map-legend" aria-hidden="true"></div>
 </section>
+<button id="minimap-hide" aria-label="Hide the small map" title="Hide the small map" hidden>×</button>
+<button id="minimap-show" aria-label="Show the small map" title="Show the small map" hidden><svg viewBox="0 0 24 24"><path d="M3.5 6.5l5.5-2 6 2 5.5-2v13l-5.5 2-6-2-5.5 2z"/><path d="M9 4.5v13M15 6.5v13"/></svg></button>
 <button id="minimap-btn" aria-label="Open the map" hidden><canvas id="minimap" width="264" height="264"></canvas></button>
 <section id="helpsheet" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
   <button class="x" id="help-close" aria-label="Close">×</button>
@@ -252,12 +270,12 @@
       <dl class="keys only-fine"><dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows</dt><dd>walk</dd><dt><kbd>Shift</kbd></dt><dd>walk faster</dd><dt>Drag</dt><dd>look around</dd></dl>
       <dl class="keys only-coarse"><dt>The circle, bottom left</dt><dd>walk</dd><dt>Swipe</dt><dd>look around</dd></dl>
       <h3>Doing</h3>
-      <dl class="keys"><dt><kbd class="only-fine">E</kbd><span class="only-fine"> or click</span><span class="only-coarse">Tap</span></dt><dd>when something glows: read a poem, sit at the bench, swing</dd><dt>The bench under the wisteria</dt><dd>write a poem</dd><dt>The pond</dt><dd>an older poem rises as a reflection, and the koi come to you</dd><dt>The fountain</dt><dd>toss a coin and make a wish</dd><dt>The shrine and the bell tower</dt><dd>ring the bells</dd></dl>
+      <dl class="keys"><dt><kbd class="only-fine">E</kbd><span class="only-fine"> or click</span><span class="only-coarse">Tap</span></dt><dd>when something glows: read a poem, sit at the bench, swing</dd><dt>The white bench, “Sit here”</dt><dd>write a poem</dd><dt>The pond</dt><dd>an older poem rises as a reflection, and the koi come to you</dd><dt>The fountain</dt><dd>look in at the koi, toss a coin and make a wish</dd><dt>The lantern wall</dt><dd>your newest poems, one to a lantern: touch one to read it</dd><dt>Planting a poem</dt><dd>a lantern rises into the sky for it</dd><dt>The shrine and the bell tower</dt><dd>ring the bells</dd></dl>
     </div>
     <div class="only-fine"><h3>Keys</h3>
-      <dl class="keys"><dt><kbd>M</kbd></dt><dd>the map</dd><dt><kbd>N</kbd></dt><dd>write a poem</dd><dt><kbd>V</kbd></dt><dd>see yourself, or look through your eyes</dd><dt><kbd>B</kbd></dt><dd>back to the gate</dd><dt><kbd>C</kbd> · <kbd>G</kbd></dt><dd>customize · public gardens</dd><dt><kbd>U</kbd> · <kbd>L</kbd> · <kbd>P</kbd></dt><dd>music · moonlight · rain</dd><dt><kbd>Y</kbd> · <kbd>T</kbd></dt><dd>next season · walk through time</dd><dt><kbd>F</kbd></dt><dd>full screen</dd></dl>
+      <dl class="keys"><dt><kbd>M</kbd></dt><dd>the map</dd><dt><kbd>N</kbd></dt><dd>write a poem</dd><dt><kbd>V</kbd></dt><dd>see yourself, or look through your eyes</dd><dt><kbd>B</kbd></dt><dd>back to the gate</dd><dt><kbd>C</kbd> · <kbd>G</kbd></dt><dd>customize · public gardens</dd><dt><kbd>U</kbd> · <kbd>L</kbd> · <kbd>P</kbd></dt><dd>music · light · weather</dd><dt><kbd>Y</kbd> · <kbd>T</kbd></dt><dd>next season · walk through time</dd><dt><kbd>F</kbd></dt><dd>full screen</dd><dt><kbd>Space</kbd></dt><dd>jump. As a bird: take off (it keeps flying), tap again to land, hold to climb, <kbd>Q</kbd> to sink. As a cat: pounce</dd></dl>
       <h3>Reading and swinging</h3>
-      <dl class="keys"><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>earlier or later poem</dd><dt><kbd>J</kbd> · <kbd>K</kbd></dt><dd>like · leave a note (in a public garden)</dd><dt><kbd>R</kbd></dt><dd>read while on a swing</dd><dt><kbd>W</kbd> or <kbd>Space</kbd></dt><dd>swing higher</dd><dt><kbd>Esc</kbd></dt><dd>close, or stand up</dd><dt><kbd>?</kbd></dt><dd>this page</dd></dl>
+      <dl class="keys"><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>earlier or later poem</dd><dt><kbd>J</kbd> · <kbd>K</kbd></dt><dd>heart a poem · notes (in a public garden)</dd><dt><kbd>R</kbd></dt><dd>read while on a swing</dd><dt><kbd>W</kbd> or <kbd>Space</kbd></dt><dd>swing higher</dd><dt><kbd>Esc</kbd></dt><dd>close, or stand up</dd><dt><kbd>?</kbd></dt><dd>this page</dd></dl>
     </div>
   </div>
   <p class="help-foot"><button class="g-link" id="help-steps">Show the first steps again</button></p>

@@ -14,14 +14,14 @@ export let groundMesh;
   const g = new THREE.PlaneGeometry(120, 120, 230, 230); g.rotateX(-Math.PI / 2);
   const K = 0.000463, remap = u => u * (1 + K * u * u);
   const pos = g.attributes.position, uv = g.attributes.uv, col = new Float32Array(pos.count * 3);
-  const cA = C('#5f7843'), cB = C('#7b8a55'), cBank = C('#7a7458'), cMud = C('#4f4a3a'), cD = C('#3d5634'), cHill = C('#5d7440'), t = new THREE.Color();
+  const cA = C('#5f7843'), cB = C('#7b8a55'), cBank = C('#7a7458'), cMud = C('#4f4a3a'), cD = C('#5a8040') /* the outer lawn stays green (it read as bare earth) */, cHill = C('#5d7440'), t = new THREE.Color();
   for (let i = 0; i < pos.count; i++) {
     const x = remap(pos.getX(i)), z = remap(pos.getZ(i)), r = Math.hypot(x, z), y = groundH(x, z);
     pos.setXYZ(i, x, y, z); uv.setXY(i, x / 3.2, z / 3.2);
     const n = Math.sin(x * 0.21) * Math.cos(z * 0.17) * 0.5 + 0.5 + Math.sin(x * 0.9 + z * 0.7) * 0.08;
     const dry = smooth(0.55, 0.95, Math.sin(x * 0.047 + 2) * Math.cos(z * 0.061 + 1) * 0.5 + 0.5 + Math.sin(x * 0.17 - z * 0.13) * 0.2), lush = smooth(0.6, 1, Math.cos(x * 0.083 - 1) * Math.sin(z * 0.071 + 3) * 0.5 + 0.5);
     t.copy(cA).lerp(cB, clamp(n, 0, 1) * 0.7).lerp(C('#8d8a5a'), dry * 0.35).lerp(C('#3f6234'), lush * 0.3);
-    t.lerp(cD, smooth(40, 75, r) * 0.6).lerp(cHill, smooth(80, 140, r) * 0.6);
+    t.lerp(cD, smooth(40, 75, r) * 0.5).lerp(cHill, smooth(80, 140, r) * 0.6);
     t.lerp(cBank, smooth(0.35, -0.25, y) * 0.85);
     t.lerp(cMud, smooth(-0.3, -0.7, y));
     col[i * 3] = t.r; col[i * 3 + 1] = t.g; col[i * 3 + 2] = t.b;
@@ -31,24 +31,48 @@ export let groundMesh;
   groundMesh = new THREE.Mesh(g, groundMat); groundMesh.receiveShadow = true; scene.add(groundMesh);
 })();
 
-/* far mountains, hazed into the sky */
+/* far mountains: green, forested hills all round, in 3D and lit by the sun, lower where Fuji stands */
+// Smooth rolling ranges (not the sharp alpine peaks the owner turned down): deep forest green in the
+// folds, fresher green on the ridges, a little meadow and rock, and only a light haze with distance.
 export const mountainU = [], mountainMeshes = [];
-(function buildMountains() {
-  [{ r: 300, h: 70, col: '#71869b', haze: 0.5, seed: 3 }, { r: 220, h: 42, col: '#4d6457', haze: 0.3, seed: 8 }].forEach(L => {
-    const seg = 220, pos = [], vt = [], idx = [], R = rng(L.seed), ph = [R() * 6, R() * 6, R() * 6, R() * 6];
-    for (let i = 0; i <= seg; i++) {
-      const a = i / seg * Math.PI * 2;
-      const hh = L.h * (0.5 + 0.28 * Math.sin(a * 3 + ph[0]) + 0.16 * Math.sin(a * 7 + ph[1]) + 0.07 * Math.sin(a * 17 + ph[2]) + 0.03 * Math.sin(a * 41 + ph[3]));
-      pos.push(Math.cos(a) * L.r, -8, Math.sin(a) * L.r, Math.cos(a) * L.r, hh, Math.sin(a) * L.r); vt.push(0, 1);
-      if (i < seg) { const b = i * 2; idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); }
+(function buildHills() {
+  const R = rng(31), perm = new Uint8Array(512); { const p = [...Array(256).keys()]; for (let i = 255; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } for (let i = 0; i < 512; i++) perm[i] = p[i & 255]; }
+  const sm = t => t * t * (3 - 2 * t), hs = (x, y) => perm[(perm[x & 255] + y) & 255] / 255;
+  const vn = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), u = sm(x - xi), v = sm(y - yi); return (hs(xi, yi) * (1 - u) + hs(xi + 1, yi) * u) * (1 - v) + (hs(xi, yi + 1) * (1 - u) + hs(xi + 1, yi + 1) * u) * v; };
+  const fbm = (x, y) => { let s = 0, a = 0.5, f = 1; for (let o = 0; o < 5; o++) { s += vn(x * f, y * f) * a; a *= 0.5; f *= 2.02; } return s; };
+  const FUJI_A = Math.atan2(-1000, -210), R0 = 190, R1 = 520, SEG = 360, RINGS = 48, pos = [], idx = [];
+  for (let i = 0; i <= RINGS; i++) {
+    const r = R0 + (R1 - R0) * Math.pow(i / RINGS, 0.85);
+    for (let k = 0; k <= SEG; k++) {
+      const a = k / SEG * Math.PI * 2, x = Math.cos(a) * r, z = Math.sin(a) * r;
+      const env = THREE.MathUtils.smoothstep(r, R0, R0 + 70) * (1 - THREE.MathUtils.smoothstep(r, R1 - 90, R1));
+      const da = Math.atan2(Math.sin(a - FUJI_A), Math.cos(a - FUJI_A)), low = 0.3 + 0.7 * THREE.MathUtils.smoothstep(Math.abs(da), 0.35, 0.8);
+      const h = Math.pow(fbm(x / 170, z / 170), 1.5) * 190 * env * low * (0.55 + 0.45 * THREE.MathUtils.smoothstep(r, R0, R1)) - 6;
+      pos.push(x, h, z);
+      if (i < RINGS && k < SEG) { const b = i * (SEG + 1) + k; idx.push(b, b + SEG + 1, b + 1, b + 1, b + SEG + 1, b + SEG + 2); }
     }
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aT', new THREE.Float32BufferAttribute(vt, 1)); g.setIndex(idx);
-    const u = { uCol: { value: C(L.col) }, uHor: { value: new THREE.Color() }, uHaze: { value: L.haze }, uNight: { value: 0 } };
-    mountainU.push(u);
-    const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: u, side: DS, fog: false,
-      vertexShader: 'attribute float aT;varying float vT;void main(){vT=aT;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-      fragmentShader: 'uniform vec3 uCol,uHor;uniform float uHaze,uNight;varying float vT;void main(){vec3 c=uCol*(0.8+0.3*vT)*mix(1.,0.2,uNight);c=mix(c,uHor,clamp(uHaze+(1.-vT)*0.35,0.,1.));gl_FragColor=vec4(c,1.);}' }));
-    scene.add(m); mountainMeshes.push(m);
-  });
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  const u = { uHor: { value: new THREE.Color() }, uNight: { value: 0 }, uDusk: { value: 0 }, uLight: { value: new THREE.Vector3(0.6, 0.45, 0.6) } };
+  mountainU.push(u);
+  const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: u, fog: false,
+    vertexShader: 'varying vec3 vW,vN;void main(){vW=(modelMatrix*vec4(position,1.)).xyz;vN=normal;gl_Position=projectionMatrix*viewMatrix*vec4(vW,1.);}',
+    fragmentShader: `uniform vec3 uHor,uLight;uniform float uNight,uDusk;varying vec3 vW,vN;
+      float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+      float nz(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);return mix(mix(h2(i),h2(i+vec2(1,0)),u.x),mix(h2(i+vec2(0,1)),h2(i+vec2(1,1)),u.x),u.y);}
+      void main(){
+        vec3 n=normalize(vN);float lam=max(dot(n,normalize(uLight)),0.);
+        // forest: a dappled canopy of tree crowns, darker in the folds, fresher on the ridges
+        float trees=nz(vW.xz*.35)*.55+nz(vW.xz*1.3)*.45,hgt=clamp(vW.y/110.,0.,1.);
+        vec3 deep=vec3(.12,.34,.12),fresh=vec3(.34,.62,.2),meadow=vec3(.52,.72,.3);
+        vec3 c=mix(deep,fresh,smoothstep(.25,.85,trees*.6+hgt*.5));
+        c=mix(c,meadow,smoothstep(.62,.8,nz(vW.xz*.02)+hgt*.25)*.45); // open meadows on some high slopes
+        c=mix(c,vec3(.4,.42,.34),smoothstep(.3,.12,n.y)*.35);           // a little rock on the very steepest faces
+        c*=.55+.85*lam;c=mix(c,c*vec3(1.25,.9,.85),uDusk*.6);
+        c*=mix(1.,.15,uNight);
+        float d=length(vW.xz-cameraPosition.xz);c=mix(c,uHor,clamp(smoothstep(260.,700.,d)*.3,0.,.3)); // a light haze only
+        gl_FragColor=vec4(c,1.);
+      }` }));
+  scene.add(m); mountainMeshes.push(m);
 })();
 

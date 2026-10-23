@@ -32,10 +32,11 @@ export { onResize };
 onResize(); addEventListener('resize', onResize);
 export const maxAniso = renderer.capabilities.getMaxAnisotropy();
 
-export const SKY = { zenD: C('#3f74b8'), horD: C('#c9dbe8'), zenN: C('#04080f'), horN: C('#16212f') };
+// day: deep zenith, clear mid blue, pale horizon; sunset: violet, rose, glowing orange; night
+export const SKY = { midD: C('#6aa6e2'), zenS: C('#3a4a8c'), midS: C('#d47a95'), horS: C('#f7a15a'), zenD: C('#2560bd'), horD: C('#dbe9f1'), zenN: C('#04080f'), horN: C('#16212f') };
 export const SEASON = {
   spring: { tint: C('#fff6f4'), particle: { color: C('#f6eccf'), fall: 0.04, sway: 0.6, size: 0.045, leaf: 0, op: 0.45 }, words: 'mostly spring' },
-  summer: { tint: C('#fff3dc'), particle: { color: C('#f3dc92'), fall: 0.02, sway: 0.5, size: 0.04, leaf: 0, op: 0.4 }, words: 'mostly summer' },
+  monsoon: { tint: C('#eef6ec'), particle: { color: C('#9cc47a'), fall: 0.3, sway: 0.8, size: 0.06, leaf: 1, op: 0.35 }, words: 'mostly the monsoon' },
   autumn: { tint: C('#ffe2c2'), particle: { color: C('#c4743d'), fall: 0.5, sway: 1.0, size: 0.11, leaf: 1, op: 0.85 }, words: 'mostly autumn' },
   winter: { tint: C('#e6eeff'), particle: { color: C('#f4f6fa'), fall: 0.65, sway: 0.4, size: 0.06, leaf: 0, op: 0.85 }, words: 'mostly winter' }
 };

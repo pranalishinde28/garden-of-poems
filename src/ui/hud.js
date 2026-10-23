@@ -14,6 +14,7 @@ import { closePanel, closeReader, reader } from './reading.js';
 import { editor, openEditor } from './writing.js';
 import { hideSwingUI } from './swinging.js';
 import { persistSettings, setSetting } from '../settings/customize.js';
+import { setSkyButton } from './icons.js';
 import { late, provide } from '../core/late.js';
 
 // names other modules reach through late (see core/late.js)
@@ -27,9 +28,13 @@ provide({
 });
 
 /* ================= HUD wiring ================= */
-const timePop = $('#time-pop'), menuPop = $('#menu-pop');
-function closePops() { timePop.classList.remove('open'); menuPop.classList.remove('open'); $('#h-time').setAttribute('aria-pressed', 'false'); $('#h-more').setAttribute('aria-pressed', 'false'); clearConfirm(); }
+const timePop = $('#time-pop'), menuPop = $('#menu-pop'), skyPop = $('#sky-pop');
+function closePops() { timePop.classList.remove('open'); menuPop.classList.remove('open'); skyPop.classList.remove('open'); $('#h-sky').setAttribute('aria-pressed', 'false'); $('#h-time').setAttribute('aria-pressed', 'false'); $('#h-more').setAttribute('aria-pressed', 'false'); clearConfirm(); }
 $('#h-time').onclick = () => { const o = !timePop.classList.contains('open'); closePops(); if (o) { timePop.classList.add('open'); $('#h-time').setAttribute('aria-pressed', 'true'); } };
+// season, light, horizon and weather, all in one small page
+function renderSky() { skyPop.querySelectorAll('.seg[data-k]').forEach(sg => sg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', SETTINGS[sg.dataset.k] === b.dataset.v ? 'true' : 'false'))); }
+skyPop.querySelectorAll('.seg[data-k] button').forEach(b => { b.onclick = () => { if (state.visiting) { toast('You are visiting. The sky belongs to this garden.'); return; } setSetting(b.parentElement.dataset.k, b.dataset.v); renderSky(); }; });
+$('#h-sky').onclick = () => { const o = !skyPop.classList.contains('open'); closePops(); if (o) { renderSky(); skyPop.classList.add('open'); $('#h-sky').setAttribute('aria-pressed', 'true'); } };
 $('#h-more').onclick = () => { const o = !menuPop.classList.contains('open'); closePops(); if (o) { menuPop.classList.add('open'); $('#h-more').setAttribute('aria-pressed', 'true'); } };
 document.querySelectorAll('#timebar button').forEach(b => b.onclick = () => { applyFilter(b.dataset.f, true); });
 $('#h-write').onclick = () => { if (state.mode === 'cinematic' || state.mode === 'writing') return; openEditor(null); };
@@ -41,32 +46,42 @@ $('#h-home').onclick = () => {
   const pos = SPAWN.pos.clone(); pos.y = groundH(pos.x, pos.z) + 1.6;
   camTween(pos, new V3(0, pos.y - 0.4, 25), clamp(1.4 + camera.position.distanceTo(pos) * 0.05, 1.6, 3.6), () => { state.mode = 'walk'; state.reading = null; state.reflection = false; syncPlayerFromCamera(); });
 };
-export function setNightUI() { const n = state.nightTarget === 1; $('#h-night').setAttribute('aria-pressed', n ? 'true' : 'false'); $('#h-night').dataset.tip = n ? 'Daylight' : 'Moonlight'; $('#i-moon').hidden = n; $('#i-sun').hidden = !n; }
-$('#h-night').onclick = () => { state.nightTarget = state.nightTarget ? 0 : 1; setNightUI(); };
-export function setSoundUI() { $('#h-sound').setAttribute('aria-pressed', Music.muted ? 'false' : 'true'); $('#i-snd').hidden = Music.muted; $('#i-mute').hidden = !Music.muted; $('#h-sound').dataset.tip = Music.muted ? 'Music is off' : 'Music is on'; }
+// the light button walks the day round: daylight, then sunset, then moonlight
+const NEXT_LIGHT = { day: 'sunset', sunset: 'night', night: 'day' }, LIGHT_TIP = { sunset: 'Sunset', night: 'Moonlight', day: 'Daylight' };
+export function setNightUI() {
+  const m = state.lightMode || 'day', next = NEXT_LIGHT[m];
+  setSkyButton('h-night', m, LIGHT_TIP[m], 'change to ' + LIGHT_TIP[next].toLowerCase(), 'L');
+}
+$('#h-night').onclick = () => { if (state.visiting) { toast('You are visiting. The light belongs to this garden.'); return; } setSetting('light', NEXT_LIGHT[state.lightMode || 'day']); }; // kept with the garden, like Customize
+export function setSoundUI() { $('#h-sound').setAttribute('aria-pressed', Music.muted ? 'false' : 'true'); $('#i-snd').hidden = Music.muted; $('#i-mute').hidden = !Music.muted; $('#h-sound').dataset.tip = Music.muted ? 'Music is off · turn it on (U)' : 'Music is on · turn it off (U)'; $('#h-sound').classList.toggle('muted', Music.muted); }
 $('#h-sound').onclick = () => { Music.setMuted(!Music.muted); setSoundUI(); if (!state.visiting) { SETTINGS.music = Music.muted ? 'off' : (Music.mode === 'own' ? 'own' : 'piano'); persistSettings(); } };
-export function setMusicMenu() { $('#m-piano').hidden = Music.mode !== 'own'; $('#m-own').textContent = Music.mode === 'own' ? 'Choose different music files' : 'Play my own music files'; }
+export function setMusicMenu() { $('#m-piano').hidden = Music.mode !== 'own'; $('#m-own .t').textContent = Music.mode === 'own' ? 'Choose other music files' : 'Play my own music'; }
 const fileInput = $('#file-music');
 $('#m-own').onclick = () => { closePops(); fileInput.value = ''; fileInput.click(); };
 fileInput.addEventListener('change', () => { if (fileInput.files && fileInput.files.length) Music.useFiles(fileInput.files); });
 $('#m-piano').onclick = () => { closePops(); Music.backToPiano(); toast('Back to the piano.'); };
 $('#h-help').onclick = () => { closePops(); late.openHelp(); };
-// the rows in ⋯ show their current state as words (their data-tip changes with season, light and view)
-document.querySelectorAll('#menu .mrow').forEach(b => { const set = () => { const t = (b.dataset.tip || '').replace(/ \(.\)$/, ''); b.querySelector('.lbl').textContent = b.id === 'h-theme' ? 'Turn to ' + t.toLowerCase() : t; }; set(); new MutationObserver(set).observe(b, { attributes: true, attributeFilter: ['data-tip'] }); });
-function setCineUI() { $('#m-cine').textContent = POST.on ? 'Cinematic look: on' : 'Cinematic look: off'; }
+// the rows in ⋯ show their current state as words (their data-tip changes with the view)
+document.querySelectorAll('#menu .mrow').forEach(b => { let l = b.querySelector('.lbl'); if (!l) { l = document.createElement('span'); l.className = 'lbl'; b.append(l); } if (b.dataset.hint && !b.querySelector('small')) { const h = document.createElement('small'); h.textContent = b.dataset.hint; b.append(h); } const set = () => { l.textContent = (b.dataset.tip || '').replace(/ \(.\)$/, ''); }; set(); new MutationObserver(set).observe(b, { attributes: true, attributeFilter: ['data-tip'] }); });
+function setCineUI() { $('#m-cine .t').textContent = POST.on ? 'Soft film look: on' : 'Soft film look: off'; }
 $('#m-cine').onclick = () => { POST.on = !POST.on; flag.set('cine', POST.on ? '1' : '0'); setCineUI(); };
 setCineUI();
-function setRainUI() { $('#m-rain').textContent = SETTINGS.weather === 'clear' ? 'Let it rain' : 'Let the sky clear'; }
-$('#m-rain').onclick = () => { setSetting('weather', SETTINGS.weather === 'clear' ? 'rain' : 'clear'); closePops(); };
+// weather: clear, then passing showers, then steady rain
+const NEXT_W = { clear: 'showers', showers: 'rain', rain: 'clear' }, W_WORDS = { clear: 'Clear skies', showers: 'Passing showers', rain: 'Rain' };
+// the horizon: Mount Fuji or the sea
+function setHorizonUI() { const v = SETTINGS.view; setSkyButton('h-view-horizon', v, v === 'sea' ? 'The sea' : 'Mount Fuji', v === 'sea' ? 'change to Mount Fuji' : 'change to the sea', 'O'); }
+$('#h-view-horizon').onclick = () => { if (state.visiting) { toast('You are visiting. The horizon belongs to this garden.'); return; } setSetting('view', SETTINGS.view === 'sea' ? 'fuji' : 'sea'); toast(SETTINGS.view === 'sea' ? 'The garden opens onto the sea. Walk down to the water.' : 'Mount Fuji stands over the garden again.', 3200); };
+function setRainUI() { setHorizonUI(); if (skyPop.classList.contains('open')) renderSky(); const w = SETTINGS.weather; setSkyButton('h-weather', w, W_WORDS[w], 'change to ' + W_WORDS[NEXT_W[w]].toLowerCase(), 'P'); }
+$('#h-weather').onclick = () => { if (state.visiting) { toast('You are visiting. The weather belongs to this garden.'); return; } setSetting('weather', NEXT_W[SETTINGS.weather]); toast({ clear: 'The sky clears.', showers: 'Showers will pass through now and then.', rain: 'Let it rain.' }[SETTINGS.weather], 2400); };
 setRainUI();
 $('#m-sample').onclick = () => { closePops(); if (state.visiting) { toast('Return to your own garden first.'); return; } const n = late.plantSamples(true); toast(n ? `${n} sample poems are taking root.` : 'The sample poems are already growing here.'); };
 let clearArmed = false;
-function clearConfirm() { clearArmed = false; $('#m-clear').textContent = 'Clear the garden'; }
+function clearConfirm() { clearArmed = false; $('#m-clear .t').textContent = 'Clear the garden'; $('#m-clear small').textContent = 'remove every poem here'; }
 $('#m-clear').onclick = e => {
   e.stopPropagation();
   if (state.visiting) { closePops(); toast('Return to your own garden first.'); return; }
   if (!poems.length) { closePops(); toast('The garden is already empty.'); return; }
-  if (!clearArmed) { clearArmed = true; $('#m-clear').textContent = `Delete all ${poems.length} poems? Click again`; return; }
+  if (!clearArmed) { clearArmed = true; $('#m-clear .t').textContent = `Remove all ${poems.length} poems?`; $('#m-clear small').textContent = 'press again to remove them; there is no undo'; return; }
   closePops();
   if (state.mode === 'focus') closeReader();
   setPoems([]); savePoems();
@@ -75,7 +90,9 @@ $('#m-clear').onclick = e => {
 };
 
 /* first or third person */
-export function setViewUI() { const t = !!state.thirdPerson, b = $('#h-view'); b.setAttribute('aria-pressed', t ? 'true' : 'false'); b.dataset.tip = t ? 'See through your eyes (V)' : 'See yourself (V)'; b.setAttribute('aria-label', t ? 'Switch to first person' : 'Switch to third person'); }
+export function setViewUI() { const t = !!state.thirdPerson, b = $('#h-view');
+  // the icon shows how you see now: an eye (through your eyes) or a little figure (behind you)
+  $('#i-view').innerHTML = t ? '<circle cx="12" cy="6.2" r="2.4"/><path d="M12 9v6.2M8.6 11.6l3.4-1.4 3.4 1.4M9.6 20.5l2.4-5.3 2.4 5.3"/><path d="M4 20.5h16" opacity=".5"/>' : '<path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.8"/>'; b.setAttribute('aria-pressed', t ? 'true' : 'false'); b.dataset.tip = t ? 'See through your eyes (V)' : 'See yourself (V)'; b.setAttribute('aria-label', t ? 'Switch to first person' : 'Switch to third person'); }
 export function toggleView() { setThirdPerson(!state.thirdPerson); setViewUI(); toast(state.thirdPerson ? 'You can see yourself now. Press V to look through your own eyes again.' : 'Looking through your own eyes.', 3200); }
 $('#h-view').onclick = () => toggleView();
 setViewUI();

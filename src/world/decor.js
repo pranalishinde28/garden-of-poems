@@ -5,6 +5,7 @@ import { scene } from './renderer.js';
 import { glowTex } from './textures.js';
 import { GEO, M, Merge, VC, part, rockGeo } from './geometry.js';
 import { BENCH, decor, stoneNear } from './paths.js';
+import { clearArea } from './grass.js';
 import { nightGlow, nightSprites } from '../plants/registry.js';
 import { state } from '../core/state.js';
 
@@ -12,26 +13,107 @@ export const hedges = []; // the ring at the garden's edge; the sea view opens i
 
 /* ================= decor: bench & pergola, gate, lanterns, rocks, bridge, hedges ================= */
 export const bench = new THREE.Group();
+// scrollwork for the cast-iron panels: white curls on a transparent canvas, cut out with alphaTest
+function scrollTex(kind) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = kind === 'back' ? 384 : 128; const g = c.getContext('2d'), W = c.width, H = c.height;
+  g.strokeStyle = '#ffffff'; g.lineCap = 'round'; g.lineJoin = 'round';
+  g.lineWidth = 10; g.strokeRect(6, 6, W - 12, H - 12);
+  const curl = (x, y, r, dir, turns = 1.6) => { g.beginPath(); for (let t = 0; t <= turns * Math.PI * 2; t += 0.15) { const rr = r * (1 - t / (turns * Math.PI * 2 + 0.6)); const px = x + Math.cos(t * dir) * rr, py = y + Math.sin(t * dir) * rr; t ? g.lineTo(px, py) : g.moveTo(px, py); } g.stroke(); };
+  if (kind === 'back') {
+    g.lineWidth = 7;
+    for (const cx of [W * 0.25, W * 0.75]) { // a medallion with four C-scrolls round it
+      g.beginPath(); g.ellipse(cx, H / 2, 46, 64, 0, 0, 7); g.stroke(); g.beginPath(); g.ellipse(cx, H / 2, 16, 22, 0, 0, 7); g.stroke();
+      for (const [dx, dy, d] of [[-1, -1, 1], [1, -1, -1], [-1, 1, -1], [1, 1, 1]]) curl(cx + dx * 72, H / 2 + dy * 92, 44, d);
+      for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; g.beginPath(); g.moveTo(cx + Math.cos(a) * 20, H / 2 + Math.sin(a) * 26); g.lineTo(cx + Math.cos(a) * 44, H / 2 + Math.sin(a) * 62); g.stroke(); }
+    }
+    g.lineWidth = 9; g.beginPath(); g.moveTo(W / 2, 10); g.lineTo(W / 2, H - 10); g.stroke();
+    for (let x = 30; x < W; x += 40) { g.lineWidth = 4; g.beginPath(); g.arc(x, 24, 12, Math.PI, 0); g.stroke(); g.beginPath(); g.arc(x, H - 24, 12, 0, Math.PI); g.stroke(); }
+  } else { // the apron under the seat: a running band of scrolls
+    g.lineWidth = 6; for (let x = 40; x < W; x += 80) { curl(x, H / 2, 34, 1, 1.2); curl(x + 40, H / 2, 34, -1, 1.2); }
+  }
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 8; return t;
+}
+const iron = new THREE.MeshLambertMaterial({ color: '#f4f2ec' });
+// a broad leaf on a transparent card, for shrubs
+const leafMat = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, alphaTest: 0.5, map: (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); g.fillStyle = '#ffffff'; for (let k = 0; k < 5; k++) { g.save(); g.translate(64, 64); g.rotate(k * 1.26); g.beginPath(); g.ellipse(0, -30, 18, 30, 0, 0, 7); g.fill(); g.restore(); } g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 2; for (let k = 0; k < 5; k++) { g.save(); g.translate(64, 64); g.rotate(k * 1.26); g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -56); g.stroke(); g.restore(); } return new THREE.CanvasTexture(c); })() });
+const ironLace = k => new THREE.MeshLambertMaterial({ color: '#f4f2ec', map: scrollTex(k), alphaTest: 0.5, side: THREE.DoubleSide });
 (function buildBench() {
+  // a white cast-iron bench, wide enough for two, in its own bed of mulch, brick and hydrangeas
   const y = groundH(BENCH.x, BENCH.z);
   bench.position.set(BENCH.x, y, BENCH.z);
   bench.rotation.y = Math.atan2(-BENCH.x, -BENCH.z);
-  const wood = M('#7b5c43'), dark = M('#4d3a2c'), post = M('#5e4a3a');
-  for (let i = 0; i < 3; i++) part(bench, GEO.box, wood, [0, 0.46, -0.12 + i * 0.14], [1.7, 0.05, 0.12]);
-  for (let i = 0; i < 2; i++) part(bench, GEO.box, wood, [0, 0.72 + i * 0.17, -0.24], [1.7, 0.1, 0.04], [-0.15, 0, 0]);
-  for (const x of [-0.72, 0.72]) { part(bench, GEO.box, dark, [x, 0.22, 0.12], [0.07, 0.46, 0.07]); part(bench, GEO.box, dark, [x, 0.5, -0.24], [0.07, 1.0, 0.07]); }
-  // lantern on a post
-  part(bench, GEO.cylB, dark, [1.25, 0, -0.05], [0.035, 1.35, 0.035]);
-  part(bench, GEO.box, dark, [1.25, 1.36, -0.05], [0.24, 0.03, 0.24]);
+  const W = 2.2, SY = 0.47, D = 0.62, dark = M('#3f3a34');
+  const tube = (pts, r, mat = iron) => { const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new V3(...p))), 40, r, 8), mat); bench.add(m); return m; };
+  // seat: a frame and a fine lattice of bars
+  part(bench, GEO.box, iron, [0, SY, 0], [W, 0.05, D]);
+  for (let k = -9; k <= 9; k++) part(bench, GEO.box, iron, [k * W / 20, SY + 0.03, 0], [0.02, 0.012, D - 0.04]);
+  for (let k = -3; k <= 3; k++) part(bench, GEO.box, iron, [0, SY + 0.035, k * D / 8], [W - 0.04, 0.012, 0.02]);
+  tube([[-W / 2, SY + 0.03, D / 2], [0, SY + 0.03, D / 2 + 0.01], [W / 2, SY + 0.03, D / 2]], 0.022); // a rounded front rail
+  // the apron of scrolls along the front
+  const apron = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.1, 0.16), ironLace('apron')); apron.position.set(0, SY - 0.1, D / 2 - 0.02); bench.add(apron);
+  // the back: two lace panels in a frame, a scalloped crest on top, leaning back a little
+  const back = new THREE.Group(); back.position.set(0, SY + 0.04, -D / 2 + 0.02); back.rotation.x = -0.14; bench.add(back);
+  const lace = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.12, 0.62), ironLace('back')); lace.position.y = 0.36; back.add(lace);
+  for (const x of [-W / 2 + 0.04, 0, W / 2 - 0.04]) part(back, GEO.box, iron, [x, 0.38, 0], [0.05, 0.78, 0.05]);
+  part(back, GEO.box, iron, [0, 0.05, 0], [W, 0.05, 0.04]);
+  const crest = []; for (let k = 0; k <= 24; k++) { const u = k / 24, x = (u - 0.5) * (W - 0.05); crest.push([x, 0.69 + Math.sin(u * Math.PI) * 0.14 + Math.abs(Math.sin(u * Math.PI * 4)) * 0.03, 0]); }
+  const cm = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(crest.map(p => new V3(...p))), 80, 0.025, 8), iron); back.add(cm);
+  for (const x of [-0.55, 0.55]) { const f = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.014, 6, 16), iron); f.position.set(x, 0.86, 0); back.add(f); }
+  // arms: a scroll from the back down over the arm-rest and curling under at the front, on each side
+  for (const sx of [-1, 1]) {
+    const x = sx * (W / 2 + 0.02);
+    tube([[x, SY + 0.55, -D / 2 + 0.02], [x, SY + 0.3, -D / 2 + 0.12], [x, SY + 0.26, 0.05], [x, SY + 0.27, D / 2 - 0.02], [x, SY + 0.2, D / 2 + 0.06], [x, SY + 0.12, D / 2 - 0.02], [x, SY + 0.16, D / 2 - 0.08]], 0.028);
+    // cabriole legs, front and back, curving out to their feet
+    tube([[x, SY, D / 2 - 0.04], [x + sx * 0.02, SY * 0.55, D / 2 + 0.02], [x + sx * 0.05, 0.05, D / 2 + 0.07], [x + sx * 0.07, 0.01, D / 2 + 0.03]], 0.032);
+    tube([[x, SY, -D / 2 + 0.04], [x + sx * 0.02, SY * 0.55, -D / 2 - 0.02], [x + sx * 0.05, 0.05, -D / 2 - 0.08], [x + sx * 0.07, 0.01, -D / 2 - 0.04]], 0.032);
+    const side = new THREE.Mesh(new THREE.PlaneGeometry(D - 0.12, 0.14), ironLace('apron')); side.position.set(x, SY - 0.1, 0); side.rotation.y = Math.PI / 2; bench.add(side);
+  }
+  // the lantern on its post, at the right
+  part(bench, GEO.cylB, dark, [1.55, 0, -0.05], [0.035, 1.35, 0.035]);
+  part(bench, GEO.box, dark, [1.55, 1.36, -0.05], [0.24, 0.03, 0.24]);
   const lm = new THREE.MeshLambertMaterial({ color: '#f8e2b0', emissive: '#f4b860', emissiveIntensity: 0.5 });
   nightGlow.push({ m: lm, day: 0.35, night: 1.2 });
-  part(bench, GEO.box, lm, [1.25, 1.5, -0.05], [0.17, 0.24, 0.17]);
-  part(bench, GEO.pyr, dark, [1.25, 1.62, -0.05], [0.17, 0.14, 0.17], [0, Math.PI / 4, 0]);
+  part(bench, GEO.box, lm, [1.55, 1.5, -0.05], [0.17, 0.24, 0.17]);
+  part(bench, GEO.pyr, dark, [1.55, 1.62, -0.05], [0.17, 0.14, 0.17], [0, Math.PI / 4, 0]);
   const lg = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: '#ffd59a', transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending }));
-  lg.position.set(1.25, 1.5, -0.05); lg.scale.setScalar(1.6); bench.add(lg); nightSprites.push({ s: lg, day: 0.25, night: 0.85 });
-  bench.userData.glowBase = new V3(1.25, 1.5, -0.05);
+  lg.position.set(1.55, 1.5, -0.05); lg.scale.setScalar(1.6); bench.add(lg); nightSprites.push({ s: lg, day: 0.25, night: 0.85 });
+  bench.userData.glowBase = new V3(1.55, 1.5, -0.05);
+  // "Sit here": a white plaque on two slender posts behind the bench
+  // a white arch over the bench (two square posts and a curved top) that carries the plaque
+  for (const sx of [-1.45, 1.45]) { part(bench, GEO.box, iron, [sx, 1.25, -0.55], [0.12, 2.5, 0.12]); part(bench, GEO.box, iron, [sx, 0.06, -0.55], [0.2, 0.12, 0.2]); }
+  { const pts = []; for (let k = 0; k <= 20; k++) { const u = k / 20; pts.push(new V3((u - 0.5) * 2.9, 2.5 + Math.sin(u * Math.PI) * 0.35, -0.55)); }
+    for (const dy of [0, -0.12]) bench.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => p.clone().setY(p.y + dy))), 60, 0.045, 8), iron)); }
+  const pc = document.createElement('canvas'); pc.width = 1024; pc.height = 300; const pg = pc.getContext('2d');
+  const paintPlaque = () => {
+    pg.fillStyle = '#f7f4ec'; pg.fillRect(0, 0, 1024, 300); pg.strokeStyle = '#b89a72'; pg.lineWidth = 8; pg.strokeRect(18, 18, 988, 264); pg.lineWidth = 3; pg.strokeRect(34, 34, 956, 232);
+    pg.fillStyle = '#5a4634'; pg.textAlign = 'center'; pg.textBaseline = 'middle'; pg.font = 'italic 600 150px "Cormorant Garamond", Georgia, serif'; pg.fillText('Sit here', 512, 146);
+    pg.fillStyle = '#e48aa8'; for (const x of [90, 934]) for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2; pg.beginPath(); pg.ellipse(x + Math.cos(a) * 16, 150 + Math.sin(a) * 16, 14, 9, a, 0, 7); pg.fill(); }
+    ptex.needsUpdate = true;
+  };
+  const ptex = new THREE.CanvasTexture(pc); ptex.anisotropy = 8; paintPlaque(); if (document.fonts && document.fonts.ready) document.fonts.ready.then(paintPlaque);
+  part(bench, GEO.box, iron, [0, 2.12, -0.55], [1.7, 0.52, 0.05]);
+  for (const sx of [-0.6, 0.6]) part(bench, GEO.cylB, iron, [sx, 2.37, -0.55], [0.012, 0.32, 0.012]);
+  for (const dz of [0.03, -0.03]) { const f = new THREE.Mesh(new THREE.PlaneGeometry(1.64, 0.48), new THREE.MeshLambertMaterial({ map: ptex })); f.position.set(0, 2.12, -0.55 + dz); if (dz < 0) f.rotation.y = Math.PI; bench.add(f); }
   bench.traverse(o => { o.userData.bench = true; if (o.isMesh && !o.isInstancedMesh) o.castShadow = true; });
   scene.add(bench);
+  // its bed: mulch inside a brick edge, with blue hydrangeas round the back
+  const bed = new THREE.Group(); bed.position.copy(bench.position); bed.rotation.copy(bench.rotation); scene.add(bed);
+  const mulch = new THREE.Mesh(new THREE.CircleGeometry(1, 48).rotateX(-Math.PI / 2), M('#6b4a32')); mulch.scale.set(3.0, 1, 2.1); mulch.position.set(0, 0.03, -0.35); mulch.receiveShadow = true; bed.add(mulch);
+  const brick = new Merge(), R = rng(612);
+  // (the edge is open at the front, where you step in)
+  for (let k = 0; k < 44; k++) { const a = k / 44 * Math.PI * 2, x = Math.cos(a) * 3.0, z = -0.35 + Math.sin(a) * 2.1; if (Math.sin(a) > 0.82) continue; brick.add(GEO.box, new V3(x, 0.05, z), new V3(0.26, 0.1, 0.12), C(['#a4553c', '#b5634a', '#94492f'][k % 3]), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -a, 0))); }
+  const shrubs = new Merge(), leafSpots = [];
+  for (const [ax, az] of [[-2.3, -0.4], [-1.4, -1.1], [1.4, -1.1], [2.3, -0.4], [-2.7, 0.5], [2.7, 0.5]]) {
+    for (let k = 0; k < 70; k++) { const u = new V3(R() - .5, R() * 0.9, R() - .5).normalize(), r = 0.25 + R() * 0.4; leafSpots.push(new V3(ax + u.x * r * 1.3, 0.2 + u.y * r * 1.1, az + u.z * r * 1.1)); }
+    for (let k = 0; k < 6; k++) { const c = C(['#6f8fe0', '#8aa2ea', '#9a86d8', '#5b7fd6'][k % 4]), p = new V3(ax + (R() - .5) * 0.8, 0.7 + R() * 0.25, az + (R() - .5) * 0.7); for (let f = 0; f < 9; f++) shrubs.add(GEO.ico, p.clone().add(new V3((R() - .5) * 0.2, (R() - .5) * 0.16, (R() - .5) * 0.2)), new V3(0.07, 0.06, 0.07), c); }
+  }
+  const bm = new THREE.Mesh(brick.build(), VC); bm.receiveShadow = true; bed.add(bm);
+  const sm = new THREE.Mesh(shrubs.build(), VC); sm.castShadow = true; bed.add(sm);
+  // the hydrangea bushes are leaves, not balls: broad leaf cards in deep greens
+  const leafGeo = GEO.card.clone(), lv = new THREE.InstancedMesh(leafGeo, leafMat, leafSpots.length), d = new THREE.Object3D(), greens = ['#2f5a35', '#3a6a3d', '#4a7a3c', '#355f33'].map(C);
+  leafSpots.forEach((p, i) => { d.position.copy(p); d.rotation.set(R() * 6.28, R() * 6.28, R() * 6.28); d.scale.setScalar(0.24 + R() * 0.12); d.updateMatrix(); lv.setMatrixAt(i, d.matrix); lv.setColorAt(i, greens[i % 4]); });
+  lv.castShadow = true; bed.add(lv);
+  clearArea(BENCH.x, BENCH.z, 2.6);
 })();
 export const benchSeat = () => {
   // third person: over your figure's shoulder from behind the bench, toward the pond
@@ -99,7 +181,7 @@ function boulder(x, z, s, seed) {
 export const sign = new THREE.Group();
 (function buildSign() {
   // beside the path just outside the gate, turned toward where you arrive (0, 49)
-  const x = 6.1, z = 38.8; sign.position.set(x, groundH(x, z), z); sign.rotation.y = Math.atan2(0 - x, 49 - z);
+  const x = 3.1, z = 34.6; sign.position.set(x, groundH(x, z), z); sign.rotation.y = Math.atan2(0 - x, 49 - z);
   const wood = M('#6b5440'); part(sign, GEO.cylB, wood, [-1.1, 0, 0], [0.07, 1.75, 0.07]); part(sign, GEO.cylB, wood, [1.1, 0, 0], [0.07, 1.75, 0.07]);
   const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 430; sign.userData.canvas = cv;
   const tex = new THREE.CanvasTexture(cv); sign.userData.tex = tex;

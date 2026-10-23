@@ -12,6 +12,7 @@ provide({
   get hideSwingUI() { return hideSwingUI; },
   get sitSwing() { return sitSwing; },
   get leaveSwing() { return leaveSwing; },
+  get toggleKeepSwinging() { return toggleKeepSwinging; },
 });
 
 /* ================= swings ================= */
@@ -23,7 +24,7 @@ function swingEye(sw) {
   return { pos: sw.pivot.localToWorld(eye.clone()), look: sw.pivot.localToWorld(eye.clone().add(dir)) };
 }
 function sitSwing(sw) {
-  late.closePops(); setCue(null); state.mode = 'cinematic'; state.swing = sw; state.swingAuto = false; sw.yaw = 0; sw.pitch = -0.04; sw.omega = 0; sw.theta = 0; sw.pivot.rotation.x = 0;
+  late.closePops(); setCue(null); state.mode = 'cinematic'; state.swing = sw; state.swingAuto = false; state.swingKeep = 0; { const b = $('#sw-keep'); b.setAttribute('aria-pressed', 'false'); b.innerHTML = '<span class="long">Keep swinging</span><span class="short">Keep</span>'; } sw.yaw = 0; sw.pitch = -0.04; sw.omega = 0; sw.theta = 0; sw.pivot.rotation.x = 0;
   const e = swingEye(sw);
   document.body.classList.add('on-swing');
   camTween(e.pos, e.look, 1.6, () => { state.mode = 'swing'; const el = $('#swingui'); el.hidden = false; requestAnimationFrame(() => el.classList.add('show')); });
@@ -36,22 +37,33 @@ export function leaveSwing() {
   state.mode = 'cinematic';
   camTween(front, look, 1.1, () => { state.mode = 'walk'; state.swing = null; syncPlayerFromCamera(); });
 }
+const swingAmp = sw => Math.acos(clamp(Math.cos(sw.theta) - sw.omega * sw.omega * sw.Lw / (2 * 9.8), -1, 1));
+export function toggleKeepSwinging() {
+  const sw = state.swing; if (!sw) return;
+  state.swingAuto = !state.swingAuto; const a = swingAmp(sw); state.swingKeep = state.swingAuto ? (a < 0.2 ? 0.45 : clamp(a, 0.25, 1.0)) : 0; // from still, a gentle 26°
+  const b = $('#sw-keep'); b.setAttribute('aria-pressed', state.swingAuto ? 'true' : 'false'); b.innerHTML = state.swingAuto ? '<span class="long">Keeping this pace</span><span class="short">Keeping</span>' : '<span class="long">Keep swinging</span><span class="short">Keep</span>';
+  late.renderSwingReader && late.renderSwingReader();
+}
 export function updateSwing(dt) {
   const sw = state.swing; if (!sw) return;
   const pump = keys.has('KeyW') || keys.has('Space') || keys.has('ArrowUp') || swingHold;
   let acc = -(9.8 / sw.Lw) * Math.sin(sw.theta) - 0.14 * sw.omega;
   if (pump) acc += Math.abs(sw.omega) < 0.08 ? 1.4 : 1.7 * Math.sign(sw.omega);
-  // swinging by itself: nudge toward a gentle sway of about 0.45 rad (26°), easing off above it
+  // keep swinging: hold the height you chose (the pace you were at when you pressed it), or a gentle
+  // 26° if you were still. Pumping while it is on raises the pace it keeps.
   else if (state.swingAuto) {
-    const amp = Math.acos(clamp(Math.cos(sw.theta) - sw.omega * sw.omega * sw.Lw / (2 * 9.8), -1, 1));
-    if (amp < 0.42) acc += Math.abs(sw.omega) < 0.05 ? 0.6 : 0.6 * Math.sign(sw.omega);
-    else if (amp > 0.5) acc -= 0.45 * sw.omega;
+    const amp = Math.acos(clamp(Math.cos(sw.theta) - sw.omega * sw.omega * sw.Lw / (2 * 9.8), -1, 1)), want = state.swingKeep || 0.45;
+    if (amp < want - 0.02) acc += Math.abs(sw.omega) < 0.05 ? 0.7 : 0.7 * Math.sign(sw.omega);
+    else if (amp > want + 0.03) acc -= 0.45 * sw.omega;
+    else acc += 0.14 * sw.omega; // cancel the friction: no slowing at the chosen height
   }
+  if (pump && state.swingAuto) state.swingKeep = Math.max(state.swingKeep || 0, swingAmp(sw));
   sw.omega += acc * dt; sw.theta = clamp(sw.theta + sw.omega * dt, -1.15, 1.15); if (Math.abs(sw.theta) >= 1.15) sw.omega *= -0.3;
   sw.pivot.rotation.x = sw.theta;
   const e = swingEye(sw); camera.position.copy(e.pos); curLook.copy(e.look); camera.lookAt(curLook);
 }
 $('#sw-off').onclick = () => leaveSwing();
+$('#sw-keep').onclick = e => { toggleKeepSwinging(); e.currentTarget.blur(); };
 $('#sw-read').onclick = e => { toggleSwingReader(); e.currentTarget.blur(); };
 const swp = $('#sw-pump');
 swp.addEventListener('pointerdown', e => { swingHold = true; e.preventDefault(); });

@@ -3,11 +3,13 @@ import { C, V3, rng } from '../core/util.js';
 import { RIVER, WATER_Y } from '../world/terrain.js';
 import { reflRT, scene } from '../world/renderer.js';
 import { DS, GEO, M, part } from '../world/geometry.js';
+import { makeKoi } from './koiModel.js';
 
 /* ================= water: reflective pond and river ================= */
 export const reflCam = new THREE.PerspectiveCamera();
 export const texMat = new THREE.Matrix4();
 export const waterU = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
+  uRiverMax: { value: 1e4 },
   uTime: { value: 0 }, uNight: { value: 0 }, uRain: { value: 0 }, uDeep: { value: C('#1d3634') }, uShallow: { value: C('#4f5d40') },
   uLightDir: { value: new V3() }, uLightCol: { value: new THREE.Color() }, uRip: { value: new THREE.Vector4(0, 0, -100, 0) },
   uTexMat: { value: texMat }, tRefl: { value: null }
@@ -21,14 +23,14 @@ function waterMat(river) {
       void main(){vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;vR=uTexMat*w;vFlow=aFlow;vEdge=aEdge;vec4 mvPosition=viewMatrix*w;gl_Position=projectionMatrix*mvPosition;
       #include <fog_vertex>
       }`,
-    fragmentShader: `uniform sampler2D tRefl;uniform float uTime,uNight,uRain;uniform vec3 uDeep,uShallow,uLightDir,uLightCol;uniform vec4 uRip;
+    fragmentShader: `uniform sampler2D tRefl;uniform float uRiverMax,uTime,uNight,uRain;uniform vec3 uDeep,uShallow,uLightDir,uLightCol;uniform vec4 uRip;
       varying vec3 vW;varying vec4 vR;varying vec2 vFlow;varying float vEdge;
       #include <fog_pars_fragment>
       float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
       float noise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);return mix(mix(h2(i),h2(i+vec2(1,0)),u.x),mix(h2(i+vec2(0,1)),h2(i+vec2(1,1)),u.x),u.y);}
       float wh(vec2 p){float t=uTime;vec2 q=p-vFlow*t;
         float h=sin(dot(q,vec2(.8,.6))*1.9+t*1.1)*.5+sin(dot(q,vec2(-.5,.85))*2.7+t*1.4)*.35+sin(dot(q,vec2(.2,-.98))*4.3+t*1.9)*.2+sin(dot(q,vec2(-.9,-.4))*6.1+t*2.4)*.12;
-        h+=(noise(q*2.5+t*.2)-.5)*.8+(noise(q*6.+vec2(t*.4,-t*.3))-.5)*.35;
+        h+=(noise(q*2.5+t*.2)-.5)*.7+(noise(q*6.+vec2(t*.4,-t*.3))-.5)*.14; // the finest ripples, kept faint: they sparkled
         float age=uTime-uRip.z;float dr=length(p-uRip.xy);h+=sin((dr-age*1.7)*11.)*exp(-pow(dr-age*1.7,2.)*3.)*exp(-age*.7)*step(0.,age)*2.5;
         if(uRain>0.01){for(int k=0;k<2;k++){vec2 g=p*1.7+float(k)*vec2(.43,.71);vec2 i=floor(g),f=fract(g);
           float cy=t*(0.75+h2(i+3.7)*0.5)+h2(i+9.1),ph=fract(cy),id=floor(cy);vec2 c=vec2(h2(i+id*.37),h2(i+5.3+id*.61))*.6+.2;float d=length(f-c)-ph*.42;
@@ -37,12 +39,14 @@ function waterMat(river) {
       void main(){
         float r=length(vW.xz);
         #ifdef RIVER
-        if(r<8.)discard;
+        if(r<8.||r>uRiverMax)discard; // by the sea the stream ends at the garden's edge, before the sand
         #else
         if(r>8.)discard;
         #endif
         vec2 p=vW.xz;float e=.05;float h0=wh(p);
         vec3 n=normalize(vec3(-(wh(p+vec2(e,0.))-h0)/e,1.,-(wh(p+vec2(0.,e))-h0)/e));
+        // far water reads calm: ripples fade with distance (they aliased into hard white streaks)
+        n=normalize(mix(vec3(0.,1.,0.),n,clamp(1.25-length(cameraPosition-vW)/30.,.35,1.)));
         vec3 v=normalize(cameraPosition-vW);
         float f=clamp((0.03+0.97*pow(1.-max(dot(n,v),0.),5.))*1.1,0.,1.);
         vec2 uv=vR.xy/vR.w+n.xz*0.05;
@@ -60,11 +64,14 @@ function waterMat(river) {
         float foam=smoothstep(0.38,0.6,st)*0.3+smoothstep(0.8,1.05,vEdge)*0.35*noise(p*3.5+uTime*0.6);
         c=mix(c,vec3(.9,.94,.96)*mix(1.,0.25,uNight),foam*(1.-f*0.4));
         #endif
-        vec3 hv=normalize(normalize(uLightDir)+v);c+=uLightCol*pow(max(dot(n,hv),0.),260.)*1.8;
+        vec3 hv=normalize(normalize(uLightDir)+v);c+=uLightCol*pow(max(dot(n,hv),0.),150.)*0.95;
         #ifdef RIVER
         float a=max(mix(0.8,0.97,f),edge*0.4);
         #else
         float a=max(mix(0.6,0.97,f),edge*0.5);
+        #endif
+        #ifdef RIVER
+        a*=smoothstep(uRiverMax,uRiverMax-5.,r); // by the sea the stream thins away into the sand
         #endif
         gl_FragColor=vec4(c,a);
         #include <fog_fragment>
@@ -88,7 +95,7 @@ const riverGeo = (() => {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aFlow', new THREE.Float32BufferAttribute(fl, 2)); g.setAttribute('aEdge', new THREE.Float32BufferAttribute(ed, 1)); g.setIndex(idx); g.computeBoundingSphere();
   return g;
 })();
-export const river = new THREE.Mesh(riverGeo, waterMat(true)); river.position.y = WATER_Y; river.frustumCulled = false; scene.add(river);
+export const river = new THREE.Mesh(riverGeo, waterMat(true)); river.material.side = THREE.DoubleSide; river.position.y = WATER_Y; river.frustumCulled = false; scene.add(river);
 
 /* lily pads and water lilies */
 (function lilies() {
@@ -111,16 +118,11 @@ export const koi = [];
 // where the koi gather for a while: wherever you touch the water (ui/input.js)
 export const koiLure = { x: 0, z: 0, until: -1 };
 (function buildKoi() {
-  const R = rng(61), looks = [['#f2ece4', '#e1572b'], ['#e8742c', '#f6d9b8'], ['#f5f0e8', '#1f1f1f'], ['#f0a33a', '#f0a33a'], ['#f2ece4', '#d43f2a'], ['#d8d2c8', '#e8742c'], ['#e8742c', '#2a2a2a']];
-  looks.forEach((lk, i) => {
-    const g = new THREE.Group(), body = M(lk[0]), spot = M(lk[1]);
-    part(g, GEO.sph, body, [0, 0, 0], [0.065, 0.045, 0.24]);
-    part(g, GEO.sph, spot, [0, 0.012, 0.08 - R() * 0.12], [0.05, 0.035, 0.08]);
-    const tail = new THREE.Group(); tail.position.z = -0.22; g.add(tail);
-    part(tail, GEO.petal, M(lk[0], { side: DS, transparent: true, opacity: 0.85 }), [0, 0, 0], [0.16, 0.12, 0.12], [0, Math.PI / 2, Math.PI / 2]);
-    for (const sx of [-1, 1]) part(g, GEO.petal, M(lk[0], { side: DS }), [sx * 0.05, -0.01, 0.06], [0.08, 0.05, 0.06], [0, sx > 0 ? 0.5 : Math.PI - 0.5, 0]);
-    scene.add(g);
-    koi.push({ g, tail, r: 1.6 + R() * 3.6, cx: (R() - .5) * 1.5, cz: (R() - .5) * 1.5, sp: (0.12 + R() * 0.1) * (R() < .5 ? 1 : -1), ph: R() * 6.28, d: 0.18 + R() * 0.14, last: new V3() });
+  // lifelike koi (water/koiModel.js), each a different variety
+  const R = rng(61), kinds = ['kohaku', 'ogon', 'showa', 'chagoi', 'sanke', 'tancho', 'asagi', 'yamabuki', 'kohaku'];
+  kinds.forEach((kind, i) => {
+    const k = makeKoi(kind, 0.45 + R() * 0.2, 70 + i); scene.add(k.g);
+    koi.push({ g: k.g, swim: k.swim, r: 1.6 + R() * 3.6, cx: (R() - .5) * 1.5, cz: (R() - .5) * 1.5, sp: (0.12 + R() * 0.1) * (R() < .5 ? 1 : -1), ph: R() * 6.28, d: 0.18 + R() * 0.14, last: new V3(), turn: 0 });
   });
 })();
 
