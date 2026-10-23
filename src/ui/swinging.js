@@ -13,6 +13,7 @@ provide({
   get sitSwing() { return sitSwing; },
   get leaveSwing() { return leaveSwing; },
   get toggleKeepSwinging() { return toggleKeepSwinging; },
+  get setSwingViewUI() { return setSwingViewUI; },
 });
 
 /* ================= swings ================= */
@@ -27,7 +28,7 @@ function sitSwing(sw) {
   late.closePops(); setCue(null); state.mode = 'cinematic'; state.swing = sw; state.swingAuto = false; state.swingKeep = 0; { const b = $('#sw-keep'); b.setAttribute('aria-pressed', 'false'); b.innerHTML = '<span class="long">Keep swinging</span><span class="short">Keep</span>'; } sw.yaw = 0; sw.pitch = -0.04; sw.omega = 0; sw.theta = 0; sw.pivot.rotation.x = 0;
   const e = swingEye(sw);
   document.body.classList.add('on-swing');
-  camTween(e.pos, e.look, 1.6, () => { state.mode = 'swing'; const el = $('#swingui'); el.hidden = false; requestAnimationFrame(() => el.classList.add('show')); });
+  camTween(e.pos, e.look, 1.6, () => { state.mode = 'swing'; setSwingViewUI(); const el = $('#swingui'); el.hidden = false; requestAnimationFrame(() => el.classList.add('show')); });
 }
 export function leaveSwing() {
   const sw = state.swing; if (!sw) return; closeSwingReader(); hideSwingUI(); document.body.classList.remove('on-swing');
@@ -63,6 +64,9 @@ export function updateSwing(dt) {
   const e = swingEye(sw); camera.position.copy(e.pos); curLook.copy(e.look); camera.lookAt(curLook);
 }
 $('#sw-off').onclick = () => leaveSwing();
+// on the swing: see the garden through your own eyes, or watch yourself swing (V does the same)
+export function setSwingViewUI() { const b = $('#sw-view'), third = !!state.thirdPerson; b.innerHTML = `<span class="long">${third ? 'My eyes' : 'See myself'}</span><span class="short">View</span>`; b.setAttribute('aria-pressed', third ? 'false' : 'true'); b.setAttribute('aria-label', third ? 'See from my own eyes (V)' : 'Watch myself swing (V)'); }
+$('#sw-view').onclick = e => { late.toggleView(); setSwingViewUI(); e.currentTarget.blur(); };
 $('#sw-keep').onclick = e => { toggleKeepSwinging(); e.currentTarget.blur(); };
 $('#sw-read').onclick = e => { toggleSwingReader(); e.currentTarget.blur(); };
 const swp = $('#sw-pump');

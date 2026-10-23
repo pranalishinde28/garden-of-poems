@@ -97,6 +97,7 @@ const VIEWS = {
   'fairy-close': { pos: [-2.6, 1.6, -6.5], look: [-6, 2.8, -13], season: 'spring', light: 'night', samples: true },
   'sea-stream': { pos: [-4, 4, -58], look: [-14, -0.5, -82], view: 'sea', season: 'spring' },
   'sea-night': { pos: [8, 2.6, 16], look: [-25, 2, -200], view: 'sea', season: 'spring', light: 'night' },
+  'qr-public': { pos: [4.6, 2.05, 41.4], look: [6.3, 2.05, 38.6], publicAs: 'prana', links: [{ label: 'Instagram', url: 'https://instagram.com/prana_._' }, { label: 'Substack', url: 'https://prana.substack.com' }] },
   'gate-back': { pos: [0, 1.7, 33], look: [0, 1.5, 50] },
   'entrance-high': { pos: [7, 7, 48], look: [0, 1.5, 30] },
   'on-swing': { sit: true }, // enter with the samples, sit on the first swing, pump, and open the reader if there is one
@@ -235,6 +236,15 @@ async function main() {
       await page.click('#minimap-show'); await sleep(500); const back = await page.$eval('#minimap-btn', b => !b.hidden);
       console.log('  hidden: ' + hidden + ', back: ' + back); if (!hidden || !back) errors.push('the corner map did not hide and return');
     }
+    else if (FLOW === 'swingview') { // on a swing: switch between your own eyes and watching yourself
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); window.__garden.setThirdPerson(false); window.__garden.sit(0); });
+      await page.waitForFunction(() => window.__garden.state.mode === 'swing', { timeout: 60000, polling: 200 }); await sleep(1200);
+      await page.screenshot({ path: join(root, 'dev/shots/swing-eyes.png') }); const t0 = await page.$eval('#sw-view', b => b.textContent);
+      await page.click('#sw-view'); await sleep(1800); await page.screenshot({ path: join(root, 'dev/shots/swing-self.png') });
+      const third = await page.evaluate(() => window.__garden.state.thirdPerson), t1 = await page.$eval('#sw-view', b => b.textContent);
+      console.log(`  button "${t0}" → "${t1}", watching yourself: ${third}`); if (!third) errors.push('the swing view did not change');
+    }
     else if (FLOW === 'parasol') { // your figure with a parasol, from behind, at the gate
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(1200); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden; g.setAvatar({ extra: 'parasol', outfit: 'kimono', cloth: '#2c3d6b', accent: '#f2c46a', hairStyle: 'bob' }); g.setThirdPerson(true); });
@@ -291,6 +301,7 @@ async function shoot(page) {
       if (g.SETTINGS.view !== (v.view || 'fuji')) g.setSetting('view', v.view || 'fuji');
       { const L = v.light || 'day'; if (g.SETTINGS.light !== L) g.setSetting('light', L); g.state.dusk = L === 'sunset' ? 1 : 0; g.state.night = L === 'night' ? 1 : 0; }
       g.camera.position.set(...v.pos); g.curLook.set(...v.look); g.camera.lookAt(g.curLook);
+      if (v.publicAs) { g.cloud.garden = { is_public: true, name: 'The Garden of Poems' }; g.cloud.profile = { username: v.publicAs }; }
       if (v.links) { g.setSetting('links', v.links); }
       if (v.fan && g.animals) g.animals.forEach(a => { if (a.fanT !== undefined) { a.fanT = 20; } });
     }, v);

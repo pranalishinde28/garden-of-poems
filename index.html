@@ -90,7 +90,7 @@
 
 <button id="act-btn" hidden aria-label="Fly (hold)">Fly</button>
 <div id="fview" hidden role="region" aria-label="Looking into the fountain"><span>The koi come up to see you.</span><button id="fv-coin">Toss a coin</button><button id="fv-back">Step back</button></div>
-<div id="swingui" hidden><span>Hold <kbd>W</kbd> or <kbd>Space</kbd> to swing higher, <kbd>K</kbd> to keep this pace, <kbd>R</kbd> to read.</span><button id="sw-read" aria-pressed="false" aria-controls="swreader">Read</button><button id="sw-pump">Swing</button><button id="sw-keep" aria-pressed="false" aria-label="Keep swinging at this pace (K)"><span class="long">Keep swinging</span><span class="short">Keep</span></button><button id="sw-off">Stand up</button></div>
+<div id="swingui" hidden><span class="sw-hint"><kbd>W</kbd> higher · <kbd>K</kbd> keep pace · <kbd>R</kbd> read · <kbd>V</kbd> view</span><button id="sw-read" aria-pressed="false" aria-controls="swreader">Read</button><button id="sw-pump">Swing</button><button id="sw-keep" aria-pressed="false" aria-label="Keep swinging at this pace (K)"><span class="long">Keep swinging</span><span class="short">Keep</span></button><button id="sw-view" aria-pressed="false">My eyes</button><button id="sw-off">Stand up</button></div>
 <section id="swreader" class="panel" aria-label="Poems to read on the swing" hidden>
   <div class="sr-head"><span>Reading on the swing</span><button id="sr-close" aria-label="Put the poems away">×</button></div>
   <div class="scroll" aria-live="polite"><h2 id="sr-title"></h2><div id="sr-body"></div><div class="meta"><div class="d" id="sr-date"></div><div id="sr-where"></div></div></div>

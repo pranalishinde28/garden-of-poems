@@ -667,3 +667,12 @@ body.on-swing #minimap-hide{bottom:calc(env(safe-area-inset-bottom,0px) + 208px)
 #c-addlink{margin-top:.4rem}
 @media (max-width:560px){.c-pre,#c-links .c-link{grid-template-columns:1fr}}
 .c-field input,#custom .c-field input{border:0!important;box-shadow:none}
+
+/* the swing pill: one tidy row; the hint is one short line, and steps aside on narrower screens */
+#swingui{flex-wrap:nowrap;white-space:nowrap;max-width:calc(100vw - 24px);padding:.45rem .5rem .45rem 1.1rem;gap:.45rem}
+#swingui .sw-hint{font-size:1rem;color:var(--ink-soft);margin-right:.3rem}
+#swingui .sw-hint kbd{font-size:.85rem;padding:0 .3rem}
+#swingui button{padding:.4rem 1rem .46rem}
+#swingui #sw-view[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:transparent}
+@media (max-width:1100px){#swingui .sw-hint{display:none}#swingui{padding-left:.5rem}}
+#sw-view .short{display:none}@media (max-width:640px){#sw-view .long{display:none}#sw-view .short{display:inline}#swingui button{padding:.35rem .55rem .42rem;font-size:.92rem}}

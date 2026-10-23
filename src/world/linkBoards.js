@@ -10,6 +10,9 @@ import { state } from '../core/state.js';
 import { nightGlow } from '../plants/registry.js';
 import { regThing } from '../core/things.js';
 import { late, provide } from '../core/late.js';
+import { siteURL } from '../core/util.js';
+import { Cloud } from '../cloud/cloud.ts';
+import { addTick } from '../core/things.js';
 
 /* ================= the QR board, to the right of the gate ================= */
 // The mirror of the garden's sign on the left of the arch: the same frame and size, holding a QR code for
@@ -24,10 +27,11 @@ const KINDS = [
 ];
 export function linkKind(url, label) {
   let host = ''; try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (e) { /* not a URL */ }
+  if (label === 'My garden' && /[?&]garden=/.test(url)) return { name: 'My garden', col: '#1f5a3a', host };
   for (const [re, name, col] of KINDS) if (re.test(host)) return { name, col, host };
   return { name: label || host || 'My website', col: '#5a4634', host };
 }
-const handleOf = url => { try { const u = new URL(url); if (/substack\.com$/.test(u.hostname)) return u.hostname.split('.')[0]; const p = u.pathname.replace(/\/+$/, '').split('/').filter(Boolean); return p.length ? (p[0].startsWith('@') ? p[0] : '@' + p[p.length - 1]) : u.hostname.replace(/^www\./, ''); } catch (e) { return url; } };
+const handleOf = url => { try { const u = new URL(url); if (u.searchParams.get('garden')) return '@' + u.searchParams.get('garden'); if (/substack\.com$/.test(u.hostname)) return u.hostname.split('.')[0]; const p = u.pathname.replace(/\/+$/, '').split('/').filter(Boolean); return p.length ? (p[0].startsWith('@') ? p[0] : '@' + p[p.length - 1]) : u.hostname.replace(/^www\./, ''); } catch (e) { return url; } };
 
 const W = 768, H = 960; // half the width of the main sign, the same height
 function paint(cv, links, own) {
@@ -36,23 +40,23 @@ function paint(cv, links, own) {
   g.strokeStyle = 'rgba(35,22,14,.22)'; g.lineWidth = 3; for (let i = 0; i < 30; i++) { const y = R() * H; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(W * .3, y + (R() - .5) * 40, W * .7, y + (R() - .5) * 40, W, y + (R() - .5) * 18); g.stroke(); }
   g.strokeStyle = 'rgba(240,226,200,.55)'; g.lineWidth = 5; g.strokeRect(32, 32, W - 64, H - 64);
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#f5ead6';
-  g.font = '700 96px "Cormorant Garamond", Georgia, serif'; g.fillText('Find me here!', W / 2, 108);
+  { let fs = 124; do { g.font = `700 ${fs}px "Cormorant Garamond", Georgia, serif`; fs -= 4; } while (g.measureText('Find me here!').width > W - 110); } g.fillText('Find me here!', W / 2, 112);
   if (!links.length) {
     g.font = 'italic 500 66px "Cormorant Garamond", Georgia, serif';
-    g.font = 'italic 500 54px "Cormorant Garamond", Georgia, serif';
-    (own ? ['Add Instagram,', 'Facebook, Substack', 'or Goodreads in', 'Your garden, and', 'their codes grow here.'] : ['This poet has not', 'shared any links yet.']).forEach((l, i) => g.fillText(l, W / 2, 300 + i * 84));
+    g.font = 'italic 600 72px "Cormorant Garamond", Georgia, serif';
+    (own ? ['Add your links', 'in Your garden,', 'and their codes', 'grow here.'] : ['No links', 'shared yet.']).forEach((l, i) => g.fillText(l, W / 2, 330 + i * 110));
     return;
   }
   // one row of up to three cards, or two rows; each a paper card: the place's name, its code, the handle
   // one card fills the board; two or more sit two to a row
-  const cols = links.length === 1 ? 1 : 2, rows = Math.ceil(links.length / cols), top = 186, cw = (W - 80) / cols, ch = (H - top - 46) / rows;
+  const cols = links.length === 1 ? 1 : 2, rows = Math.ceil(links.length / cols), top = 196, cw = (W - 80) / cols, ch = (H - top - 46) / rows;
   links.forEach((l, i) => {
     const r = Math.floor(i / cols), c = i % cols, x0 = 40 + c * cw + 10, y0 = top + r * ch + 8, w = cw - 20, h = ch - 16, k = linkKind(l.url, l.label);
     g.fillStyle = '#f7f1e3'; g.fillRect(x0, y0, w, h);
     // a tall band in the platform's colour, so the name reads from the path
-    const big = rows === 1, band = big ? 120 : 92; g.fillStyle = k.col; g.fillRect(x0, y0, w, band);
-    g.fillStyle = '#ffffff'; { let fs = big ? 88 : 66; do { g.font = `700 ${fs}px "Cormorant Garamond", Georgia, serif`; fs -= 4; } while (g.measureText(k.name).width > w - 24 && fs > 30); } g.fillText(k.name, x0 + w / 2, y0 + band / 2 + 3);
-    const handle = (l.label && l.label !== k.name ? l.label : handleOf(l.url)).slice(0, 22), hh = big ? 64 : 48;
+    const big = rows === 1, band = big ? 140 : rows === 2 ? 108 : 84; g.fillStyle = k.col; g.fillRect(x0, y0, w, band);
+    g.fillStyle = '#ffffff'; { let fs = big ? 104 : rows === 2 ? 84 : 66; do { g.font = `700 ${fs}px "Cormorant Garamond", Georgia, serif`; fs -= 4; } while (g.measureText(k.name).width > w - 24 && fs > 30); } g.fillText(k.name, x0 + w / 2, y0 + band / 2 + 3);
+    const handle = (l.label && l.label !== k.name ? l.label : handleOf(l.url)).slice(0, 22), hh = big ? 72 : rows === 2 ? 58 : 46;
     const size = Math.min(w - 60, h - band - hh - 30), qr = qrcode(0, 'M'); qr.addData(l.url); qr.make();
     const n = qr.getModuleCount(), cell = size / n, qx = x0 + (w - size) / 2, qy = y0 + band + 14;
     // a colourful code: the platform's colour, deepened so phones still read it, the three corner eyes darker
@@ -63,7 +67,7 @@ function paint(cv, links, own) {
       if (isEye(a, b)) g.fillRect(qx + b * cell, qy + a * cell, Math.ceil(cell), Math.ceil(cell));
       else { g.beginPath(); g.arc(qx + (b + 0.5) * cell, qy + (a + 0.5) * cell, cell * 0.48, 0, 7); g.fill(); }
     }
-    g.fillStyle = '#3b2f24'; g.font = `600 ${big ? 50 : 38}px "Cormorant Garamond", Georgia, serif`; g.fillText(handle, x0 + w / 2, y0 + h - hh / 2 - 4);
+    g.fillStyle = '#3b2f24'; { let fs = big ? 60 : rows === 2 ? 48 : 38; do { g.font = `700 ${fs}px "Cormorant Garamond", Georgia, serif`; fs -= 2; } while (g.measureText(handle).width > w - 16 && fs > 20); } g.fillText(handle, x0 + w / 2, y0 + h - hh / 2 - 4);
   });
 }
 
@@ -88,9 +92,15 @@ const tex = new THREE.CanvasTexture(cv); tex.anisotropy = Math.min(8, maxAniso);
 
 let key = '';
 export function drawLinkBoards() {
-  const own = !state.visiting, links = ((own ? SETTINGS.links : state.visiting.sign.links) || []).filter(l => l && /^https?:\/\//i.test(l.url)).slice(0, 6);
+  const own = !state.visiting, links = ((own ? SETTINGS.links : state.visiting.sign.links) || []).filter(l => l && /^https?:\/\//i.test(l.url)).slice(0, 5);
+  // a public garden gets its own code first, so a visitor can come back to it (or share it)
+  const user = own ? (Cloud.garden && Cloud.garden.is_public && Cloud.profile && Cloud.profile.username) : state.visiting.username;
+  if (user) links.unshift({ label: 'My garden', url: siteURL() + '?garden=' + encodeURIComponent(user), garden: true });
   const k = JSON.stringify([own, links]); if (k === key) return; key = k;
   paint(cv, links, own); tex.needsUpdate = true;
 }
 drawLinkBoards();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { key = ''; drawLinkBoards(); });
+
+// the garden going public (or a sign-in) changes the board: check now and then (cheap: it redraws only on change)
+addTick((() => { let c = 0; return dt => { c += dt; if (c > 2) { c = 0; drawLinkBoards(); } return true; }; })(), true);

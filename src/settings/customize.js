@@ -262,23 +262,24 @@ export function drawBoard() {
   woodGrain(g, W, H, 19, '#6f553f');
   g.strokeStyle = 'rgba(240,226,200,.55)'; g.lineWidth = 5; g.strokeRect(32, 32, W - 64, H - 64);
   g.fillStyle = '#f5ead6'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-  fitFont(g, info.name, W - 180, 600, 150, 84); g.fillText(info.name, W / 2, 190);
-  let y = 190;
+  fitFont(g, info.name, W - 140, 700, 196, 96); g.fillText(info.name, W / 2, 215);
+  let y = 215;
   // everything under the name is large enough to read from the path (it used to be a third of this)
-  if (info.by) { fitFont(g, 'a garden by ' + info.by, W - 200, 400, 104, 64); g.font = 'italic ' + g.font; g.fillStyle = 'rgba(245,234,214,.92)'; y += 125; g.fillText('a garden by ' + info.by, W / 2, y); }
-  if (info.desc) { g.font = serif(400, 88, 'italic '); g.fillStyle = '#f5ead6'; wrapText(g, info.desc, W - 200).slice(0, 2).forEach(l => { y += 104; g.fillText(l, W / 2, y); }); }
+  if (info.by) { fitFont(g, 'a garden by ' + info.by, W - 160, 600, 132, 70); g.font = 'italic ' + g.font; g.fillStyle = '#f5ead6'; y += 150; g.fillText('a garden by ' + info.by, W / 2, y); }
+  if (info.desc) { g.font = serif(600, 112, 'italic '); g.fillStyle = '#f5ead6'; wrapText(g, info.desc, W - 140).slice(0, 2).forEach(l => { y += 128; g.fillText(l, W / 2, y); }); }
   const links = (info.links || []).filter(l => safeUrl(l.url)).slice(0, 6);
   y += 58; g.strokeStyle = 'rgba(245,234,214,.45)'; g.lineWidth = 4; g.beginPath(); g.moveTo(W * 0.3, y); g.lineTo(W * 0.7, y); g.stroke();
   g.fillStyle = '#f5ead6';
   // the links, by name, large enough to read from the path; their codes are on the board across the arch
   if (links.length) {
-    g.font = serif(600, 116); const names = links.map(l => late.linkKind ? late.linkKind(l.url, l.label).name : (l.label || hostOf(l.url)));
+    g.font = serif(700, 156); const names = links.map(l => late.linkKind ? late.linkKind(l.url, l.label).name : (l.label || hostOf(l.url)));
     const lines = []; let cur = '';
     names.forEach(n => { const t = cur ? cur + '  ·  ' + n : n; if (g.measureText(t).width > W - 160 && cur) { lines.push(cur); cur = n; } else cur = t; }); if (cur) lines.push(cur);
-    lines.slice(0, 2).forEach(l => { y += 130; g.fillText(l, W / 2, y); });
-    g.font = serif(500, 76, 'italic '); g.fillStyle = 'rgba(245,234,214,.9)'; g.fillText('Click to open · codes on the board opposite', W / 2, Math.min(H - 56, y + 112));
+    // every link fits: with three lines the gaps close up a little, and the hint stays on the board
+    const step = lines.length > 2 ? 150 : 168; lines.slice(0, 3).forEach(l => { y += step; g.fillText(l, W / 2, y); });
+    g.font = serif(600, 88, 'italic '); g.fillStyle = '#f5ead6'; g.fillText('Codes on the board opposite', W / 2, Math.min(H - 52, y + 122));
   }
-  else if (info.own) { g.font = serif(400, 84, 'italic '); g.fillStyle = 'rgba(245,234,214,.88)'; wrapText(g, 'Add your name, a welcome line and links with Customize.', W - 200).slice(0, 2).forEach(l => { y += 100; g.fillText(l, W / 2, y); }); }
+  else if (info.own) { g.font = serif(600, 112, 'italic '); g.fillStyle = '#f5ead6'; wrapText(g, 'Add your name and links in Your garden.', W - 140).slice(0, 2).forEach(l => { y += 136; g.fillText(l, W / 2, y); }); }
   board.userData.tex.needsUpdate = true;
   drawPlaque(info.name);
   if (late.drawLinkBoards) late.drawLinkBoards(); // the QR boards follow the same links

@@ -37,7 +37,7 @@ async function visitGarden(g) {
   if (!state.visiting) { state.ownSaved = poems; state.ownSettings = SETTINGS; }
   const list = data.map(r => { const q = fromRow(r); q._oid = q.id; q.id = 'v.' + q.id; return q; });
   replaceSettings(cleanSettings(Object.assign({}, g.settings || {}, { season: (g.settings && g.settings.season) || g.theme || 'spring', music: state.ownSettings.music })));
-  state.visiting = { owner: g.owner, name: g.name || 'A quiet garden', by: g.display_name || 'A poet', sign: { name: g.name || 'A quiet garden', desc: g.description || '', by: g.display_name || '', links: SETTINGS.links, own: false } };
+  state.visiting = { owner: g.owner, username: g.username || '', name: g.name || 'A quiet garden', by: g.display_name || 'A poet', sign: { name: g.name || 'A quiet garden', desc: g.description || '', by: g.display_name || '', links: SETTINGS.links, own: false } };
   applyFilter('all', false);
   if (resolveSeason(SETTINGS.season) !== THEME) { setThemeName(resolveSeason(SETTINGS.season)); applyThemeMaterials(); setThemeUI(); }
   swapPlants(list, true); late.applyAllSettings();
