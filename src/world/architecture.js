@@ -29,7 +29,7 @@ export function nightLit(mat, k = 1) {
     sh.uniforms.uArchNight = archNightU;
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vLy;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvLy=position.y;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uArchNight;varying float vLy;')
-      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\ntotalEmissiveRadiance+=diffuseColor.rgb*vec3(1.,.7,.42)*uArchNight*${k.toFixed(2)}*(.2+.95*exp(-max(vLy,0.)/3.4));`);
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\nfloat pl=smoothstep(.55,.8,dot(diffuseColor.rgb,vec3(.3,.59,.11)));totalEmissiveRadiance+=uArchNight*${k.toFixed(2)}*(diffuseColor.rgb*vec3(1.,.72,.45)*(.55+.7*exp(-max(vLy,0.)/6.))+vec3(1.,.78,.5)*pl*.55);`);
   };
   mat.customProgramCacheKey = () => 'archnight' + k;
   return mat;

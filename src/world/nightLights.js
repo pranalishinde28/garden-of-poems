@@ -20,5 +20,5 @@ for (const { group, lights } of archLights) {
 }
 addTick(() => {
   const k = Math.max(state.night, (state.dusk || 0) * 0.45);
-  archNightU.value = k * 0.55; paper.opacity = k; halo.opacity = k * 0.85;
+  archNightU.value = k * 0.75; paper.opacity = k; halo.opacity = k * 0.85;
 }, true);

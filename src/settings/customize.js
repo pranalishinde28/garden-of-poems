@@ -1,4 +1,5 @@
 import { applyHorizon } from '../world/horizon.js';
+import { carved, fit, garland, planks, wrap as wrapSign } from '../world/signArt.js';
 import * as THREE from 'three';
 import { $, C, V3, rng } from '../core/util.js';
 import { groundH } from '../world/terrain.js';
@@ -226,17 +227,15 @@ export function setAzaleaSeason(theme) {
 export const board = new THREE.Group();
 (function buildBoard() {
   const x = -6.3, z = 38.6; board.position.set(x, groundH(x, z), z); board.rotation.y = Math.atan2(0 - x, SPAWN_Z - z);
-  const wood = M('#5a4535'), dark = M('#3f2f24');
-  for (const sx of [-1.72, 1.72]) part(board, GEO.cylB, wood, [sx, 0, 0], [0.1, 3.35, 0.1]);
-  part(board, GEO.box, dark, [0, 2.05, -0.05], [3.62, 2.3, 0.1]);
-  part(board, GEO.box, wood, [0, 3.28, 0], [3.95, 0.12, 0.4]);
+  const wood = M('#8a5a32'), dark = M('#6b4424');
+  for (const sx of [-1.72, 1.72]) part(board, GEO.cylB, wood, [sx, 0, 0], [0.11, 3.3, 0.11]);
+  part(board, GEO.box, dark, [0, 2.05, -0.05], [3.66, 2.34, 0.1]);
   const cv = document.createElement('canvas'); cv.width = 1536; cv.height = 960; board.userData.cv = cv;
   const tex = new THREE.CanvasTexture(cv); tex.anisotropy = Math.min(8, maxAniso); board.userData.tex = tex;
-  const fm = new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.15 }); nightGlow.push({ m: fm, day: 0.12, night: 0.55 });
+  const fm = new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.15 }); nightGlow.push({ m: fm, day: 0.02, night: 0.5 });
   const face = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 2.1875), fm); face.position.set(0, 2.05, 0.006); board.add(face);
-  const vm = new Merge(), R = rng(808);
-  for (let i = 0; i < 70; i++) { const p = new V3(-1.9 + R() * 3.8, 3.36 + R() * 0.08, (R() - .5) * 0.36); vm.add(GEO.ico, p, new V3(0.09, 0.075, 0.09), C(['#567a3a', '#668c45'][i % 2])); if (i % 3 === 0) vm.add(GEO.ico, p.clone().add(new V3(0, 0.06, 0.07)), new V3(0.055, 0.055, 0.055), C(['#f4b6c8', '#ffffff'][i % 2])); }
-  board.add(new THREE.Mesh(vm.build(), VC));
+  // leaves and blossom spilling over its top, as on a garden sign
+  const gl = garland(3.6, 3.1, 808); board.add(gl);
   board.traverse(o => { o.userData.board = true; if (o.isMesh) o.castShadow = true; });
   scene.add(board); decor.push({ x, z, r: 2.0, collide: 0.6 });
 })();
@@ -259,30 +258,24 @@ function woodGrain(g, W, H, seed, base) {
 function blossom(g, x, y, r, col) { g.fillStyle = col; for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2 - Math.PI / 2; g.beginPath(); g.ellipse(x + Math.cos(a) * r * 0.55, y + Math.sin(a) * r * 0.55, r * 0.5, r * 0.36, a, 0, Math.PI * 2); g.fill(); } g.fillStyle = '#e9b04a'; g.beginPath(); g.arc(x, y, r * 0.18, 0, Math.PI * 2); g.fill(); }
 export function drawBoard() {
   const info = boardInfo(), cv = board.userData.cv, g = cv.getContext('2d'), W = cv.width, H = cv.height;
-  woodGrain(g, W, H, 19, '#6f553f');
-  g.strokeStyle = 'rgba(240,226,200,.55)'; g.lineWidth = 5; g.strokeRect(32, 32, W - 64, H - 64);
-  g.fillStyle = '#f5ead6'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-  fitFont(g, info.name, W - 140, 700, 196, 96); g.fillText(info.name, W / 2, 215);
-  let y = 215;
-  // everything under the name is large enough to read from the path (it used to be a third of this)
-  if (info.by) { fitFont(g, 'a garden by ' + info.by, W - 160, 600, 132, 70); g.font = 'italic ' + g.font; g.fillStyle = '#f5ead6'; y += 150; g.fillText('a garden by ' + info.by, W / 2, y); }
-  if (info.desc) { g.font = serif(600, 112, 'italic '); g.fillStyle = '#f5ead6'; wrapText(g, info.desc, W - 140).slice(0, 2).forEach(l => { y += 128; g.fillText(l, W / 2, y); }); }
-  const links = (info.links || []).filter(l => safeUrl(l.url)).slice(0, 6);
-  y += 58; g.strokeStyle = 'rgba(245,234,214,.45)'; g.lineWidth = 4; g.beginPath(); g.moveTo(W * 0.3, y); g.lineTo(W * 0.7, y); g.stroke();
-  g.fillStyle = '#f5ead6';
-  // the links, by name, large enough to read from the path; their codes are on the board across the arch
-  if (links.length) {
-    g.font = serif(700, 156); const names = links.map(l => late.linkKind ? late.linkKind(l.url, l.label).name : (l.label || hostOf(l.url)));
-    const lines = []; let cur = '';
-    names.forEach(n => { const t = cur ? cur + '  ·  ' + n : n; if (g.measureText(t).width > W - 160 && cur) { lines.push(cur); cur = n; } else cur = t; }); if (cur) lines.push(cur);
-    // every link fits: with three lines the gaps close up a little, and the hint stays on the board
-    const step = lines.length > 2 ? 150 : 168; lines.slice(0, 3).forEach(l => { y += step; g.fillText(l, W / 2, y); });
-    g.font = serif(600, 88, 'italic '); g.fillStyle = '#f5ead6'; g.fillText('Codes on the board opposite', W / 2, Math.min(H - 52, y + 122));
-  }
-  else if (info.own) { g.font = serif(600, 112, 'italic '); g.fillStyle = '#f5ead6'; wrapText(g, 'Add your name and links in Your garden.', W - 140).slice(0, 2).forEach(l => { y += 136; g.fillText(l, W / 2, y); }); }
+  // honey planks with deep brown lettering, carved: dark on light reads from the path in any light
+  planks(g, W, H, 4, 19);
+  g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillStyle = '#2a1608';
+  const by = info.by ? 'a garden by ' + info.by : '', desc = info.desc || '';
+  // the name very large: on one line if it fits big, else on two
+  let nameLines = [info.name], namePx = fit(g, info.name, W - 120, 700, 300, 60);
+  if (namePx < 240) { g.font = serif(700, 280); const two = wrapSign(g, info.name, W - 120); if (two.length === 2) { nameLines = two; namePx = Math.min(280, ...two.map(l => fit(g, l, W - 120, 700, 280, 120))); } else namePx = fit(g, info.name, W - 120, 700, 300, 110); }
+  const rest = (by ? 1 : 0) + Math.min(2, desc ? 2 : 0), small = nameLines.length > 1 ? 104 : 128;
+  g.font = serif(700, small, 'italic '); const descLines = desc ? wrapSign(g, desc, W - 160).slice(0, nameLines.length > 1 ? 1 : 2) : [];
+  const blockH = nameLines.length * namePx * 0.95 + (by ? small * 1.2 : 0) + descLines.length * small * 1.15;
+  let y = (H - blockH) / 2 + namePx * 0.78;
+  g.font = serif(700, namePx); nameLines.forEach((l, k) => { if (k) y += namePx * 0.95; carved(g, l, W / 2, y); });
+  if (by) { y += small * 1.25; fit(g, by, W - 160, 700, small, 64, 'italic '); carved(g, by, W / 2, y); }
+  if (descLines.length) { g.font = serif(700, small, 'italic '); descLines.forEach(l => { y += small * 1.15; carved(g, l, W / 2, y); }); }
   board.userData.tex.needsUpdate = true;
   drawPlaque(info.name);
-  if (late.drawLinkBoards) late.drawLinkBoards(); // the QR boards follow the same links
+  // the QR boards follow the same links
+  if (late.drawLinkBoards) late.drawLinkBoards();
 }
 function drawPlaque(name) {
   const cv = archPlaque.userData.cv, g = cv.getContext('2d'), W = cv.width, H = cv.height;

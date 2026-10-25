@@ -11,6 +11,7 @@ import { nightGlow } from '../plants/registry.js';
 import { regThing } from '../core/things.js';
 import { late, provide } from '../core/late.js';
 import { siteURL } from '../core/util.js';
+import { chalk, chalkSprig, chalkboard, fit, garland, roundRect, serif } from './signArt.js';
 import { Cloud } from '../cloud/cloud.ts';
 import { addTick } from '../core/things.js';
 
@@ -33,41 +34,45 @@ export function linkKind(url, label) {
 }
 const handleOf = url => { try { const u = new URL(url); if (u.searchParams.get('garden')) return '@' + u.searchParams.get('garden'); if (/substack\.com$/.test(u.hostname)) return u.hostname.split('.')[0]; const p = u.pathname.replace(/\/+$/, '').split('/').filter(Boolean); return p.length ? (p[0].startsWith('@') ? p[0] : '@' + p[p.length - 1]) : u.hostname.replace(/^www\./, ''); } catch (e) { return url; } };
 
-const W = 768, H = 960; // half the width of the main sign, the same height
+const W = 1024, H = 1280; // half the width of the main sign, the same height
+// each platform's name in a light chalk of its own colour, readable on the dark slate
+const CHALK = { Instagram: '#ff9ccf', Facebook: '#9cc4ff', Substack: '#ffb486', Goodreads: '#f1d2a2', 'My garden': '#a8e6a1', 'This garden': '#a8e6a1' };
+const chalkOf = k => CHALK[k.name] || '#' + new THREE.Color(k.col).lerp(new THREE.Color('#ffffff'), 0.55).getHexString();
 function paint(cv, links, own) {
-  const g = cv.getContext('2d'), R = rng(23);
-  g.fillStyle = '#6f553f'; g.fillRect(0, 0, W, H);
-  g.strokeStyle = 'rgba(35,22,14,.22)'; g.lineWidth = 3; for (let i = 0; i < 30; i++) { const y = R() * H; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(W * .3, y + (R() - .5) * 40, W * .7, y + (R() - .5) * 40, W, y + (R() - .5) * 18); g.stroke(); }
-  g.strokeStyle = 'rgba(240,226,200,.55)'; g.lineWidth = 5; g.strokeRect(32, 32, W - 64, H - 64);
-  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#f5ead6';
-  { let fs = 124; do { g.font = `700 ${fs}px "Cormorant Garamond", Georgia, serif`; fs -= 4; } while (g.measureText('Find me here!').width > W - 110); } g.fillText('Find me here!', W / 2, 112);
+  const g = cv.getContext('2d');
+  const { x0, y0, w, h } = chalkboard(g, W, H, 58, 23);
+  g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  // the heading, with a chalk sprig either side
+  fit(g, 'Find me here!', w - 220, 700, 150, 90); chalk(g, 'Find me here!', W / 2, y0 + 150);
+  chalkSprig(g, x0 + 30, y0 + 150, 0.8, false); chalkSprig(g, x0 + w - 30, y0 + 150, 0.8, true);
+  g.strokeStyle = 'rgba(246,243,234,.7)'; g.lineWidth = 4; g.beginPath(); g.moveTo(W / 2 - 230, y0 + 186); g.quadraticCurveTo(W / 2, y0 + 200, W / 2 + 230, y0 + 186); g.stroke();
   if (!links.length) {
-    g.font = 'italic 500 66px "Cormorant Garamond", Georgia, serif';
-    g.font = 'italic 600 72px "Cormorant Garamond", Georgia, serif';
-    (own ? ['Add your links', 'in Your garden,', 'and their codes', 'grow here.'] : ['No links', 'shared yet.']).forEach((l, i) => g.fillText(l, W / 2, 330 + i * 110));
+    g.font = serif(600, 96, 'italic ');
+    (own ? ['Add your links', 'in Your garden,', 'and their codes', 'appear here.'] : ['No links', 'shared yet.']).forEach((l, i) => chalk(g, l, W / 2, y0 + 400 + i * 130));
     return;
   }
-  // one row of up to three cards, or two rows; each a paper card: the place's name, its code, the handle
   // one card fills the board; two or more sit two to a row
-  const cols = links.length === 1 ? 1 : 2, rows = Math.ceil(links.length / cols), top = 196, cw = (W - 80) / cols, ch = (H - top - 46) / rows;
+  const cols = links.length === 1 ? 1 : 2, rows = Math.ceil(links.length / cols), top = y0 + 212, cw = (w - 30) / cols, ch = (y0 + h - 24 - top) / rows;
   links.forEach((l, i) => {
-    const r = Math.floor(i / cols), c = i % cols, x0 = 40 + c * cw + 10, y0 = top + r * ch + 8, w = cw - 20, h = ch - 16, k = linkKind(l.url, l.label);
-    g.fillStyle = '#f7f1e3'; g.fillRect(x0, y0, w, h);
-    // a tall band in the platform's colour, so the name reads from the path
-    const big = rows === 1, band = big ? 140 : rows === 2 ? 108 : 84; g.fillStyle = k.col; g.fillRect(x0, y0, w, band);
-    g.fillStyle = '#ffffff'; { let fs = big ? 104 : rows === 2 ? 84 : 66; do { g.font = `700 ${fs}px "Cormorant Garamond", Georgia, serif`; fs -= 4; } while (g.measureText(k.name).width > w - 24 && fs > 30); } g.fillText(k.name, x0 + w / 2, y0 + band / 2 + 3);
-    const handle = (l.label && l.label !== k.name ? l.label : handleOf(l.url)).slice(0, 22), hh = big ? 72 : rows === 2 ? 58 : 46;
-    const size = Math.min(w - 60, h - band - hh - 30), qr = qrcode(0, 'M'); qr.addData(l.url); qr.make();
-    const n = qr.getModuleCount(), cell = size / n, qx = x0 + (w - size) / 2, qy = y0 + band + 14;
-    // a colourful code: the platform's colour, deepened so phones still read it, the three corner eyes darker
-    const ink = new THREE.Color(k.col).multiplyScalar(0.72), eye = new THREE.Color(k.col).multiplyScalar(0.45);
+    const r = Math.floor(i / cols), c = i % cols, cx = x0 + 15 + c * cw + cw / 2, cy = top + r * ch, k = linkKind(l.url, l.label);
+    // in the last row a lone card sits in the middle
+    const x = (rows > 1 && i === links.length - 1 && links.length % 2) ? W / 2 : cx;
+    const namePx = rows === 1 ? 130 : rows === 2 ? 110 : 88, handlePx = rows === 1 ? 80 : rows === 2 ? 68 : 58;
+    fit(g, k.name, cw - 30, 700, namePx, 44); chalk(g, k.name, x, cy + namePx * 0.85, chalkOf(k));
+    const handle = (l.label && l.label !== k.name ? l.label : handleOf(l.url)).slice(0, 22);
+    // the code on a white card, as large as the space allows
+    const size = Math.min(cw - 60, ch - namePx * 1.0 - handlePx * 1.15 - 34), pad = size * 0.06, qx = x - size / 2, qy = cy + namePx * 1.05 + 10;
+    g.fillStyle = 'rgba(0,0,0,.35)'; roundRect(g, qx - pad + 6, qy - pad + 8, size + pad * 2, size + pad * 2, 18); g.fill();
+    g.fillStyle = '#fbfaf5'; roundRect(g, qx - pad, qy - pad, size + pad * 2, size + pad * 2, 18); g.fill();
+    const qr = qrcode(0, 'M'); qr.addData(l.url); qr.make();
+    const n = qr.getModuleCount(), cell = size / n, ink = '#' + new THREE.Color(k.col).multiplyScalar(0.6).getHexString(), eye = '#' + new THREE.Color(k.col).multiplyScalar(0.38).getHexString();
     const isEye = (a, b) => (a < 7 && b < 7) || (a < 7 && b >= n - 7) || (a >= n - 7 && b < 7);
     for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) if (qr.isDark(a, b)) {
-      g.fillStyle = '#' + (isEye(a, b) ? eye : ink).getHexString();
+      g.fillStyle = isEye(a, b) ? eye : ink;
       if (isEye(a, b)) g.fillRect(qx + b * cell, qy + a * cell, Math.ceil(cell), Math.ceil(cell));
       else { g.beginPath(); g.arc(qx + (b + 0.5) * cell, qy + (a + 0.5) * cell, cell * 0.48, 0, 7); g.fill(); }
     }
-    g.fillStyle = '#3b2f24'; { let fs = big ? 60 : rows === 2 ? 48 : 38; do { g.font = `700 ${fs}px "Cormorant Garamond", Georgia, serif`; fs -= 2; } while (g.measureText(handle).width > w - 16 && fs > 20); } g.fillText(handle, x0 + w / 2, y0 + h - hh / 2 - 4);
+    fit(g, handle, cw - 30, 700, handlePx, 30); chalk(g, handle, x, qy + size + pad + handlePx * 1.05);
   });
 }
 
@@ -76,15 +81,12 @@ const board = new THREE.Group(), cv = document.createElement('canvas'); cv.width
 const tex = new THREE.CanvasTexture(cv); tex.anisotropy = Math.min(8, maxAniso);
 (function build() {
   const x = 6.3, z = 38.6; board.position.set(x, groundH(x, z), z); board.rotation.y = Math.atan2(0 - x, 49 - z);
-  const wood = M('#5a4535'), dark = M('#3f2f24');
-  for (const sx of [-0.86, 0.86]) part(board, GEO.cylB, wood, [sx, 0, 0], [0.1, 3.35, 0.1]);
-  part(board, GEO.box, dark, [0, 2.05, -0.05], [1.87, 2.3, 0.1]);
-  part(board, GEO.box, wood, [0, 3.28, 0], [2.1, 0.12, 0.4]);
-  const fm = new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.15 }); nightGlow.push({ m: fm, day: 0.12, night: 0.55 });
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(1.75, 2.1875), fm); face.position.set(0, 2.05, 0.005); board.add(face);
-  const vm = new Merge(), R = rng(809);
-  for (let i = 0; i < 38; i++) { const p = new V3(-0.98 + R() * 1.96, 3.36 + R() * 0.08, (R() - .5) * 0.36); vm.add(GEO.ico, p, new V3(0.09, 0.075, 0.09), C(['#567a3a', '#668c45'][i % 2])); if (i % 3 === 0) vm.add(GEO.ico, p.clone().add(new V3(0, 0.06, 0.07)), new V3(0.055, 0.055, 0.055), C(['#f4b6c8', '#ffffff'][i % 2])); }
-  board.add(new THREE.Mesh(vm.build(), VC));
+  const wood = M('#2f6a45'), dark = M('#24533a');
+  for (const sx of [-1.2, 1.2]) part(board, GEO.cylB, wood, [sx, 0, 0], [0.11, 3.75, 0.11]);
+  part(board, GEO.box, dark, [0, 2.2, -0.05], [2.42, 2.98, 0.1]);
+  const fm = new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.15 }); nightGlow.push({ m: fm, day: 0.1, night: 0.5 });
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 2.875), fm); face.position.set(0, 2.2, 0.005); board.add(face);
+  board.add(garland(2.4, 3.6, 809));
   board.traverse(o => { if (o.isMesh) o.castShadow = true; });
   scene.add(board); decor.push({ x, z, r: 1.2, collide: 0.5 });
   regThing(board, 'See the links', () => late.openBoard && late.openBoard(), { x, z, r: 2.6 });
