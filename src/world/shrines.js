@@ -4,7 +4,7 @@ import { groundH } from './terrain.js';
 import { scene } from './renderer.js';
 import { DS, GEO, Merge, VC } from './geometry.js';
 import { decor } from './paths.js';
-import { Kit, PAL, brackets, hipRoof, lantern, pagoda, rafters, railing, roofMat, storey, torii } from './architecture.js';
+import { Kit, PAL, brackets, hipRoof, lantern, nightLit, pagoda, rafters, railing, roofMat, storey, torii } from './architecture.js';
 import { SFX } from '../animals/animals.js';
 import { addTick, regThing } from '../core/things.js';
 import { late } from '../core/late.js';
@@ -15,7 +15,7 @@ import { clearRect } from './grass.js';
 // Garden, the shrine on the west beyond the Old Hollow. Each faces the pond. The shrine bell and the
 // temple bell can be rung (core/things.js).
 
-const ROOF = roofMat('#4a5553');
+const ROOF = roofMat('#4a5553'), BODY = nightLit(new THREE.MeshLambertMaterial({ vertexColors: true }));
 function site(x, z, s = 1) {
   const g = new THREE.Group(); g.position.set(x, groundH(x, z) - 0.12, z); g.rotation.y = Math.atan2(-x, -z); g.scale.setScalar(s); scene.add(g);
   return g;
@@ -31,7 +31,7 @@ const PAGODA = { x: 41, z: -31 };
   pagoda(kit, 3, 4.3, { h0: 2.6, h: 1.95 });
   lantern(kit, -4.6, 5.2, 1.1); lantern(kit, 4.6, 5.2, 1.1);
   torii(kit, 3.4, 4.0, 10.5); // the approach to the pagoda passes under a torii
-  kit.build(g, VC, ROOF);
+  kit.build(g, BODY, ROOF);
   block(g, 0, 0, 6.2, 4.6); for (const sx of [-1, 1]) block(g, sx * 1.75, 10.5, 0.4, 0.3); block(g, -4.6, 5.2, 0.6, 0.35); block(g, 4.6, 5.2, 0.6, 0.35);
 })();
 
@@ -55,7 +55,9 @@ const bellParts = {};
   kit.rbox(2.2, 0.32, 0.34, 0, 6.72, 0, '#bdbdbd'); // ridge
   railing(kit, 4.8, 4.8, 0.86, PAL.red, 0);
   torii(kit, 2.8, 3.5, 6.6);
-  kit.build(g, VC, ROOF);
+  // a stone lantern either side of the way up
+  lantern(kit, -2.6, 5.0, 0.95); lantern(kit, 2.6, 5.0, 0.95);
+  kit.build(g, BODY, ROOF);
   // the bell: bronze, banded, with its rows of nipples and the dragon loop on top
   const bell = new THREE.Group(); bell.position.set(0, 4.0, 0); g.add(bell);
   const bm = new Merge(), bronze = C('#4f6359'), dark = C('#3d4c45');
@@ -75,7 +77,7 @@ const bellParts = {};
   for (const x of [-0.35, 0.45]) sm.limb(new V3(x, 0, 0), new V3(x, -1.0, 0), 0.02, 0.02, C('#d8cfb4'));
   const sMesh = new THREE.Mesh(sm.build(), VC); sMesh.castShadow = true; striker.add(sMesh);
   Object.assign(bellParts, { bell, striker });
-  block(g, 0, 0, 4.4, 3.2); for (const sx of [-1, 1]) block(g, sx * 1.45, 6.6, 0.4, 0.3);
+  block(g, 0, 0, 4.4, 3.2); for (const sx of [-1, 1]) { block(g, sx * 1.45, 6.6, 0.4, 0.3); block(g, sx * 2.6, 5.0, 0.6, 0.35); }
   const w = toWorld(g, 0, 3.2);
   regThing(g, 'Strike the temple bell', strikeBell, { x: w.x, z: w.z, r: 4.2 });
 })();
@@ -156,7 +158,7 @@ const shrineParts = {};
   for (const s of [-1, 1]) kit.rbox(2.2, 0.1, 1.15, cx, 2.25, cz + s * 0.45, '#ffffff', 0, s * 0.55);
   kit.rbox(2.3, 0.14, 0.2, cx, 2.52, cz, '#c8c8c8');
   torii(kit, 3.5, 4.1, 12.4);
-  kit.build(g, VC, ROOF);
+  kit.build(g, BODY, ROOF);
   // the bell and its rope, which swing when rung
   const suzu = new THREE.Group(); suzu.position.set(0, 3.05, fz + 3.95); g.add(suzu);
   const bm = new Merge();

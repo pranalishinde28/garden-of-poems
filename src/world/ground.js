@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { C, clamp, rng, smooth } from '../core/util.js';
-import { groundH } from './terrain.js';
+import { groundH, riverDist } from './terrain.js';
 import { scene } from './renderer.js';
 import { groundTex } from './textures.js';
 import { DS } from './geometry.js';
@@ -27,16 +27,18 @@ export function groundMeshH(x, z) {
 (function buildGround() {
   const g = new THREE.PlaneGeometry(120, 120, GSEG, GSEG); g.rotateX(-Math.PI / 2);
   const pos = g.attributes.position, uv = g.attributes.uv, col = new Float32Array(pos.count * 3);
-  const cA = C('#5f7843'), cB = C('#7b8a55'), cBank = C('#7a7458'), cMud = C('#4f4a3a'), cD = C('#5a8040') /* the outer lawn stays green (it read as bare earth) */, cHill = C('#5d7440'), t = new THREE.Color();
+  const cA = C('#68834a'), cB = C('#7b8a55'), cBank = C('#7a7458'), cMud = C('#4f4a3a'), cD = C('#729c4b') /* the outer lawn stays green (it read as bare earth) */, cHill = C('#5d7440'), t = new THREE.Color();
   for (let i = 0; i < pos.count; i++) {
     const x = remap(pos.getX(i)), z = remap(pos.getZ(i)), r = Math.hypot(x, z), y = groundH(x, z);
     pos.setXYZ(i, x, y, z); uv.setXY(i, x / 3.2, z / 3.2);
     const n = Math.sin(x * 0.21) * Math.cos(z * 0.17) * 0.5 + 0.5 + Math.sin(x * 0.9 + z * 0.7) * 0.08;
     const dry = smooth(0.55, 0.95, Math.sin(x * 0.047 + 2) * Math.cos(z * 0.061 + 1) * 0.5 + 0.5 + Math.sin(x * 0.17 - z * 0.13) * 0.2), lush = smooth(0.6, 1, Math.cos(x * 0.083 - 1) * Math.sin(z * 0.071 + 3) * 0.5 + 0.5);
-    t.copy(cA).lerp(cB, clamp(n, 0, 1) * 0.7).lerp(C('#8d8a5a'), dry * 0.35).lerp(C('#3f6234'), lush * 0.3);
-    t.lerp(cD, smooth(40, 75, r) * 0.5).lerp(cHill, smooth(80, 140, r) * 0.6);
-    t.lerp(cBank, smooth(0.35, -0.25, y) * 0.85);
-    t.lerp(cMud, smooth(-0.3, -0.7, y));
+    t.copy(cA).lerp(cB, clamp(n, 0, 1) * 0.7).lerp(C('#7f8f52'), dry * 0.15).lerp(C('#5a7d3e'), lush * 0.3);
+    t.lerp(cD, smooth(34, 56, r) * 0.8).lerp(cHill, smooth(80, 140, r) * 0.6);
+    // banks and mud only by the water (low dips in the lawn stay lawn; they read as dark patches)
+    const wet = Math.max(1 - smooth(9, 13, r), 1 - smooth(3, 6, riverDist(x, z)), smooth(95, 110, r));
+    t.lerp(cBank, smooth(0.35, -0.25, y) * 0.85 * wet);
+    t.lerp(cMud, smooth(-0.3, -0.7, y) * wet);
     col[i * 3] = t.r; col[i * 3 + 1] = t.g; col[i * 3 + 2] = t.b;
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));

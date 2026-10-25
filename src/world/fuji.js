@@ -16,6 +16,9 @@ export const fujiU = { uLight: { value: new V3(0, 1, 0) }, uHor: { value: new TH
       const shoulder = 1 + 0.07 * Math.exp(-Math.pow(Math.atan2(Math.sin(a - 0.35), Math.cos(a - 0.35)), 2) / 0.03) * Math.exp(-Math.pow(t - 0.42, 2) / 0.02);
       const f = (1 + 0.028 * g * Math.min(1, t * 2.5) * (1 - t * 0.6)) * shoulder;
       let y = t * H; if (t > 0.975) y = H - (t - 0.975) * H * 0.9;
+      // its foot is nearly a kilometre across: the part toward the garden sinks away behind the hills,
+      // so they stand in front of Fuji instead of poking through its lower slopes
+      { const wx = -210 + Math.cos(a) * rr * f * 1.08, wz = -1000 + Math.sin(a) * rr * f * 1.08, d = Math.hypot(wx, wz), k = Math.min(1, Math.max(0, (720 - d) / 340)); y -= k * k * (3 - 2 * k) * 240; }
       pos.push(Math.cos(a) * rr * f, y, Math.sin(a) * rr * f); at.push(t, a);
       if (i < rings && k < seg) { const b = i * (seg + 1) + k; idx.push(b, b + seg + 1, b + 1, b + 1, b + seg + 1, b + seg + 2); }
     }

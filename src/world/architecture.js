@@ -19,12 +19,26 @@ const one = new V3(1, 1, 1);
 
 // roofs share a few materials so the seasons can whiten them together (setRoofSeason)
 const roofMats = [];
-export function roofMat(base, fog = true) { const m = new THREE.MeshLambertMaterial({ vertexColors: true, color: base, fog }); m.userData.base = base; roofMats.push(m); return m; }
+export function roofMat(base, fog = true) { const m = nightLit(new THREE.MeshLambertMaterial({ vertexColors: true, color: base, fog }), 0.45); m.userData.base = base; roofMats.push(m); return m; }
+
+// after dark the buildings are lit as temples are: a warm light washing up from their base, fading higher up
+// (world/nightLights.js sets archNightU from the light, and makes the stone lanterns glow)
+export const archNightU = { value: 0 }, archLights = [];
+export function nightLit(mat, k = 1) {
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.uArchNight = archNightU;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vLy;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvLy=position.y;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uArchNight;varying float vLy;')
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\ntotalEmissiveRadiance+=diffuseColor.rgb*vec3(1.,.7,.42)*uArchNight*${k.toFixed(2)}*(.2+.95*exp(-max(vLy,0.)/3.4));`);
+  };
+  mat.customProgramCacheKey = () => 'archnight' + k;
+  return mat;
+}
 export function setRoofSeason(season) { roofMats.forEach(m => m.color.set(season === 'winter' ? '#e4e9ee' : m.userData.base)); }
 
 export class Kit {
   // o: an origin added to every part, for building one piece of a site off its centre
-  constructor() { this.body = new Merge(); this.roof = new Merge(); this.o = new V3(); }
+  constructor() { this.body = new Merge(); this.roof = new Merge(); this.o = new V3(); this.lights = []; }
   at(x, y, z) { return new V3(x, y, z).add(this.o); }
   box(w, h, d, x, y, z, col, ry = 0, rx = 0, rz = 0) { this.body.add(GEO.box, this.at(x, y, z), new V3(w, h, d), C(col), quat(rx, ry, rz)); }
   // a cylinder standing on (x, y, z)
@@ -35,6 +49,7 @@ export class Kit {
   build(group, bodyMat, roofMat) {
     const out = [];
     for (const [m, mat] of [[this.body, bodyMat], [this.roof, roofMat]]) { const g = m.build(); if (!g) continue; const mesh = new THREE.Mesh(g, mat); mesh.castShadow = true; mesh.receiveShadow = true; group.add(mesh); out.push(mesh); }
+    if (this.lights.length) archLights.push({ group, lights: this.lights });
     return out;
   }
 }
@@ -182,6 +197,7 @@ export function torii(kit, span = 3.6, h = 4.2, z = 0, col = PAL.red) {
 export function lantern(kit, x, z, s = 1) {
   kit.post(0.32 * s, 0.16 * s, x, 0, z, PAL.stoneDark); kit.post(0.11 * s, 0.8 * s, x, 0.16 * s, z, PAL.stone);
   kit.box(0.5 * s, 0.12 * s, 0.5 * s, x, 1.0 * s, z, PAL.stone); kit.box(0.34 * s, 0.32 * s, 0.34 * s, x, 1.22 * s, z, '#d9c48f');
+  kit.lights.push({ p: kit.at(x, 1.22 * s, z), s });
   kit.geo(GEO.pyr, x, 1.38 * s, z, PAL.stoneDark, new V3(0.52 * s, 0.3 * s, 0.52 * s), Math.PI / 4);
   kit.geo(GEO.sph, x, 1.72 * s, z, PAL.stone, new V3(0.07 * s, 0.09 * s, 0.07 * s));
 }
