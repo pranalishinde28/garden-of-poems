@@ -29,9 +29,11 @@ blob.renderOrder = 2; scene.add(blob);
 export function setAvatar(cfg) {
   config = cleanAvatar(cfg); flag.set('avatar', JSON.stringify(config));
   const old = fig; fig = buildAvatar(config); fig.root.position.copy(old.root.position); fig.root.quaternion.copy(old.root.quaternion); fig.phase = old.phase;
-  scene.remove(old.root); scene.add(fig.root);
+  const home = old.root.parent || scene; home.remove(old.root); home.add(fig.root);
   if (config.kind !== 'bird' && config.kind !== 'cat') { player.alt = 0; player.vy = 0; }
 }
+// the figure and its shadow go with you into another world's scene
+export function moveFigureTo(sc) { sc.add(fig.root); sc.add(blob); }
 export function setThirdPerson(on) { state.thirdPerson = !!on; flag.set('view', on ? 'third' : 'first'); camD = 0; }
 
 // ---- third-person camera ----
@@ -127,6 +129,11 @@ export function updateFigure(dt) {
       const pl = plants.get(state.reading);
       if (pl) { if (!kneel) kneel = kneelSpot(pl); placeAt(kneel.x, kneel.z, kneel.yaw, dt, false); pose = 'kneel'; }
     }
+  } else if (m === 'boat' && state.boat) {
+    // seated in the boat, facing the way it goes
+    show = third; pose = 'sit'; const b = state.boat;
+    r.position.set(b.seat.x, b.seat.y - figureMetrics(config).sit, b.seat.z); facing = b.yaw + Math.PI; r.quaternion.setFromAxisAngle(up.set(0, 1, 0), facing);
+    r.visible = show; blob.visible = false; if (show) animateAvatar(fig, pose, dt, T, a); return;
   } else if (m === 'cinematic') {
     show = third && r.visible && !state.gliding && !state.swing; pose = 'idle';
   }

@@ -43,10 +43,23 @@ function gorgeCarve(x, z, h) {
   if (kv > 0) h = lerp(h, Math.min(h, 0.95), kv);
   // the canyon floor
   if (u > A0 - 4) { const w = gorgeHalf(Math.max(u, A0)), k = (1 - smooth(w, w + 9, a)) * smooth(A0 - 4, A0 + 2, u); if (k > 0) h = lerp(h, GORGE.floor - 0.7, k); }
+  // the cave behind Manai Falls, on the left wall (world/gorge.js builds its vault)
+  if (g.across < 0 && Math.abs(u - 146) < 4.8 && -g.across < gorgeHalf(u) + 12.5) h = Math.min(h, GORGE.floor - 0.9);
   // the pool
   const kb = 1 - smooth(0.8, 1.05, gorgePool(u, g.across));
   if (kb > 0) h = lerp(h, GORGE.floor - 0.9, kb);
   return h;
+}
+// the way down from the lookout: stepping stones over the meadow to a jetty on the pool's near shore
+export const JETTY = { u0: 82.5, u1: 90.5, half: 0.95, y: GORGE.floor + 0.32 };
+export function gorgeJettyH(x, z) { if (x < 60) return null; const g = gorgeLocal(x, z); return g.along > JETTY.u0 && g.along < JETTY.u1 && Math.abs(g.across) < JETTY.half ? JETTY.y : null; }
+// where you may walk beyond the hedge: through its gap, down the meadow to the shore, and out along the jetty
+export function gorgeWalk(x, z) {
+  if (x < 60) return false;
+  const g = gorgeLocal(x, z), a = Math.abs(g.across);
+  if (g.along < 70 || g.along > GORGE.r0 - 2) return false;
+  if (gorgeJettyH(x, z) !== null) return true;
+  return a < (g.along < 79 ? 5.2 : 11) && gorgePool(g.along, g.across) > 1.02;
 }
 export function groundH(x, z) {
   let h = baseH(x, z);

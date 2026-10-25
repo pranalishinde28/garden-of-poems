@@ -72,6 +72,7 @@ const clearDraft = () => { try { localStorage.removeItem(DRAFT); } catch (e) {} 
 $('#e-fresh').onclick = () => { clearDraft(); eTitle.value = eBody.value = eTheme.value = ''; eMood = null; moodWrap.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', 'false')); autoGrow(); countWords(); eGo.disabled = true; $('#e-suggest').hidden = true; eTitle.focus(); };
 export function openEditor(p) {
   if (state.visiting) { toast('You are visiting someone else\'s garden. Return home to write.'); return; }
+  if (state.world === 'sun') { toast('Poems grow in your own garden. The white door leads home.'); return; }
   late.hideSwingUI();
   late.closePops(); setCue(null);
   state.editing = p ? p.id : null;

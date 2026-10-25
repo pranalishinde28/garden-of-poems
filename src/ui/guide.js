@@ -38,5 +38,5 @@ addEventListener('keydown', e => {
   if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || isTyping(e) || state.mode !== 'walk' || document.body.classList.contains('panel-open')) return;
   if (e.code === 'KeyF') { e.preventDefault(); if (document.fullscreenElement) document.exitFullscreen?.(); else document.documentElement.requestFullscreen?.().catch(() => {}); return; }
   const id = SHORTCUTS[e.code], b = id && document.getElementById(id);
-  if (b && !b.disabled) { e.preventDefault(); b.click(); }
+  if (b && !b.disabled && !(state.world === 'sun' && /h-write|h-gardens|h-home|h-view-horizon/.test(id))) { e.preventDefault(); b.click(); }
 });

@@ -10,6 +10,8 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.shadowMap.autoUpdate = false;
 export const scene = new THREE.Scene();
+// the scene that is drawn: the garden, or the Sunflower Garden (core/worlds.js)
+export const view = { scene };
 export const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 1700);
 camera.rotation.order = 'YXZ';
 camera.layers.enable(2);

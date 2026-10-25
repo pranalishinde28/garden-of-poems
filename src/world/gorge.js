@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { C, V3, clamp, lerp, rng, smooth } from '../core/util.js';
-import { GORGE, gorgeHalf, gorgePool, gorgeWorld, groundH } from './terrain.js';
+import { GORGE, JETTY, gorgeHalf, gorgeJettyH, gorgeLocal, gorgePool, gorgeWorld, groundH } from './terrain.js';
 import { scene } from './renderer.js';
 import { canvasTex, glowTex, softTex } from './textures.js';
 import { GEO, Merge } from './geometry.js';
@@ -46,11 +46,15 @@ function rimY(u, s) {
   return FLOOR + 1.2 + h * ramp;
 }
 
+// the arch of the cave behind the falls: 7 m wide, 7.5 m high at its crown
+export const CAVE = { along: FALLS.along, half: 3.5, h: 7.5, depth: 11 };
+function caveArch(u) { const d = Math.abs(u - CAVE.along) / CAVE.half; return d >= 1 ? FLOOR - 1.2 : FLOOR - 0.3 + CAVE.h * Math.sqrt(1 - d * d); }
+
 /* ---------- light: autumn colour, and the gorge's own night (moon, lanterns, the lit falls) ---------- */
 const autumnU = { value: 0 };
 const fallsBase = gorgeWorld(FALLS.along, FALLS.side * (gorgeHalf(FALLS.along) - 1.6), FLOOR);
-// seven warm lights (three boat lanterns, four stone lanterns), the falls lit cool white, and how dark it is
-const nightU = { uGN: { value: 0 }, uGL: { value: Array.from({ length: 7 }, () => new V3(0, -99, 0)) }, uFallP: { value: fallsBase.clone().setY(FLOOR + 8) } };
+// eight warm lights (three drifting boats, four stone lanterns, your own boat), the falls lit cool white, and how dark it is
+const nightU = { uGN: { value: 0 }, uGL: { value: Array.from({ length: 8 }, () => new V3(0, -99, 0)) }, uFallP: { value: fallsBase.clone().setY(FLOOR + 8) } };
 const AUTUMN_GLSL = `
   float auH(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
   float auN(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);return mix(mix(auH(i),auH(i+vec2(1,0)),u.x),mix(auH(i+vec2(0,1)),auH(i+vec2(1,1)),u.x),u.y);}
@@ -61,10 +65,10 @@ const AUTUMN_GLSL = `
     return mix(c*(.5+lum*1.05),base*1.05,smoothstep(.68,.84,auN(w.xz*.55+7.))*.85);
   }`;
 const NIGHT_GLSL = `
-  uniform float uGN;uniform vec3 uGL[7];uniform vec3 uFallP;
+  uniform float uGN;uniform vec3 uGL[8];uniform vec3 uFallP;
   vec3 gorgeNight(vec3 w){
     vec3 L=vec3(.07,.09,.14);
-    for(int i=0;i<7;i++){vec3 d=w-uGL[i];L+=vec3(1.,.6,.28)*1.1/(1.+dot(d,d)*.09);}
+    for(int i=0;i<8;i++){vec3 d=w-uGL[i];L+=vec3(1.,.6,.28)*1.1/(1.+dot(d,d)*.09);}
     vec3 f=(w-uFallP)*vec3(1.,.4,1.);L+=vec3(.6,.72,.85)*1.2/(1.+dot(f,f)*.025);
     return L*uGN;
   }`;
@@ -155,9 +159,9 @@ fillMats.push([wallMat, [0.07, 0.072, 0.064]]);
     const mc = base.clone().lerp(MOSS[(R() * 4) | 0], mossTop);
     for (let k = 0; k < 6; k++) { const a = top[k], b = top[(k + 1) % 6]; tri(ctr, b, a, mc, mc.clone().multiplyScalar(0.92), mc, [0.5, 0.5], [0.5 + (b.x - ctr.x) / 3, 0.5 + (b.z - ctr.z) / 3], [0.5 + (a.x - ctr.x) / 3, 0.5 + (a.z - ctr.z) / 3]); }
   }
-  function column(u, v, top, rr) {
+  function column(u, v, top, rr, y0 = FLOOR - 1.2) {
     const base = BASALT[(R() * BASALT.length) | 0].clone().offsetHSL(0, 0, (R() - 0.5) * 0.05), lean = new V3((R() - 0.5) * 0.012, 0, (R() - 0.5) * 0.012);
-    let y = FLOOR - 1.2, d = 0;
+    let y = y0, d = 0;
     while (y < top - 0.3) {
       const seg = Math.min(top - y, 2.5 + R() * 6.5), y1 = y + seg, w = gorgeWorld(u, v + d);
       const ledge = y1 < top - 0.3 && R() < 0.55; // a broken step: moss gathers on it
@@ -167,9 +171,11 @@ fillMats.push([wallMat, [0.07, 0.072, 0.064]]);
   }
   for (const s of [-1, 1]) for (let u = A0 + 1; u < A1 + 0.5; u += 0.5 + R() * 0.1) {
     const half = gorgeHalf(u), rr = 0.34 + R() * 0.12, top = rimY(u, s) + (R() - 0.5) * 1.4;
-    column(u, s * (half + rr * 0.7 + (R() - 0.5) * 0.3), top, rr);
+    // behind the falls the wall opens into a cave: there the columns stand only above its arch
+    const y0 = s === FALLS.side ? caveArch(u) : FLOOR - 1.2;
+    column(u, s * (half + rr * 0.7 + (R() - 0.5) * 0.3), top, rr, y0);
     // a second rank behind, so no gap shows
-    if (R() < 0.5) column(u + 0.3, s * (half + rr * 2.1), top + 0.4 + R(), rr);
+    if (R() < 0.5) column(u + 0.3, s * (half + rr * 2.1), top + 0.4 + R(), rr, y0);
   }
   // where the canyon opens, the walls end in a few stepped outcrops
   for (const s of [-1, 1]) for (let k = 0; k < 14; k++) { const u = A0 - 1.5 + R() * 3, v = s * (gorgeHalf(A0) + R() * 4); column(u, v, FLOOR + 1 + R() * 4.5, 0.45); }
@@ -309,6 +315,7 @@ const LEAF = ['#5a8634', '#6a963c', '#4b742c', '#78a646', '#55802f'].map(C);
 }
 
 /* ---------- 4. the water: the pool and the canyon, clear emerald, foaming under the falls ---------- */
+let waterMat = null;
 const gwU = Object.assign({ uTime: waterU.uTime, uNight: waterU.uNight, uLightDir: waterU.uLightDir, uLightCol: waterU.uLightCol, uFall: { value: new THREE.Vector2(fallsBase.x, fallsBase.z) } }, nightU);
 {
   const pos = [], gv = [], idx = [], NJ = 16; let n = 0;
@@ -324,7 +331,7 @@ const gwU = Object.assign({ uTime: waterU.uTime, uNight: waterU.uNight, uLightDi
     n++;
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aG', new THREE.Float32BufferAttribute(gv, 2)); g.setIndex(idx);
-  const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: gwU, fog: false, side: THREE.DoubleSide,
+  const m = new THREE.Mesh(g, waterMat = new THREE.ShaderMaterial({ uniforms: gwU, fog: false, side: THREE.DoubleSide,
     vertexShader: 'attribute vec2 aG;varying vec2 vG;varying vec3 vW;void main(){vG=aG;vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
     fragmentShader: `uniform float uTime,uNight;uniform vec3 uLightDir,uLightCol;uniform vec2 uFall;varying vec2 vG;varying vec3 vW;` + NIGHT_GLSL + `
       float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
@@ -345,7 +352,7 @@ const gwU = Object.assign({ uTime: waterU.uTime, uNight: waterU.uNight, uLightDi
         c=mix(c,vec3(.92,.96,.95),clamp(foam,0.,1.));
         // at night: moonlight on the ripples, the lanterns' warm pools, the lit falls
         vec3 night=c*.14+vec3(.05,.08,.13)*fr*.9;
-        for(int i=0;i<7;i++){vec2 d=p-uGL[i].xz;night+=vec3(1.,.6,.28)*(.5+.6*h0)*.9/(1.+dot(d,d)*.35);}
+        for(int i=0;i<8;i++){vec2 d=p-uGL[i].xz;night+=vec3(1.,.6,.28)*(.5+.6*h0)*.9/(1.+dot(d,d)*.35);}
         night+=vec3(.55,.7,.82)*.7/(1.+df*df*.03)+vec3(.9)*foam*.25;
         c=mix(c,night,uGN);
         gl_FragColor=vec4(c,1.);
@@ -353,39 +360,120 @@ const gwU = Object.assign({ uTime: waterU.uTime, uNight: waterU.uNight, uLightDi
   gorge.add(m);
 }
 
-/* ---------- 5. Manai Falls: a ribbon of water leaving the lip of the left wall, mist at its foot ---------- */
-const fallU = Object.assign({ uTime: waterU.uTime }, nightU);
-{
-  const top = rimY(FALLS.along, FALLS.side) - 0.2, H = top - FLOOR, s = FALLS.side, half = gorgeHalf(FALLS.along);
-  const mk = (w, out, alpha, speed) => {
-    const g = new THREE.PlaneGeometry(1, 1, 1, 28), p = g.attributes.position;
-    for (let i = 0; i < p.count; i++) {
-      const x = p.getX(i), t = 0.5 - p.getY(i); // 0 at the lip, 1 at the water
-      const a = gorgeWorld(FALLS.along + x * w * (1 + t * 0.4), s * (half - 0.25 - out * (1 - Math.pow(1 - t, 2.2)) - 0.15), top - t * H);
-      p.setXYZ(i, a.x, a.y, a.z);
-    }
-    return new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: fallU, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false,
-      vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-      fragmentShader: `uniform float uTime,uGN;varying vec2 vUv;
-        float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
-        float nz(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);return mix(mix(h2(i),h2(i+vec2(1,0)),u.x),mix(h2(i+vec2(0,1)),h2(i+vec2(1,1)),u.x),u.y);}
-        void main(){
-          float t=uTime*${speed.toFixed(2)};
-          float n=nz(vec2(vUv.x*11.,vUv.y*4.+t))*.55+nz(vec2(vUv.x*31.,vUv.y*11.+t*1.6))*.45;
-          float edge=smoothstep(0.,.22,vUv.x)*smoothstep(1.,.78,vUv.x);
-          float a=edge*(.3+.7*smoothstep(.3,.75,n))*smoothstep(0.,.06,vUv.y);
-          vec3 c=mix(vec3(.7,.82,.8),vec3(1.),n);c=mix(c,c*vec3(.72,.84,.95),uGN);
-          gl_FragColor=vec4(c,a*${alpha.toFixed(2)});
-        }` }));
-  };
-  gorge.add(mk(3.0, 1.4, 0.95, 1.5), mk(6.0, 1.9, 0.3, 1.1));
-  // mist rising where it lands
-  const mist = [];
-  for (let k = 0; k < 5; k++) {
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: softTex, color: '#eef6f4', transparent: true, opacity: 0.32, depthWrite: false, fog: false }));
-    sp.position.copy(fallsBase).add(new V3((R() - 0.5) * 3, 1 + k * 1.0, (R() - 0.5) * 3)); sp.scale.setScalar(5 + k * 1.4); sp.userData.ph = R() * 6; gorge.add(sp); mist.push(sp);
+/* ---------- 5. the falls: Manai Falls over the cave, and slender falls down both walls ---------- */
+const fallU = Object.assign({ uTime: waterU.uTime }, nightU), mist = [];
+// a ribbon of water leaving the lip of a wall at `along`, spreading as it falls, with mist at its foot
+function falls(u0, s, w, out, alpha, speed, mistN) {
+  const top = rimY(u0, s) - 0.2, H = top - FLOOR, half = gorgeHalf(u0);
+  const g = new THREE.PlaneGeometry(1, 1, 1, 28), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    // t: 0 at the lip, 1 at the water
+    const x = p.getX(i), t = 0.5 - p.getY(i);
+    const a = gorgeWorld(u0 + x * w * (1 + t * 0.4), s * (half - 0.25 - out * (1 - Math.pow(1 - t, 2.2)) - 0.15), top - t * H);
+    p.setXYZ(i, a.x, a.y, a.z);
   }
-  addTick(() => { if (!gorge.visible) return; mist.forEach((sp, k) => { const w = Math.sin(T * 0.5 + sp.userData.ph); sp.material.opacity = 0.22 + 0.1 * w; sp.scale.setScalar(5 + k * 1.4 + w * 0.6); }); }, true);
+  gorge.add(new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: fallU, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false,
+    vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+    fragmentShader: `uniform float uTime,uGN;varying vec2 vUv;
+      float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+      float nz(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);return mix(mix(h2(i),h2(i+vec2(1,0)),u.x),mix(h2(i+vec2(0,1)),h2(i+vec2(1,1)),u.x),u.y);}
+      void main(){
+        float t=uTime*${speed.toFixed(2)};
+        float n=nz(vec2(vUv.x*11.,vUv.y*4.+t))*.55+nz(vec2(vUv.x*31.,vUv.y*11.+t*1.6))*.45;
+        float edge=smoothstep(0.,.22,vUv.x)*smoothstep(1.,.78,vUv.x);
+        float a=edge*(.3+.7*smoothstep(.3,.75,n))*smoothstep(0.,.06,vUv.y);
+        vec3 c=mix(vec3(.7,.82,.8),vec3(1.),n);c=mix(c,c*vec3(.72,.84,.95),uGN);
+        gl_FragColor=vec4(c,a*${alpha.toFixed(2)});
+      }` })));
+  const base = gorgeWorld(u0, s * (half - out - 0.4), FLOOR);
+  for (let k = 0; k < mistN; k++) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: softTex, color: '#eef6f4', transparent: true, opacity: 0.3, depthWrite: false, fog: false }));
+    const sc = (3 + k * 1.4) * Math.max(0.6, w / 3);
+    sp.position.copy(base).add(new V3((R() - 0.5) * w, 1 + k * 1.0, (R() - 0.5) * 2)); sp.scale.setScalar(sc); sp.userData = { ph: R() * 6, sc }; gorge.add(sp); mist.push(sp);
+  }
+}
+// Manai Falls, wide enough at its foot to row through into the cave behind it
+falls(FALLS.along, FALLS.side, 3.0, 1.4, 0.95, 1.5, 5); falls(FALLS.along, FALLS.side, 6.0, 1.9, 0.3, 1.1, 0);
+// slender falls on both walls, so you row between waterfalls
+for (const [u0, s, w] of [[118, 1, 0.9], [126, -1, 1.2], [133, 1, 1.4], [139, -1, 0.8], [152, 1, 1.1], [158, -1, 0.9], [164, 1, 0.7]]) {
+  falls(u0, s, w, 0.7, 0.85, 1.4 + R() * 0.3, 2); falls(u0, s, w * 2.2, 1.0, 0.22, 1.0, 0);
+}
+addTick(() => { if (!gorge.visible) return; mist.forEach(sp => { const w = Math.sin(T * 0.5 + sp.userData.ph); sp.material.opacity = 0.2 + 0.1 * w; sp.scale.setScalar(sp.userData.sc + w * 0.6); }); }, true);
+
+/* ---------- 5b. the cave behind the falls: wet rock, ferns, and a light at its end ---------- */
+// Row through the curtain and the passage runs back into the hill toward a warm, white light; reaching it
+// carries you on into the Sunflower Garden (ui/boating.js, ui/worlds.js).
+export const PORTAL = gorgeWorld(CAVE.along, FALLS.side * (gorgeHalf(CAVE.along) - 0.3 + CAVE.depth), FLOOR + 2.4);
+const caveGlow = { value: 1 };
+{
+  const half = gorgeHalf(CAVE.along), s = FALLS.side, ND = 14, NT = 18, pos = [], col = [], idx = [], c = new THREE.Color();
+  const DARK = C('#2a2b26'), MOSSC = C('#4f6a2c'), GOLD = C('#d9b878');
+  for (let i = 0; i <= ND; i++) {
+    const d = i / ND * CAVE.depth, k = d / CAVE.depth, rH = CAVE.half * (1 - 0.3 * k) + 0.2, rV = (CAVE.h + 0.3) * (1 - 0.35 * k);
+    for (let j = 0; j <= NT; j++) {
+      const th = j / NT * Math.PI, jit = 1 + (n3(i * 0.9, j * 0.7, 3) - 0.5) * 0.28;
+      const p = gorgeWorld(CAVE.along + Math.cos(th) * rH * jit, s * (half - 0.4 + d), FLOOR - 0.6 + Math.sin(th) * rV * jit);
+      pos.push(p.x, p.y, p.z);
+      c.copy(DARK).multiplyScalar(0.8 + n3(i, j, 7) * 0.5).lerp(MOSSC, (1 - k) * 0.55 * n3(i * 0.5, j * 0.5, 1)).lerp(GOLD, Math.pow(k, 2.2) * 0.85);
+      col.push(c.r, c.g, c.b);
+    }
+  }
+  for (let i = 0; i < ND; i++) for (let j = 0; j < NT; j++) { const a = i * (NT + 1) + j, b = a + NT + 1; idx.push(a, b, a + 1, a + 1, b, b + 1); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
+  const vm = gorgeMat(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, fog: false, emissive: '#2a2416' }), false);
+  gorge.add(new THREE.Mesh(g, vm));
+  // the water runs on into the passage
+  const wpos = [], wg = [], widx = [];
+  for (let i = 0; i <= ND; i++) {
+    const d = i / ND * (CAVE.depth + 0.5) - 2.5, rH = CAVE.half * (1 - 0.3 * Math.max(0, d) / CAVE.depth) + 0.4;
+    for (const t of [-1, 1]) { const p = gorgeWorld(CAVE.along + t * rH, s * (half - 0.4 + d), FLOOR); wpos.push(p.x, FLOOR, p.z); wg.push(CAVE.along, 0.6); }
+    if (i) { const a = (i - 1) * 2; widx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  }
+  const wgeo = new THREE.BufferGeometry(); wgeo.setAttribute('position', new THREE.Float32BufferAttribute(wpos, 3)); wgeo.setAttribute('aG', new THREE.Float32BufferAttribute(wg, 2)); wgeo.setIndex(widx);
+  gorge.add(new THREE.Mesh(wgeo, waterMat));
+  // ferns hanging at the mouth of the cave
+  const fern = new Merge();
+  for (let k = 0; k < 26; k++) {
+    const t = R() * Math.PI, d = R() * 2.5, p = gorgeWorld(CAVE.along + Math.cos(t) * CAVE.half * 0.95, s * (half - 0.3 + d), FLOOR - 0.6 + Math.sin(t) * (CAVE.h + 0.2) - 0.3);
+    const len = 0.6 + R() * 1.6; fern.add(GEO.card, p.setY(p.y - len / 2), new V3(0.5 + R() * 0.4, len, 1), LEAF[(R() * LEAF.length) | 0], new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), R() * 3));
+  }
+  const fm = gorgeMat(new THREE.MeshLambertMaterial({ vertexColors: true, map: vineTex, alphaTest: 0.4, side: THREE.DoubleSide, fog: false }), true);
+  gorge.add(new THREE.Mesh(fern.build(), fm));
+  // the light at the end: a soft radiance with slow rays, haloes before it, and motes drifting in it
+  const endH = CAVE.half * 0.7 + 0.2, endV = (CAVE.h + 0.3) * 0.65, cp = gorgeWorld(CAVE.along, s * (half - 0.4 + CAVE.depth - 0.2), FLOOR - 0.6);
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(1, 48, 0, Math.PI), new THREE.ShaderMaterial({ uniforms: { uTime: waterU.uTime, uOn: caveGlow }, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false,
+    vertexShader: 'varying vec2 vP;void main(){vP=position.xy;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+    fragmentShader: `uniform float uTime,uOn;varying vec2 vP;
+      void main(){float r=length(vP),a=atan(vP.y,vP.x);
+        float rays=.75+.25*sin(a*9.+uTime*.6)*sin(a*5.-uTime*.4);
+        vec3 c=mix(vec3(1.,.97,.86),vec3(1.,.82,.5),smoothstep(.15,1.,r));
+        gl_FragColor=vec4(c*(1.15-.35*r)*rays,(1.-smoothstep(.75,1.,r)*.8)*uOn);}` }));
+  disc.position.copy(cp); disc.scale.set(endH, endV, 1); disc.lookAt(gorgeWorld(CAVE.along, 0, FLOOR - 0.6)); gorge.add(disc);
+  for (const [sz, op, dd] of [[9, 0.55, 0.6], [16, 0.32, 2.5], [24, 0.18, 5]]) {
+    const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: '#fff1cf', transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    gl.position.copy(gorgeWorld(CAVE.along, s * (half - 0.4 + CAVE.depth - dd), FLOOR + 2.4)); gl.scale.setScalar(sz); gorge.add(gl);
+  }
+  const N = 70, mp = new Float32Array(N * 3), ph = new Float32Array(N);
+  for (let i = 0; i < N; i++) { const p = gorgeWorld(CAVE.along + (R() - 0.5) * 5, s * (half - 1 + R() * CAVE.depth), FLOOR + 0.5 + R() * 5); mp.set([p.x, p.y, p.z], i * 3); ph[i] = R() * 100; }
+  const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(mp, 3)); mg.setAttribute('aPh', new THREE.BufferAttribute(ph, 1));
+  gorge.add(new THREE.Points(mg, new THREE.ShaderMaterial({ uniforms: { uTime: waterU.uTime }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+    vertexShader: `uniform float uTime;attribute float aPh;varying float vB;void main(){vec3 p=position+vec3(sin(uTime*.2+aPh)*.6,sin(uTime*.3+aPh*1.7)*.5,cos(uTime*.25+aPh)*.6);vB=.5+.5*sin(uTime*1.3+aPh*2.);vec4 mv=modelViewMatrix*vec4(p,1.);gl_PointSize=clamp(60./-mv.z,1.,6.);gl_Position=projectionMatrix*mv;}`,
+    fragmentShader: `varying float vB;void main(){float d=length(gl_PointCoord-.5);float a=smoothstep(.5,0.,d)*(.35+.65*vB);gl_FragColor=vec4(vec3(1.,.93,.7)*a,a);}` })));
+}
+
+/* ---------- 5c. shafts of sunlight slanting down into the canyon by day ---------- */
+const beamU = { uOp: { value: 0 }, uTime: waterU.uTime };
+{
+  const mat = new THREE.ShaderMaterial({ uniforms: beamU, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
+    vertexShader: 'varying vec2 vUv;varying float vD;void main(){vUv=uv;vec4 mv=modelViewMatrix*vec4(position,1.);vD=-mv.z;gl_Position=projectionMatrix*mv;}',
+    fragmentShader: `uniform float uOp,uTime;varying vec2 vUv;varying float vD;void main(){float e=sin(vUv.x*3.1416);float a=e*e*smoothstep(0.,.35,vUv.y)*smoothstep(1.,.6,vUv.y)*(.75+.25*sin(uTime*.3+vUv.x*6.))*smoothstep(5.,18.,vD);gl_FragColor=vec4(vec3(1.,.95,.8)*a*uOp,a*uOp);}` });
+  for (const [u0, v0, w, tilt] of [[122, 3, 3.5, 0.35], [137, -4, 4.5, 0.3], [150, 2, 3, 0.4], [129, 6, 2.5, 0.32]]) {
+    const top = rimY(u0, 1) + 2, h = top - FLOOR;
+    for (const yaw of [0, Math.PI / 2]) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h * 1.15), mat);
+      const c = gorgeWorld(u0, v0, FLOOR + h / 2); m.position.copy(c); m.rotation.set(0, GORGE.a + yaw, 0); m.rotateX(tilt); gorge.add(m);
+    }
+  }
 }
 
 /* ---------- 6. the stone arch bridge, high across the narrows ---------- */
@@ -418,29 +506,56 @@ const fallU = Object.assign({ uTime: waterU.uTime }, nightU);
   gorge.add(b);
 }
 
-/* ---------- 7. rowing boats with paper lanterns, drifting on the pool and into the canyon ---------- */
+/* ---------- 7. rowing boats with paper lanterns: three drifting, and yours at the jetty ---------- */
 const boats = [], glows = [];
 const glowSprite = (col, size) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: col, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); sp.scale.setScalar(size); glows.push(sp); return sp; };
 const lampMat = new THREE.MeshLambertMaterial({ color: '#f3e3c4', emissive: '#ffb45c', emissiveIntensity: 0.15, fog: false });
+const boatMat = gorgeMat(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, fog: false }), false);
+// a rowing boat, bow toward local +z; its oars are separate so yours can row
+export function makeBoat(hull, rim, mat = boatMat, bow = false) {
+  const bm = new Merge(), hg = new THREE.SphereGeometry(1, 18, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
+  bm.add(hg, new V3(0, 0.32, 0), new V3(0.62, 0.36, 1.65), C(hull));
+  bm.add(GEO.disc, new V3(0, 0.2, 0), new V3(0.5, 1, 1.4), C('#8b6b4c'));
+  bm.add(new THREE.TorusGeometry(1, 0.05, 6, 30).rotateX(Math.PI / 2), new V3(0, 0.33, 0), new V3(0.62, 1, 1.65), C(rim));
+  for (const z of [-0.55, 0.45]) bm.add(GEO.box, new V3(0, 0.27, z), new V3(1.1, 0.05, 0.24), C('#9a7656'));
+  // a pole with a paper lantern, at the stern (or the bow of your own boat, lighting the way)
+  // (your own boat's sits low at the bow's port side, below your eye line)
+  const lz = bow ? 1 : -1, lx = bow ? -0.3 : 0, ly = bow ? 0.95 : 1.4;
+  bm.limb(new V3(lx, 0.3, lz * 1.2), new V3(lx, ly, lz * 1.38), 0.022, 0.018, C('#4a3828'));
+  const g = new THREE.Group(); g.add(new THREE.Mesh(bm.build(), mat));
+  const lamp = new THREE.Mesh(GEO.cylB, lampMat); lamp.position.set(lx, ly - 0.32, lz * 1.38); lamp.scale.set(0.1, 0.24, 0.1); g.add(lamp);
+  const gl = glowSprite('#ffb866', 2.2); gl.position.copy(lamp.position).setY(ly - 0.2); g.add(gl);
+  const oars = [-1, 1].map(sx => {
+    const om = new Merge(); om.limb(new V3(0, 0, 0), new V3(sx * 1.25, 0, 0), 0.024, 0.022, C('#8a6a4c')); om.add(GEO.box, new V3(sx * 1.32, 0, 0), new V3(0.28, 0.02, 0.13), C('#7d5f44'));
+    const pv = new THREE.Group(); pv.position.set(sx * 0.5, 0.42, -0.05); pv.add(new THREE.Mesh(om.build(), mat)); g.add(pv); return pv;
+  });
+  return { g, lamp, oars };
+}
 {
-  const mat = gorgeMat(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, fog: false }), false);
-  const HULLS = [['#efeadf', '#3b6f9a'], ['#e8e2d2', '#b0452f'], ['#efeadf', '#3b6f9a']];
-  HULLS.forEach(([hull, rim], i) => {
-    const bm = new Merge(), hg = new THREE.SphereGeometry(1, 18, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
-    bm.add(hg, new V3(0, 0.32, 0), new V3(0.62, 0.36, 1.65), C(hull));
-    bm.add(GEO.disc, new V3(0, 0.2, 0), new V3(0.5, 1, 1.4), C('#8b6b4c'));
-    bm.add(new THREE.TorusGeometry(1, 0.05, 6, 30).rotateX(Math.PI / 2), new V3(0, 0.33, 0), new V3(0.62, 1, 1.65), C(rim));
-    for (const z of [-0.55, 0.45]) bm.add(GEO.box, new V3(0, 0.27, z), new V3(1.1, 0.05, 0.24), C('#9a7656'));
-    for (const sx of [-1, 1]) bm.limb(new V3(sx * 0.45, 0.36, -0.05), new V3(sx * 1.35, 0.02, 0.35), 0.022, 0.022, C('#8a6a4c'));
-    // a pole at the stern with a paper lantern
-    bm.limb(new V3(0, 0.3, -1.3), new V3(0, 1.45, -1.45), 0.025, 0.02, C('#4a3828'));
-    const g = new THREE.Group(); g.add(new THREE.Mesh(bm.build(), mat));
-    const lamp = new THREE.Mesh(GEO.sph, lampMat); lamp.position.set(0, 1.25, -1.45); lamp.scale.set(0.16, 0.22, 0.16); g.add(lamp);
-    const gl = glowSprite('#ffb866', 2.2); gl.position.copy(lamp.position); g.add(gl);
-    gorge.add(g);
-    boats.push({ g, lamp, u0: A0 - 4 + i * 9, ph: R() * 6.28, sp: 0.018 + R() * 0.012 });
+  [['#efeadf', '#3b6f9a'], ['#e8e2d2', '#b0452f'], ['#efeadf', '#3b6f9a']].forEach(([hull, rim], i) => {
+    const b = makeBoat(hull, rim); b.oars.forEach((o, k) => { o.rotation.set(0, (k ? -1 : 1) * 0.5, (k ? 1 : -1) * 0.35); }); gorge.add(b.g);
+    boats.push({ ...b, u0: A0 - 4 + i * 9, ph: R() * 6.28, sp: 0.018 + R() * 0.012 });
   });
 }
+// your own boat, moored at the end of the jetty; ui/boating.js rows it
+export const myBoat = (() => {
+  const b = makeBoat('#f4efe2', '#6f8f4a', boatMat, true), home = gorgeWorld(JETTY.u1 + 1.6, 1.25, FLOOR - 0.12);
+  const yaw = Math.atan2(gorgeWorld(JETTY.u1 + 3, 1.25).x - home.x, gorgeWorld(JETTY.u1 + 3, 1.25).z - home.z);
+  b.g.position.copy(home); b.g.rotation.y = yaw; gorge.add(b.g);
+  return Object.assign(b, { home, homeYaw: yaw, pos: home.clone(), yaw, moored: true });
+})();
+
+// where your boat may go: the pool, the canyon short of the narrows, and the cave behind the falls
+export function boatWater(x, z) {
+  const g = gorgeLocal(x, z), u = g.along, v = g.across;
+  if (gorgeJettyH(x, z) !== null || Math.abs(u - (JETTY.u0 + JETTY.u1) / 2) < (JETTY.u1 - JETTY.u0) / 2 + 0.6 && Math.abs(v) < JETTY.half + 0.7) return false;
+  if (gorgePool(u, v) < 0.88) return true;
+  if (u > A0 - 4 && u < A1 - 10 && Math.abs(v) < gorgeHalf(u) - 1.4) return true;
+  if (Math.abs(u - CAVE.along) < CAVE.half - 1.2 && v * FALLS.side > 0 && Math.abs(v) < gorgeHalf(u) + CAVE.depth - 0.5) return true;
+  return false;
+}
+// how far into the cave a point is (0 at the wall's face), for the light at its end
+export function caveDepth(x, z) { const g = gorgeLocal(x, z); return Math.abs(g.along - CAVE.along) < CAVE.half && g.across * FALLS.side > 0 ? Math.abs(g.across) - gorgeHalf(g.along) : -99; }
 
 /* ---------- 8. stone lanterns on the pool's shore, lit at dusk ---------- */
 const shoreLamps = [];
@@ -483,6 +598,7 @@ addTick(() => {
     b.g.position.copy(p); b.g.rotation.set(0, Math.atan2(q.x - p.x, q.z - p.z) || b.g.rotation.y, Math.sin(T * 0.9 + b.ph) * 0.03);
     nightU.uGL.value[k].copy(p).add(new V3(0, 1.2, 0));
   }
+  myBoat.lamp.getWorldPosition(nightU.uGL.value[7]);
 }, true);
 
 // rocks at the walls' feet and on the shore
@@ -511,15 +627,35 @@ export const gorgeDeck = new THREE.Group();
   gorgeDeck.position.set(c.x, groundH(c.x, c.z) + 0.06, c.z); gorgeDeck.rotation.y = Math.atan2(out.x, out.z);
   const m = new Merge(), WOOD = ['#7d5c40', '#86654a', '#71533a'].map(C), dark = C('#5e4532');
   for (let x = -3.4; x <= 3.4; x += 0.34) m.add(GEO.box, new V3(x, 0.05, 0), new V3(0.3, 0.07, 4.2), WOOD[(R() * 3) | 0]);
-  for (const x of [-3.5, -1.75, 0, 1.75, 3.5]) m.limb(new V3(x, 0, 2.0), new V3(x, 1.05, 2.0), 0.07, 0.065, dark);
+  // the rail opens in the middle onto the stepping stones down to the pool
+  for (const x of [-3.5, -2.2, -0.9, 0.9, 2.2, 3.5]) m.limb(new V3(x, 0, 2.0), new V3(x, 1.05, 2.0), 0.07, 0.065, dark);
   for (const x of [-3.5, 3.5]) m.limb(new V3(x, 0, -2.0), new V3(x, 1.05, -2.0), 0.065, 0.06, dark);
-  m.add(GEO.box, new V3(0, 1.08, 2.0), new V3(7.2, 0.09, 0.16), C('#8a6a4c'));
-  m.add(GEO.box, new V3(0, 0.6, 2.0), new V3(7.0, 0.06, 0.08), dark);
+  for (const sx of [-1, 1]) { m.add(GEO.box, new V3(sx * 2.2, 1.08, 2.0), new V3(2.8, 0.09, 0.16), C('#8a6a4c')); m.add(GEO.box, new V3(sx * 2.2, 0.6, 2.0), new V3(2.6, 0.06, 0.08), dark); }
   for (const x of [-3.5, 3.5]) { m.add(GEO.box, new V3(x, 1.08, 0), new V3(0.14, 0.09, 4.0), C('#8a6a4c')); m.add(GEO.box, new V3(x, 0.6, 0), new V3(0.07, 0.06, 4.0), dark); }
   const mesh = new THREE.Mesh(m.build(), new THREE.MeshLambertMaterial({ vertexColors: true })); mesh.castShadow = true; mesh.receiveShadow = true; gorgeDeck.add(mesh);
   scene.add(gorgeDeck); mountainMeshes.push(gorgeDeck);
   clearArea(c.x, c.z, 3.6);
-  for (const v of [-3.5, 0, 3.5]) { const p = gorgeWorld(74.7, v); decor.push({ x: p.x, z: p.z, r: 1.2, collide: 0.3 }); }
+  for (const v of [-3.5, -2.2, 2.2, 3.5]) { const p = gorgeWorld(74.7, v); decor.push({ x: p.x, z: p.z, r: 0.8, collide: 0.3 }); }
+}
+// stepping stones down the meadow, and a cedar jetty out over the pool where your boat waits
+{
+  const m = new Merge();
+  for (let u = 75.6, k = 0; u < JETTY.u0 + 0.2; u += 0.95, k++) {
+    const v = Math.sin(u * 0.35) * 0.9 + (k % 2 ? 0.25 : -0.25), p = gorgeWorld(u, v), s = 0.42 + R() * 0.1;
+    m.add(GEO.dode, new V3(p.x, groundMeshH(p.x, p.z) - 0.02, p.z), new V3(s * 1.2, 0.08, s), C(['#9a968a', '#8c887c', '#a5a194'][k % 3]), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), R() * 3));
+  }
+  const stones = new THREE.Mesh(m.build(), gorgeMat(new THREE.MeshLambertMaterial({ vertexColors: true }), false)); stones.receiveShadow = true;
+  const j = new Merge();
+  const WOOD = ['#7d5c40', '#86654a', '#71533a'].map(C), dark = C('#5e4532'), yaw = Math.atan2(gorgeWorld(JETTY.u1, 0).x - gorgeWorld(JETTY.u0, 0).x, gorgeWorld(JETTY.u1, 0).z - gorgeWorld(JETTY.u0, 0).z), q = new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), yaw);
+  for (let u = JETTY.u0 + 0.15; u < JETTY.u1; u += 0.32) { const p = gorgeWorld(u, 0, JETTY.y - 0.04); j.add(GEO.box, p, new V3(JETTY.half * 2, 0.07, 0.28), WOOD[(R() * 3) | 0], q); }
+  for (let u = JETTY.u0 + 0.6; u <= JETTY.u1; u += 2.5) for (const v of [-JETTY.half + 0.08, JETTY.half - 0.08]) { const p = gorgeWorld(u, v); j.limb(new V3(p.x, FLOOR - 1.2, p.z), new V3(p.x, JETTY.y + 0.5, p.z), 0.08, 0.07, dark); }
+  // a mooring post and a coil of rope where the boat is tied
+  { const p = gorgeWorld(JETTY.u1 - 0.3, JETTY.half - 0.1); j.limb(new V3(p.x, JETTY.y, p.z), new V3(p.x, JETTY.y + 0.75, p.z), 0.09, 0.08, dark); j.add(new THREE.TorusGeometry(0.2, 0.04, 6, 16).rotateX(Math.PI / 2), new V3(p.x, JETTY.y + 0.05, p.z), new V3(1, 1, 1), C('#c9b48a')); }
+  const mesh = new THREE.Mesh(j.build(), stones.material); mesh.receiveShadow = true;
+  // a group of its own (the deck's is turned and placed at the deck), hidden with the hills for the sea
+  const path = new THREE.Group(); path.add(stones, mesh); scene.add(path); mountainMeshes.push(path);
+  const end = gorgeWorld(JETTY.u1 - 0.5, 0);
+  regThing(mesh, 'Row a boat', () => late.rowBoat && late.rowBoat(), { x: end.x, z: end.z, r: 2.2 });
   regThing(gorgeDeck, 'Look out over Takachiho Gorge', () => late.lookIntoGorge && late.lookIntoGorge(), { x: LOOKOUT.x, z: LOOKOUT.z, r: 4.2 });
 }
 
@@ -530,6 +666,7 @@ addTick(() => {
   const d = 1 - state.night, k = Math.max(state.night, (state.dusk || 0) * 0.45);
   fillMats.forEach(([m, c]) => m.emissive.setRGB(c[0], c[1], c[2]).multiplyScalar(d));
   nightU.uGN.value = state.night; lampMat.emissiveIntensity = 0.15 + k * 1.6;
+  beamU.uOp.value = 0.2 * (1 - state.night) * (1 - (state.dusk || 0) * 0.6) * (1 - (state.rain || 0));
   glows.forEach(g => { g.material.opacity = k * 0.85; });
 }, true);
 

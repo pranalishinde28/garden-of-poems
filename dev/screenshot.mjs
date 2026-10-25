@@ -195,6 +195,39 @@ async function main() {
       console.log(`  cue "${cue}", looking: ${mode}, after stepping back: ${after}`); if (mode !== 'fountain' || after !== 'walk') errors.push('fountain view did not open or close');
       await page.evaluate(() => { const g = window.__garden; g.state.mode = 'cinematic'; g.camera.position.set(4.2, 1.6, 4.8); g.curLook.set(0, -0.4, 0); g.camera.lookAt(g.curLook); }); await sleep(1200); await page.screenshot({ path: join(root, 'dev/shots/pond-koi.png') });
     }
+    else if (FLOW === 'row') { // the jetty, rowing, through Manai Falls into the cave, the Sunflower Garden, and the white door home
+      const shot = async n => { await sleep(300); await page.screenshot({ path: join(root, `dev/shots/row-${n}.png`) }); };
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      // walk from the lookout through the gap in the rail and down the meadow
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden, p = g.gorgeWorld(71, 0), q = g.gorgeWorld(100, 0); g.player.pos.set(p.x, 0, p.z); g.player.yaw = Math.atan2(p.x - q.x, p.z - q.z); g.player.pitch = -0.05; });
+      await sleep(800); await page.keyboard.down('KeyW'); await sleep(4500); await page.keyboard.up('KeyW');
+      const walked = await page.evaluate(() => { const g = window.__garden, p = g.player.pos, c = Math.cos(0.12), s = Math.sin(0.12); return p.x * c + p.z * s; }); await shot('meadow');
+      console.log(`  walked down the meadow to along = ${walked.toFixed(1)} m (the deck is at 72.6)`); if (walked < 78) errors.push('could not walk down from the lookout');
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden, p = g.gorgeWorld(88.5, 0), q = g.gorgeWorld(100, 0); g.player.pos.set(p.x, 0, p.z); g.player.yaw = Math.atan2(p.x - q.x, p.z - q.z); g.player.pitch = -0.05; });
+      await sleep(1500); const cue = await page.$eval('#cue', e => e.textContent.trim()); await shot('jetty');
+      await page.keyboard.press('KeyE'); await sleep(2600); const m1 = await page.evaluate(() => window.__garden.state.mode); await shot('aboard');
+      await page.keyboard.down('KeyW'); await sleep(5000); await page.keyboard.up('KeyW'); await shot('rowing');
+      await page.keyboard.press('KeyV'); await sleep(1500); await shot('third'); await page.keyboard.press('KeyV'); await sleep(500);
+      const moved = await page.evaluate(() => { const b = window.__garden.myBoat; return Math.hypot(b.pos.x - b.home.x, b.pos.z - b.home.z); });
+      // out in the canyon, between the falls, facing Manai Falls
+      await page.evaluate(() => { const g = window.__garden, b = g.myBoat, p = g.gorgeWorld(142, 2), q = g.gorgeWorld(146, -10); b.pos.set(p.x, b.pos.y, p.z); b.yaw = Math.atan2(q.x - p.x, q.z - p.z); g.player.yaw = b.yaw + Math.PI; g.player.pitch = 0.12; });
+      await sleep(1200); await shot('canyon');
+      await page.evaluate(() => { const g = window.__garden, b = g.myBoat, p = g.gorgeWorld(146, -6), q = g.gorgeWorld(146, -14); b.pos.set(p.x, b.pos.y, p.z); b.yaw = Math.atan2(q.x - p.x, q.z - p.z); g.player.yaw = b.yaw + Math.PI; g.player.pitch = 0.1; });
+      await sleep(1000); await shot('falls');
+      await page.keyboard.down('KeyW'); await sleep(2600); await shot('curtain'); await sleep(2600); await shot('cave');
+      await page.waitForFunction(() => window.__garden.state.world === 'sun', { timeout: 30000, polling: 300 }).catch(() => {});
+      await page.keyboard.up('KeyW'); await sleep(3200); await shot('sun-arrive');
+      const world = await page.evaluate(() => window.__garden.state.world);
+      const look = async (n, x, z, yaw, pitch = -0.02) => { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + x, 0, O.z - 34.8 + z); g.player.yaw = yaw; g.player.pitch = pitch; }, x, z, yaw, pitch); await sleep(1400); await shot(n); };
+      await look('sun-back', 0, 33, Math.PI); await look('sun-beds', -6, 14, -0.4); await look('sun-bands', 3, -10, 0.2); await look('sun-arch', 0, -32, 0, 0.05); await look('sun-field', 0, -70, 0); await look('sun-side', 2, -60, -1.2, 0.05);
+      await look('sun-door', 0, -109.6, 0, 0.12);
+      const dcue = await page.$eval('#cue', e => e.textContent.trim()); await page.keyboard.press('KeyE'); await sleep(1200); await shot('door-open');
+      await page.waitForFunction(() => window.__garden.state.world !== 'sun' && window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }).catch(() => {});
+      await sleep(2600); await shot('home');
+      const back = await page.evaluate(() => [window.__garden.state.world, window.__garden.state.mode]);
+      console.log(`  cue "${cue}", aboard: ${m1}, rowed ${moved.toFixed(1)} m, world after the cave: ${world}, door cue "${dcue}", after the door: ${back}`);
+      if (m1 !== 'boat' || moved < 2 || world !== 'sun' || back[0] === 'sun' || back[1] !== 'walk') errors.push('rowing or crossing worlds failed');
+    }
     else if (FLOW === 'gorge') { // walk to the lookout, look into the gorge (E), then step back
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const p = window.__garden.player; p.pos.set(70.1, 0, 8.4); p.yaw = Math.atan2(70.1 - 120, 8.4 - 14.4); p.pitch = 0.04; });
