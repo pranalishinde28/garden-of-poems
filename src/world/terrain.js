@@ -28,7 +28,8 @@ function baseH(x, z) {
 // distance out from the centre on its axis and across = sideways from its centre line, which bends right
 // as it goes in so the far end stays hidden. A meadow valley runs from the lookout down to a pool at the
 // gorge's mouth; the canyon is wide at the pool and narrows to a slot at the far end.
-export const GORGE = { a: 0.12, r0: 104, r1: 186, floor: 0.6 };
+// the water lies a few metres below the lawn, so from the lookout you look down onto it
+export const GORGE = { a: 0.12, r0: 104, r1: 186, floor: -2.2 };
 export const gorgeBend = u => smooth(130, 186, u) * 26;
 export const gorgeHalf = u => 12 + 7 * (1 - smooth(GORGE.r0, GORGE.r0 + 26, u)) - 8 * smooth(160, 184, u);
 export const gorgeLocal = (x, z) => { const c = Math.cos(GORGE.a), s = Math.sin(GORGE.a), along = x * c + z * s; return { along, across: -x * s + z * c - gorgeBend(along) }; };
@@ -40,7 +41,7 @@ function gorgeCarve(x, z, h) {
   if (u < 74 || u > GORGE.r1 + 8) return h;
   // the meadow from the lookout down to the pool
   const kv = (1 - smooth(9, 24, a)) * smooth(74, 80, u) * (1 - smooth(A0 + 2, A0 + 12, u));
-  if (kv > 0) h = lerp(h, Math.min(h, 0.95), kv);
+  if (kv > 0) h = lerp(h, lerp(Math.min(h, 0.95), GORGE.floor + 0.35, smooth(77, 87, u)), kv);
   // the canyon floor
   if (u > A0 - 4) { const w = gorgeHalf(Math.max(u, A0)), k = (1 - smooth(w, w + 9, a)) * smooth(A0 - 4, A0 + 2, u); if (k > 0) h = lerp(h, GORGE.floor - 0.7, k); }
   // the cave behind Manai Falls, on the left wall (world/gorge.js builds its vault)
@@ -51,7 +52,7 @@ function gorgeCarve(x, z, h) {
   return h;
 }
 // the way down from the lookout: stepping stones over the meadow to a jetty on the pool's near shore
-export const JETTY = { u0: 82.5, u1: 90.5, half: 0.95, y: GORGE.floor + 0.32 };
+export const JETTY = { u0: 85.5, u1: 93.5, half: 0.95, y: GORGE.floor + 0.32 };
 export function gorgeJettyH(x, z) { if (x < 60) return null; const g = gorgeLocal(x, z); return g.along > JETTY.u0 && g.along < JETTY.u1 && Math.abs(g.across) < JETTY.half ? JETTY.y : null; }
 // where you may walk beyond the hedge: through its gap, down the meadow to the shore, and out along the jetty
 export function gorgeWalk(x, z) {
