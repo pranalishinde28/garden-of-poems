@@ -239,7 +239,12 @@ async function main() {
       await page.evaluate(() => window.__garden.setSetting('light', 'night')); await sleep(2500); await look('sun-night', 6, -80, 0.2, 0.16); await look('sun-night-plaza', 0, -44, 0, 0.15);
       await page.evaluate(() => window.__garden.setSetting('light', 'sunset')); await sleep(2500); await look('sun-sunset', 6, -80, 0.2, 0.16);
       await page.evaluate(() => window.__garden.setSetting('light', 'day')); await sleep(1500);
-      await look('sun-door', -16, -48.4, 0, 0.12);
+      await page.evaluate(() => window.__garden.setSetting('light', 'night')); await sleep(2000); await look('sun-field-night', 4.1, 24, 0.15, 0.05);
+      await page.evaluate(() => { const g = window.__garden; g.state.showFw = true; }); await look('sun-fair-night', 30, -40, 0.7, 0.18); await sleep(3000); await look('sun-fireworks', 0, -40, 0, 0.42);
+      for (const k of ['wheel', 'carousel', 'coaster', 'swings', 'boats']) { await page.evaluate(k => { const g = window.__garden, r = g.rides.find(r => r.key === k); g.state.mode = 'walk'; g.late.startRide(r); }, k); await sleep(2500); await page.screenshot({ path: join(root, `dev/shots/row-ride-${k}.png`) }); const m = await page.evaluate(() => window.__garden.state.mode); if (m !== 'ride') errors.push('ride ' + k + ' did not start'); await page.click('#ride-off'); await sleep(600); }
+      await page.evaluate(() => window.__garden.setSetting('light', 'day')); await sleep(1500);
+      await look('sun-swing', 26, -62, -1.57, 0.25); await look('sun-canal', -30, -60, 1.2, 0.05);
+      await look('sun-door', -4.2 - 1.14 + 0.0, -1.6, 0, 0.12);
       const dcue = await page.$eval('#cue', e => e.textContent.trim()); await page.keyboard.press('KeyE'); await sleep(1200); await shot('door-open');
       await page.waitForFunction(() => window.__garden.state.world !== 'sun' && window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }).catch(() => {});
       await sleep(2600); await shot('home');

@@ -34,11 +34,16 @@ const LAKE = { x: 0, z: 48, rx: 24, rz: 10, y: -0.15 };
 const FIELD = { z0: 31, z1: -38 }, ARCH_Z = -41, PLAZA = { x: 0, z: -64, r: 23 }, CAROUSEL = { x: 0, z: -64, r: 7.6 };
 const LAGOON = { x: 0, z: -104, rx: 62, rz: 14 }, BRIDGE = { half: 2.4 }, CASTLE = { x: 0, z: -152 };
 const WHEEL = { x: -40, z: -134, hub: 18.5, r: 15 };
-const DOOR = { x: -16, z: -50 };
+// the storybook canal (west of the plaza) and the swing ride (east)
+const CANAL = { x: -56, z: -66, rx: 15, rz: 10, half: 2.4 }, SWING = { x: 42, z: -62, r: 10 }, KIOSK = { x: 12, z: -47 };
+const CANAL_PTS = Array.from({ length: 120 }, (_, k) => { const a = k / 120 * Math.PI * 2; return [CANAL.x + Math.cos(a) * (CANAL.rx + 2 * Math.sin(3 * a)), CANAL.z + Math.sin(a) * (CANAL.rz + 1.5 * Math.cos(2 * a))]; });
+const canalD = (x, z) => { if (Math.abs(x - CANAL.x) > CANAL.rx + 8 || Math.abs(z - CANAL.z) > CANAL.rz + 8) return 99; let b = 1e9; for (const [px, pz] of CANAL_PTS) b = Math.min(b, (px - x) ** 2 + (pz - z) ** 2); return Math.sqrt(b); };
 const lakeE = (x, z) => Math.hypot((x - LAKE.x) / LAKE.rx, (z - LAKE.z) / LAKE.rz);
 const lagoonE = (x, z) => Math.hypot((x - LAGOON.x) / LAGOON.rx, (z - LAGOON.z) / LAGOON.rz);
 // the stone path curves through the sunflowers from the lake to the arch, then runs straight on
 const pathX = z => z > ARCH_Z && z < FIELD.z0 + 3 ? 5.5 * Math.sin((FIELD.z0 + 3 - z) / (FIELD.z0 + 3 - ARCH_Z) * Math.PI * 2) : 0;
+// the white door stands in a clearing in the middle of the sunflowers, beside the path
+const DOOR = { x: pathX(-4) - 5, z: -4 };
 export function sunH(x, z) {
   const r = Math.hypot(x, z + 60);
   let h = 0.25 * Math.sin(x * 0.05 + 1) * Math.cos(z * 0.04) + 0.1 * Math.sin(x * 0.13 + z * 0.11);
@@ -46,6 +51,7 @@ export function sunH(x, z) {
   h *= 1 - 0.85 * smooth(-36, -46, z) * (1 - smooth(70, 95, Math.abs(x)));
   h = lerp(h, -1.4, 1 - smooth(0.85, 1.12, lakeE(x, z)));
   h = lerp(h, -1.4, 1 - smooth(0.88, 1.06, lagoonE(x, z)));
+  { const cd = canalD(x, z); if (cd < 4) h = lerp(h, -1.0, 1 - smooth(CANAL.half - 0.6, CANAL.half + 0.9, cd)); }
   const a = Math.atan2(z + 60, x);
   h += smooth(160, 280, r) * (20 + 10 * Math.sin(a * 3 + 1) + 6 * Math.sin(a * 7 + 2));
   return h;
@@ -208,7 +214,7 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
   const spots = [];
   for (let z = FIELD.z0; z > FIELD.z1; z -= 0.55) for (let x = -34; x < 34; x += 0.55) {
     const px = x + (R() - 0.5) * 0.35, pz = z + (R() - 0.5) * 0.35;
-    if (Math.abs(px - pathX(pz)) < 1.8 || lakeE(px, pz) < 1.35) continue;
+    if (Math.abs(px - pathX(pz)) < 1.8 || lakeE(px, pz) < 1.35 || Math.hypot(px - DOOR.x, pz - DOOR.z) < 3.4 || (pz < DOOR.z + 1.2 && pz > DOOR.z - 1.2 && px > DOOR.x && px < pathX(pz))) continue;
     // shorter beside the path, so the field rises away from you
     const d = Math.abs(px - pathX(pz));
     spots.push([px, pz, 1.1 + Math.min(1, d / 6) * 0.7 + R() * 0.6]);
@@ -255,8 +261,9 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
 /* ---------- the fair ---------- */
 // one lit material for everything built (it glows warmly from below after dusk, architecture.js nightLit);
 // bulbs: [x, y, z, r, g, b, phase]; ref: lights the water mirrors
-const lit = () => nightLit(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.9);
-const body = lit(), bulbs = [], ref = [];
+const lit = (k = 0.45) => nightLit(new THREE.MeshLambertMaterial({ vertexColors: true }), k);
+// the castle has its own, so it can be washed in shifting colour at night
+const body = lit(), castleMat = lit(0.9), bulbs = [], ref = [];
 const bulb = (p, col, ph = R()) => { const c = new THREE.Color(col); bulbs.push(p.x, p.y, p.z, c.r, c.g, c.b, ph * 100); };
 
 // the castle: pink walls, blue conical spires with gold finials, a gate in its front wall
@@ -299,7 +306,7 @@ const bulb = (p, col, ph = R()) => { const c = new THREE.Color(col); bulbs.push(
   // a rose window over the gate, and a line of lights along the front wall
   m.add(GEO.disc, at(cx, cz + 5.55, base + 13), new V3(2.2, 1, 2.2), C('#e7a0b8'), new THREE.Quaternion().setFromAxisAngle(new V3(1, 0, 0), Math.PI / 2));
   for (let x = -17; x <= 17; x += 1.7) bulb(at(cx + x, cz + 10.5, base + 10.9), '#ffe2a8');
-  root.add(new THREE.Mesh(m.build(), body));
+  root.add(new THREE.Mesh(m.build(), castleMat));
   const wm = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: '#ffb860', emissiveIntensity: 0 }); winMats.push(wm);
   root.add(new THREE.Mesh(win.build(), wm));
   ref.push([at(cx, cz, base + 36), '#ffd9a0'], [at(cx - 15, cz - 8, base + 24), '#ffd9a0'], [at(cx + 15, cz - 8, base + 24), '#ffd9a0']);
@@ -329,9 +336,12 @@ const wheel = new THREE.Group(), cabins = [];
     const a = k / 16 * Math.PI * 2, pivot = new THREE.Group(); pivot.position.set(Math.cos(a) * WHEEL.r, Math.sin(a) * WHEEL.r, 0); wheel.add(pivot);
     const cm = new Merge(), c = C(CAB[k % CAB.length]);
     cm.limb(new V3(0, 0, 0), new V3(0, -1.0, 0), 0.05, 0.05, C('#dddddd'));
-    cm.add(new THREE.CylinderGeometry(0.95, 0.85, 1.4, 12), new V3(0, -1.8, 0), new V3(1, 1, 1), c);
-    cm.add(new THREE.ConeGeometry(1.15, 0.7, 12), new V3(0, -0.85, 0), new V3(1, 1, 1), c);
-    cm.add(new THREE.CylinderGeometry(0.98, 0.98, 0.5, 12), new V3(0, -1.6, 0), new V3(1, 1, 1), C('#fff3d6'));
+    // an open gondola: a low painted tub, four slim posts, a roof (open underneath, so a rider sees out)
+    cm.add(new THREE.CylinderGeometry(0.95, 0.85, 0.75, 14, 1, true), new V3(0, -2.05, 0), new V3(1, 1, 1), c);
+    cm.add(GEO.disc, new V3(0, -2.42, 0), new V3(0.85, 1, 0.85), C('#8b6b4c'));
+    cm.add(new THREE.TorusGeometry(0.95, 0.06, 6, 20).rotateX(Math.PI / 2), new V3(0, -1.68, 0), new V3(1, 1, 1), C('#fff3d6'));
+    for (let p = 0; p < 4; p++) { const a = p / 4 * Math.PI * 2 + 0.78; cm.limb(new V3(Math.cos(a) * 0.9, -1.7, Math.sin(a) * 0.9), new V3(Math.cos(a) * 0.9, -0.9, Math.sin(a) * 0.9), 0.03, 0.03, C('#e4b23a')); }
+    cm.add(new THREE.ConeGeometry(1.15, 0.6, 14, 1, true), new V3(0, -0.6, 0), new V3(1, 1, 1), c);
     pivot.add(new THREE.Mesh(cm.build(), body)); cabins.push(pivot);
   }
   // bulbs on the rim and the spokes, turning with the wheel, cycling through the rainbow
@@ -348,7 +358,7 @@ const wheel = new THREE.Group(), cabins = [];
 
 // the roller coaster: a red track looping and swooping on white trestles, a train of cars running round it
 const track = (() => {
-  const pts = [[22, -122, 4], [36, -118, 9], [54, -120, 22], [68, -132, 12], [64, -150, 5], [50, -160, 16], [34, -168, 8], [24, -156, 3], [30, -142, 14], [44, -138, 6], [38, -128, 3]];
+  const pts = [[22, -122, 4], [36, -118, 9], [54, -120, 22], [68, -132, 12], [64, -150, 5], [50, -160, 16], [34, -168, 8], [24, -156, 3], [30, -142, 14], [44, -138, 6], [38, -128, 3]].map(([x, z, y]) => [x + 14, z, y]);
   return new THREE.CatmullRomCurve3(pts.map(([x, z, y]) => at(x, z, sunH(x, z) + y + 2)), true, 'catmullrom', 0.4);
 })();
 const train = [];
@@ -368,7 +378,7 @@ const train = [];
   }
   root.add(new THREE.Mesh(m.build(), body));
   const CAR = ['#3b8fe0', '#f7d433', '#4fb35a', '#d95aa8'];
-  for (let k = 0; k < 4; k++) { const cm = new Merge(); cm.add(GEO.box, new V3(0, 0.75, 0), new V3(1.5, 0.7, 2.0), C(CAR[k])); cm.add(GEO.box, new V3(0, 1.25, 0.75), new V3(1.5, 0.4, 0.3), C('#f4f1ea')); const g = new THREE.Mesh(cm.build(), body); root.add(g); train.push(g); }
+  for (let k = 0; k < 4; k++) { const cm = new Merge(); cm.add(GEO.box, new V3(0, 0.75, 0), new V3(1.5, 0.7, 2.0), C(CAR[k])); cm.add(GEO.box, new V3(0, 1.25, -0.85), new V3(1.5, 0.5, 0.3), C('#f4f1ea')); const g = new THREE.Mesh(cm.build(), body); root.add(g); train.push(g); }
   ref.push([track.getPointAt(0.2), '#ff8a5a'], [track.getPointAt(0.45), '#ffcf7a'], [track.getPointAt(0.7), '#ff8a5a']);
 }
 
@@ -405,6 +415,121 @@ const carousel = new THREE.Group(), ring = new THREE.Group(), horses = [];
   ref.push([at(CAROUSEL.x, CAROUSEL.z, base + 6.4), '#ffd890']);
 }
 
+// little rings of bulbs that turn with a ride (the swing ride's canopy, the canal boats' roofs)
+function bulbRing(parent, pts, col) {
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  parent.add(new THREE.Points(g, new THREE.ShaderMaterial({ uniforms: { uGlow: waterU.uGlow, uCol: { value: new THREE.Color(col) } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    vertexShader: 'void main(){vec4 mv=modelViewMatrix*vec4(position,1.);gl_PointSize=clamp(300./-mv.z,2.,18.);gl_Position=projectionMatrix*mv;}',
+    fragmentShader: 'uniform float uGlow;uniform vec3 uCol;void main(){float d=length(gl_PointCoord-.5);float a=(smoothstep(.5,.0,d)*.6+smoothstep(.18,.0,d))*uGlow;gl_FragColor=vec4(uCol*a,a);}' })));
+}
+
+// the swing ride: a painted tower, a canopy that spins, chairs on long chains flying outward
+const swingTop = new THREE.Group(), chairs = [];
+{
+  const base = sunH(SWING.x, SWING.z), g = new THREE.Group(); g.position.set(SWING.x, base, SWING.z); root.add(g);
+  const towerTex = canvasTex(256, 512, (c, w, h) => {
+    const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#1d3f8a'); gr.addColorStop(0.6, '#2f6fc4'); gr.addColorStop(1, '#58a8e0'); c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    c.fillStyle = 'rgba(255,255,255,.85)'; for (let i = 0; i < 60; i++) { const x = R() * w, y = R() * h * 0.6, r = 1 + R() * 3; c.beginPath(); for (let k = 0; k < 10; k++) { const a = k / 10 * 6.283, rr = k % 2 ? r * 0.45 : r; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } c.fill(); }
+    c.fillStyle = '#5bb86a'; c.beginPath(); c.moveTo(0, h); for (let x = 0; x <= w; x += 16) c.lineTo(x, h - 70 - Math.sin(x * 0.05) * 25 - R() * 10); c.lineTo(w, h); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 4; for (let y = 120; y < 330; y += 46) { c.beginPath(); for (let x = 0; x <= w; x += 8) c.lineTo(x, y + Math.sin(x * 0.06 + y) * 9); c.stroke(); }
+  });
+  const m = new Merge();
+  m.add(new THREE.CylinderGeometry(2.4, 2.8, 0.6, 32), new V3(0, 0.3, 0), new V3(1, 1, 1), C('#d8c7a8'));
+  g.add(new THREE.Mesh(m.build(), body));
+  const col = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.3, 13, 24, 1, true), nightLit(new THREE.MeshLambertMaterial({ map: towerTex }), 0.9)); col.position.y = 6.8; g.add(col);
+  swingTop.position.y = 13.3; g.add(swingTop);
+  const t = new Merge(), GOLD = C('#e4b23a');
+  t.add(new THREE.ConeGeometry(7.4, 2.6, 32, 1, true), new V3(0, 0.6, 0), new V3(1, 1, 1), C('#1f3f7a'));
+  t.add(new THREE.CylinderGeometry(7.4, 7.4, 0.7, 32, 1, true), new V3(0, -0.9, 0), new V3(1, 1, 1), GOLD);
+  for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; t.add(GEO.box, new V3(Math.cos(a) * 7.5, -0.9, Math.sin(a) * 7.5), new V3(1.9, 0.6, 0.06), C(k % 2 ? '#3f8a6a' : '#2f6fc4'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), -a + Math.PI / 2)); }
+  t.add(GEO.sph, new V3(0, 2.2, 0), new V3(0.5, 0.5, 0.5), GOLD);
+  swingTop.add(new THREE.Mesh(t.build(), body));
+  const rim = []; for (let k = 0; k < 64; k++) { const a = k / 64 * Math.PI * 2; rim.push(Math.cos(a) * 7.55, -0.55, Math.sin(a) * 7.55); }
+  bulbRing(swingTop, rim, '#ffe0a0');
+  for (let k = 0; k < 16; k++) {
+    const arm = new THREE.Group(); arm.rotation.y = k / 16 * Math.PI * 2; swingTop.add(arm);
+    const pivot = new THREE.Group(); pivot.position.set(6.6, -1.1, 0); arm.add(pivot);
+    const cm = new Merge();
+    for (const z of [-0.3, 0.3]) cm.limb(new V3(0, 0, z * 0.5), new V3(0, -6.4, z), 0.01, 0.01, C('#8a8a8a'));
+    cm.add(GEO.box, new V3(0, -6.5, 0), new V3(0.6, 0.1, 0.65), C('#c8322e')); cm.add(GEO.box, new V3(-0.3, -6.2, 0), new V3(0.08, 0.6, 0.65), C('#c8322e'));
+    cm.add(GEO.box, new V3(0.32, -6.75, 0), new V3(0.06, 0.4, 0.5), C('#f2c12e'));
+    pivot.add(new THREE.Mesh(cm.build(), body)); chairs.push(pivot);
+  }
+  // a low fence round it, and a toy-block gateway on the way in
+  const f = new Merge();
+  for (let k = 0; k < 48; k++) { const a = k / 48 * Math.PI * 2; if (Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.16) continue; f.limb(at(Math.cos(a) * SWING.r, Math.sin(a) * SWING.r, 0), at(Math.cos(a) * SWING.r, Math.sin(a) * SWING.r, 1.0), 0.04, 0.04, C('#2f6a45')); f.limb(at(Math.cos(a) * SWING.r, Math.sin(a) * SWING.r, 0.9), at(Math.cos(a + Math.PI / 24) * SWING.r, Math.sin(a + Math.PI / 24) * SWING.r, 0.9), 0.035, 0.035, C('#2f6a45')); }
+  g.add(new THREE.Mesh(f.build(), body));
+  const blocks = new Merge(), BC = ['#e8463a', '#3b8fe0', '#f7d433', '#4fb35a', '#f08a1c'].map(C);
+  for (const sz of [-1, 1]) for (let y = 0; y < 4; y++) blocks.add(GEO.box, new V3(-SWING.r - 0.2, 0.45 + y * 0.92, sz * 1.9), new V3(0.9, 0.9, 0.9), BC[(y + (sz > 0 ? 2 : 0)) % 5], new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), (R() - 0.5) * 0.3));
+  for (let k = 0; k < 5; k++) blocks.add(GEO.box, new V3(-SWING.r - 0.2, 4.15, -1.8 + k * 0.9), new V3(0.9, 0.9, 0.9), BC[k], new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), (R() - 0.5) * 0.2));
+  g.add(new THREE.Mesh(blocks.build(), body));
+}
+
+// the storybook canal: turquoise water round an island of little painted houses and a giant blue book
+const canalBoats = [];
+{
+  const pos = [], idx = [], N = CANAL_PTS.length;
+  CANAL_PTS.forEach(([x, z], k) => {
+    const [nx, nz] = CANAL_PTS[(k + 1) % N], [px, pz] = CANAL_PTS[(k + N - 1) % N], tx = nx - px, tz = nz - pz, L = Math.hypot(tx, tz), ox = tz / L, oz = -tx / L;
+    for (const s of [-1, 1]) pos.push(x + ox * s * (CANAL.half + 0.6), -0.2, z + oz * s * (CANAL.half + 0.6));
+    const a = k * 2, b = ((k + 1) % N) * 2; idx.push(a, b, a + 1, a + 1, b, b + 1);
+  });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+  root.add(new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: waterU, side: THREE.DoubleSide, fog: false,
+    vertexShader: 'varying vec3 vW;void main(){vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
+    fragmentShader: `uniform float uTime,uNight,uGlow;varying vec3 vW;
+      float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+      float nz(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);return mix(mix(h2(i),h2(i+vec2(1,0)),u.x),mix(h2(i+vec2(0,1)),h2(i+vec2(1,1)),u.x),u.y);}
+      void main(){float n=nz(vW.xz*.8+uTime*.3)*.6+nz(vW.xz*2.3-uTime*.5)*.4;
+        vec3 c=mix(vec3(.08,.5,.5),vec3(.36,.86,.8),n*.7);c*=mix(1.,.22,uNight);c+=vec3(1.,.8,.5)*uGlow*uNight*.12*n;
+        gl_FragColor=vec4(c,1.);}` })));
+  // rocky banks
+  const r = new Merge();
+  CANAL_PTS.forEach(([x, z], k) => { if (k % 2) return; const [nx, nz] = CANAL_PTS[(k + 1) % N], tx = nx - x, tz = nz - z, L = Math.hypot(tx, tz); for (const s of [-1, 1]) { const d = CANAL.half + 0.7 + R() * 0.5, sc = 0.4 + R() * 0.6; r.add(GEO.dode, at(x + tz / L * s * d, z - tx / L * s * d, -0.2), new V3(sc * 1.3, sc * 0.7, sc), C(['#9a948a', '#8a857b', '#a8a296'][k % 3]), new THREE.Quaternion().setFromEuler(new THREE.Euler(R(), R() * 6, R()))); } });
+  // the island: little houses with bright roofs, round trees, and a giant open book
+  const HOUSE = ['#f4e3c8', '#f2d0d8', '#d8e8f2', '#f6f1d8'], ROOF = ['#c8322e', '#3b78d0', '#4fb35a', '#d95aa8', '#f08a1c'];
+  for (let k = 0; k < 9; k++) {
+    const a = k / 9 * Math.PI * 2 + 0.3, hx = CANAL.x + Math.cos(a) * (CANAL.rx - 6), hz = CANAL.z + Math.sin(a) * (CANAL.rz - 5), s = 0.9 + R() * 0.6, y = sunH(hx, hz);
+    r.add(GEO.box, at(hx, hz, y + s * 0.6), new V3(s * 1.4, s * 1.2, s * 1.2), C(HOUSE[k % 4]));
+    r.add(GEO.pyr, at(hx, hz, y + s * 1.55), new V3(s * 1.15, s * 0.8, s * 1.0), C(ROOF[k % 5]), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), Math.PI / 4));
+    r.add(GEO.box, at(hx, hz + s * 0.61, y + s * 0.45), new V3(s * 0.3, s * 0.5, 0.05), C('#6b4424'));
+    for (let t = 0; t < 2; t++) { const tx = hx + (R() - 0.5) * 4, tz = hz + (R() - 0.5) * 3; r.add(GEO.cone, at(tx, tz, sunH(tx, tz)), new V3(0.5, 1.6 + R(), 0.5), C('#2f6a32')); }
+  }
+  { const by = sunH(CANAL.x, CANAL.z); for (const s of [-1, 1]) r.add(GEO.box, at(CANAL.x + s * 2.1, CANAL.z, by + 2.6), new V3(4.2, 5, 0.6), C('#2c5fb8'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), s * 0.35)); r.add(GEO.box, at(CANAL.x, CANAL.z + 0.1, by + 2.5), new V3(7.6, 4.6, 0.3), C('#f6efe0')); }
+  root.add(new THREE.Mesh(r.build(), body));
+  // the dock where the boats take you aboard
+  const d = new Merge(), dx = CANAL.x + CANAL.rx + CANAL.half + 1.2, WOOD = ['#8a6a4c', '#7d5c40'].map(C);
+  for (let z = -2.5; z <= 2.5; z += 0.32) d.add(GEO.box, at(dx, CANAL.z + z, 0.15), new V3(2.6, 0.08, 0.28), WOOD[(R() * 2) | 0]);
+  root.add(new THREE.Mesh(d.build(), body));
+  // the boats: little cream and turquoise launches with striped roofs and lights
+  for (let k = 0; k < 4; k++) {
+    const b = makeBoat(['#eef7f4', '#f6efe0'][k % 2], ['#3aa3b5', '#d95aa8', '#f08a1c', '#3b78d0'][k], body);
+    b.g.scale.setScalar(1.25); b.oars.forEach(o => { o.visible = false; });
+    const roof = new Merge(); for (const [x, z] of [[-0.5, -1], [0.5, -1], [-0.5, 0.9], [0.5, 0.9]]) roof.limb(new V3(x, 0.3, z), new V3(x, 1.5, z), 0.025, 0.025, C('#e4b23a'));
+    roof.add(GEO.box, new V3(0, 1.55, 0), new V3(1.3, 0.1, 2.3), C(['#3aa3b5', '#d95aa8', '#f08a1c', '#3b78d0'][k]));
+    b.g.add(new THREE.Mesh(roof.build(), body));
+    bulbRing(b.g, [-0.6, 1.5, -1.1, 0.6, 1.5, -1.1, -0.6, 1.5, 1.1, 0.6, 1.5, 1.1, 0, 1.5, 1.15, 0, 1.5, -1.15], '#ffe0a0');
+    root.add(b.g); canalBoats.push({ g: b.g, t0: k / 4 });
+  }
+}
+
+// the fireworks kiosk: a striped stand with a big brass button
+{
+  const k = new Merge(), y = sunH(KIOSK.x, KIOSK.z);
+  for (let i = 0; i < 8; i++) k.add(GEO.box, at(KIOSK.x - 0.7 + i * 0.2, KIOSK.z, y + 0.55), new V3(0.2, 1.1, 1.2), C(i % 2 ? '#f8f1e0' : '#c8322e'));
+  k.add(GEO.box, at(KIOSK.x, KIOSK.z, y + 1.15), new V3(1.8, 0.1, 1.4), C('#e4b23a'));
+  k.add(new THREE.CylinderGeometry(0.22, 0.26, 0.16, 20), at(KIOSK.x, KIOSK.z, y + 1.28), new V3(1, 1, 1), C('#d8322e'));
+  for (const s of [-1, 1]) { k.limb(at(KIOSK.x + s * 0.8, KIOSK.z - 0.6, y + 1.2), at(KIOSK.x + s * 0.8, KIOSK.z - 0.6, y + 2.6), 0.03, 0.03, C('#e4b23a')); }
+  k.add(GEO.cone, at(KIOSK.x, KIOSK.z - 0.2, y + 2.6), new V3(1.3, 0.7, 1.1), C('#3f86d6'));
+  const km = new THREE.Mesh(k.build(), body); root.add(km); KIOSK.mesh = km;
+  for (let i = 0; i < 10; i++) bulb(at(KIOSK.x - 1.1 + i * 0.245, KIOSK.z + 0.55, y + 2.3), ['#ff8a5a', '#ffe08a', '#8ad0ff'][i % 3]);
+}
+// paving out to the swing ride and the canal dock
+{
+  const pm = new THREE.Mesh(new THREE.PlaneGeometry(14, 5).rotateX(-Math.PI / 2), plazaMat); pm.position.set(PLAZA.r + 4.5, sunH(PLAZA.r + 4.5, SWING.z) + 0.06, SWING.z); root.add(pm);
+  const cm = new THREE.Mesh(new THREE.PlaneGeometry(18, 5).rotateX(-Math.PI / 2), plazaMat); cm.position.set(-PLAZA.r - 5, sunH(-PLAZA.r - 5, CANAL.z) + 0.06, CANAL.z); root.add(cm);
+}
+
 // the bridge over the lagoon, and lamp posts with flower baskets along every path
 const lamps = [];
 {
@@ -429,6 +554,17 @@ const lamps = [];
   for (let z = PLAZA.z - PLAZA.r - 2; z > LAGOON.z + LAGOON.rz + 2; z -= 6) for (const s of [-1, 1]) lamp(s * 3.4, z);
   for (let z = z0 - 2; z > z1; z -= 7) for (const s of [-1, 1]) lamp(s * (BRIDGE.half + 0.15), z, 2.8);
   for (let z = z1 - 3; z > CASTLE.z + 14; z -= 7) for (const s of [-1, 1]) lamp(s * 4.4, z);
+  // through the sunflowers: lamps either side of the path, strung with festoon lights across it
+  for (let z = FIELD.z0 - 1; z > ARCH_Z + 3; z -= 7.5) {
+    const px = pathX(z), L = lamps.length; lamp(px - 2.3, z, 3.2); lamp(px + 2.3, z, 3.2);
+    const a = lamps[L], b = lamps[L + 1];
+    for (let k = 1; k < 14; k++) { const t = k / 14; bulb(new V3(a.x + (b.x - a.x) * t, a.y - 0.35 - Math.sin(t * Math.PI) * 0.6, a.z), ['#ffd27a', '#ff9a8a', '#a8e0ff', '#ffe9b0', '#c8f0a0'][k % 5]); }
+  }
+  // round the door's clearing
+  for (const s of [-1, 1]) lamp(DOOR.x + s * 2.3, DOOR.z - 0.6, 2.6);
+  // out to the swing ride and the canal
+  for (let x = PLAZA.r + 1; x < SWING.x - SWING.r; x += 5) for (const s of [-1, 1]) lamp(x, SWING.z + s * 2.8);
+  for (let x = -PLAZA.r - 1; x > CANAL.x + CANAL.rx + 3; x -= 5) for (const s of [-1, 1]) lamp(x, CANAL.z + s * 2.8);
   root.add(new THREE.Mesh(m.build(), new THREE.MeshLambertMaterial({ vertexColors: true })));
   const gm = new THREE.MeshLambertMaterial({ color: '#fff3d6', emissive: '#ffcf80', emissiveIntensity: 0.2 }); winMats.push(gm);
   const globes = new THREE.InstancedMesh(GEO.sph, gm, lamps.length), d = new THREE.Object3D();
@@ -448,12 +584,15 @@ const lamps = [];
   const ringBed = new THREE.Mesh(new THREE.RingGeometry(CAROUSEL.r + 0.6, CAROUSEL.r + 2.4, 48).rotateX(-Math.PI / 2), bm); ringBed.position.set(CAROUSEL.x, sunH(CAROUSEL.x, CAROUSEL.z) + 0.09, CAROUSEL.z); root.add(ringBed);
 }
 
-/* ---------- the white door, standing alone at the edge of the plaza ---------- */
+/* ---------- the white door, standing alone in a clearing among the sunflowers ---------- */
 const door = new THREE.Group(), leaf = new THREE.Group();
 const doorLight = new THREE.Mesh(new THREE.PlaneGeometry(1.02, 2.2).translate(0, 1.1, 0), new THREE.MeshBasicMaterial({ color: '#fffaf0', transparent: true, opacity: 0 }));
 export const DOOR_AT = O.clone().add(new V3(DOOR.x, 0, DOOR.z));
 {
   door.position.set(DOOR.x, sunH(DOOR.x, DOOR.z), DOOR.z); root.add(door);
+  // a little round of paving in the clearing, and a few stones from the path to it
+  { const c = new THREE.Mesh(new THREE.CircleGeometry(2.6, 40).rotateX(-Math.PI / 2), decal(paveTex)); c.position.set(DOOR.x, sunH(DOOR.x, DOOR.z) + 0.05, DOOR.z + 0.4); root.add(c); }
+  for (let x = DOOR.x + 2.8; x < pathX(DOOR.z) - 1.2; x += 0.9) { const s = new THREE.Mesh(new THREE.CircleGeometry(0.38, 12).rotateX(-Math.PI / 2), decal(paveTex)); s.position.set(x, sunH(x, DOOR.z) + 0.05, DOOR.z + 0.6); root.add(s); }
   const white = new THREE.MeshLambertMaterial({ color: '#fbfaf6', emissive: '#fff4e0', emissiveIntensity: 0 }), trim = new THREE.MeshLambertMaterial({ color: '#efece4' }), brass = new THREE.MeshLambertMaterial({ color: '#d4a64a', emissive: '#3a2a08' }), stone = new THREE.MeshLambertMaterial({ color: '#c9c3b6' });
   winMats.push(white);
   const box = (w, h, d, x, y, z, m, p = door) => { const b = new THREE.Mesh(GEO.box, m); b.scale.set(w, h, d); b.position.set(x, y, z); p.add(b); return b; };
@@ -511,6 +650,60 @@ const flies = [];
     fragmentShader: 'uniform float uNight;varying float vB;void main(){float d=length(gl_PointCoord-.5);float a=smoothstep(.5,0.,d)*.6*vB;vec3 c=mix(vec3(1.,.95,.75),vec3(.8,1.,.5),uNight);gl_FragColor=vec4(c*a,a);}' })));
 }
 
+/* ---------- fireworks over the castle: on their own at night, or whenever you press the kiosk's button ---------- */
+const FB = 16, FP = 220, fwU = { uTime: waterU.uTime, uB: { value: Array.from({ length: FB }, () => new THREE.Vector4(0, -999, 0, -99)) }, uC: { value: Array.from({ length: FB }, () => new THREE.Color()) } };
+{
+  const dir = new Float32Array(FB * FP * 3), bi = new Float32Array(FB * FP), ki = new Float32Array(FB * FP);
+  for (let b = 0; b < FB; b++) for (let k = 0; k < FP; k++) {
+    const i = b * FP + k, u = R() * 2 - 1, a = R() * Math.PI * 2, r = Math.sqrt(1 - u * u), sp = 0.75 + R() * 0.25;
+    dir.set([Math.cos(a) * r * sp, u * sp, Math.sin(a) * r * sp], i * 3); bi[i] = b; ki[i] = k;
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(FB * FP * 3), 3)); g.setAttribute('aDir', new THREE.BufferAttribute(dir, 3)); g.setAttribute('aB', new THREE.BufferAttribute(bi, 1)); g.setAttribute('aK', new THREE.BufferAttribute(ki, 1));
+  const pts = new THREE.Points(g, new THREE.ShaderMaterial({ uniforms: fwU, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+    vertexShader: `uniform float uTime;uniform vec4 uB[${FB}];uniform vec3 uC[${FB}];attribute vec3 aDir;attribute float aB,aK;varying vec3 vC;varying float vA;
+      void main(){
+        int i=int(aB+.5);vec4 b=uB[i];float t=uTime-b.w,L=1.1;vec3 p;vA=0.;vC=uC[i];
+        if(t<0.||t>5.){gl_Position=vec4(2.,2.,2.,1.);gl_PointSize=0.;return;}
+        if(t<L){ if(aK>.5){gl_Position=vec4(2.,2.,2.,1.);gl_PointSize=0.;return;} p=b.xyz-vec3(0.,(1.-t/L)*32.,0.);vA=1.;vC=vec3(1.,.85,.6); }
+        else { float s=t-L;p=b.xyz+aDir*17.*(1.-exp(-s*1.7))-vec3(0.,s*s*1.3,0.);vA=(1.-smoothstep(1.6,3.6,s))*(.6+.4*sin(s*20.+aK));vC=mix(vec3(1.),vC,smoothstep(0.,.35,s)); }
+        vec4 mv=viewMatrix*vec4(p,1.);gl_PointSize=clamp(1700./-mv.z,2.,16.);gl_Position=projectionMatrix*mv;}`,
+    fragmentShader: 'varying vec3 vC;varying float vA;void main(){float d=length(gl_PointCoord-.5);float a=smoothstep(.5,0.,d)*vA;gl_FragColor=vec4(vC*a*2.4,a);}' }));
+  pts.frustumCulled = false; sunScene.add(pts);
+}
+const FW_COLS = ['#ffd27a', '#ffffff', '#ff7ab8', '#7ab8ff', '#b88aff', '#8affb0', '#ff8a5a', '#ffe8a0'];
+let fwSlot = 0, fwNext = 0, showUntil = -1;
+function launch() {
+  const b = fwU.uB.value[fwSlot]; fwU.uC.value[fwSlot].set(FW_COLS[(R() * FW_COLS.length) | 0]);
+  b.set(O.x + CASTLE.x + (R() - 0.5) * 70, O.y + 40 + R() * 22, O.z + CASTLE.z + (R() - 0.5) * 24, T); fwSlot = (fwSlot + 1) % FB;
+}
+// the kiosk's button: half a minute of fireworks, day or night
+function fireworksShow() { showUntil = T + 30; fwNext = T; late.toast && late.toast('Fireworks over the castle!', 2600); }
+regThing(KIOSK.mesh, 'Set off the fireworks', fireworksShow, { x: O.x + KIOSK.x, z: O.z + KIOSK.z + 1.2, r: 2.6 });
+
+/* ---------- the rides you can take: each gives where your seat is; ui/worlds.js carries you on it ---------- */
+const w = (x, z) => O.clone().add(new V3(x, 0, z)), up = new V3(0, 1, 0);
+let trainT = 0, wheelCab = 0;
+export const rides = [
+  { key: 'wheel', label: 'Ride the Ferris wheel', name: 'On the Ferris wheel', yaw0: Math.PI, exit: w(WHEEL.x, WHEEL.z + 6.5),
+    board() { let lo = 1e9; cabins.forEach((c, k) => { c.getWorldPosition(tmp); if (tmp.y < lo) { lo = tmp.y; wheelCab = k; } }); },
+    seat(v) { cabins[wheelCab].getWorldPosition(v); v.y -= 1.1; } },
+  { key: 'carousel', label: 'Ride the carousel', name: 'On the carousel', follow: true, exit: w(CAROUSEL.x, CAROUSEL.z + CAROUSEL.r + 3),
+    seat(v) { horses[0].hg.getWorldPosition(v); v.y += 3.25; } },
+  { key: 'coaster', label: 'Ride the roller coaster', name: 'On the roller coaster', exit: w(29, -118),
+    seat(v) { train[0].getWorldPosition(v); v.y += 1.95; }, fwd(v) { v.copy(track.getTangentAt(trainT)); } },
+  { key: 'swings', label: 'Ride the swings', name: 'On the swings', follow: true, exit: w(SWING.x - SWING.r - 2.5, SWING.z),
+    seat(v) { chairs[0].children[0].localToWorld(v.set(0.25, -5.75, 0)); } },
+  { key: 'boats', label: 'Take a storybook boat', name: 'On the storybook canal', follow: true, exit: w(CANAL.x + CANAL.rx + CANAL.half + 3.2, CANAL.z),
+    seat(v) { canalBoats[0].g.getWorldPosition(v); v.y += 1.2; } },
+];
+regThing(cabins[0].parent.parent, rides[0].label, () => late.startRide && late.startRide(rides[0]), { x: O.x + WHEEL.x, z: O.z + WHEEL.z + 6, r: 4.5 });
+regThing(carousel, rides[1].label, () => late.startRide && late.startRide(rides[1]), { x: O.x + CAROUSEL.x, z: O.z + CAROUSEL.z, r: CAROUSEL.r + 3.4 });
+regThing(train[0], rides[2].label, () => late.startRide && late.startRide(rides[2]), { x: O.x + 29, z: O.z - 118, r: 4.5 });
+regThing(swingTop.parent, rides[3].label, () => late.startRide && late.startRide(rides[3]), { x: O.x + SWING.x, z: O.z + SWING.z, r: SWING.r + 3 });
+regThing(canalBoats[0].g, rides[4].label, () => late.startRide && late.startRide(rides[4]), { x: O.x + CANAL.x + CANAL.rx + CANAL.half + 2.4, z: O.z + CANAL.z, r: 3.4 });
+// the coaster's station: a platform at the start of the track
+{ const p = track.getPointAt(0), m = new Merge(); m.add(GEO.box, new V3(p.x - 2.4, sunH(p.x, p.z) + 0.4, p.z + 2), new V3(4, 0.8, 6), C('#e6d9cc')); m.add(GEO.box, new V3(p.x - 2.4, sunH(p.x, p.z) + 4.2, p.z + 2), new V3(4.6, 0.3, 6.6), C('#c8322e')); for (const [dx, dz] of [[-2, -1], [-2, 5], [2, -1], [2, 5]]) m.limb(new V3(p.x - 2.4 + dx, sunH(p.x, p.z), p.z + dz - 1), new V3(p.x - 2.4 + dx, sunH(p.x, p.z) + 4.1, p.z + dz - 1), 0.1, 0.1, C('#f4f1ea')); root.add(new THREE.Mesh(m.build(), body)); }
+
 /* ---------- every frame while you are here ---------- */
 const DAY = { hemiS: C('#e2f1ff'), hemiG: C('#4d7a32'), sun: C('#fff1d8'), fog: C('#d4e6f4') };
 const DUSK = { hemiS: C('#ffc9a8'), hemiG: C('#5a5a3a'), sun: C('#ffa060'), fog: C('#f0b48c') };
@@ -536,6 +729,15 @@ addTick(dt => {
   for (let i = 0; i < WHEEL_REF; i++) { const a = i / WHEEL_REF * Math.PI * 2 + wheel.rotation.z; waterU.uL.value[i].set(O.x + WHEEL.x + Math.cos(a) * WHEEL.r, O.y + sunH(WHEEL.x, WHEEL.z) + WHEEL.hub + Math.sin(a) * WHEEL.r, O.z + WHEEL.z); waterU.uLC.value[i].setHSL(((i / WHEEL_REF - T * 0.08) % 1 + 1) % 1, 0.9, 0.62); }
   train.forEach((c, i) => { const t = ((T * 0.03) - i * 0.006 + 10) % 1, p = track.getPointAt(t), q = track.getPointAt((t + 0.002) % 1); c.position.copy(p); c.lookAt(tmp.copy(q).add(O)); });
   ring.rotation.y = T * 0.25; horses.forEach(h => { h.hg.position.y = 0.35 + Math.sin(T * 1.6 + h.ph) * 0.35; });
+  trainT = ((T * 0.03) + 10) % 1;
+  // the swings fly outward as the canopy spins
+  swingTop.rotation.y = T * 1.05; { const tilt = 0.82 + Math.sin(T * 0.4) * 0.06; chairs.forEach(c => { c.rotation.z = tilt; }); }
+  // the canal boats glide round the island
+  canalBoats.forEach(b => { const t = ((T * 0.012 + b.t0) % 1 + 1) % 1, f = t * CANAL_PTS.length, i = Math.floor(f), [x0, z0] = CANAL_PTS[i % CANAL_PTS.length], [x1, z1] = CANAL_PTS[(i + 1) % CANAL_PTS.length], k = f - i; b.g.position.set(x0 + (x1 - x0) * k, -0.3 + Math.sin(T * 1.3 + b.t0 * 9) * 0.03, z0 + (z1 - z0) * k); b.g.rotation.y = Math.atan2(x1 - x0, z1 - z0); });
+  // the castle washed in shifting colour at night, and fireworks: by themselves after dark, or a show on demand
+  castleMat.emissive.setHSL(((0.62 + Math.sin(T * 0.15) * 0.18) % 1 + 1) % 1, 0.8, 0.5).multiplyScalar(n * 0.32);
+  const showing = T < showUntil;
+  if ((n > 0.6 || showing) && T >= fwNext) { launch(); if (showing && R() < 0.4) launch(); fwNext = T + (showing ? 0.35 + R() * 0.5 : 1.3 + R() * 1.6); }
   for (const f of flies) {
     f.g.visible = n < 0.5;
     const t = T * f.sp + f.ph, x = f.c.x + Math.sin(t) * 4 + Math.sin(t * 2.3) * 1.2, z = f.c.z + Math.cos(t * 0.8) * 4;
@@ -568,8 +770,11 @@ worlds.sun = {
     if (lagoonE(lx, lz) < 1.03 && Math.abs(lx) > BRIDGE.half - 0.3) return true;
     if (Math.hypot(lx - CAROUSEL.x, lz - CAROUSEL.z) < CAROUSEL.r + 0.4) return true;
     if (Math.abs(lx - WHEEL.x) < 9.5 && Math.abs(lz - WHEEL.z) < 3) return true;
-    if (lx > 18 && lx < 72 && lz < -114 && lz > -176) return true;
+    if (lx > 33 && lx < 86 && lz < -114 && lz > -176) return true;
     if (Math.abs(lx - DOOR.x) < 0.85 && Math.abs(lz - DOOR.z) < 0.5) return true;
+    if (Math.hypot(lx - SWING.x, lz - SWING.z) < SWING.r) return true;
+    if (Math.hypot((lx - CANAL.x) / (CANAL.rx + 3), (lz - CANAL.z) / (CANAL.rz + 3)) < 1) return true;
+    if (Math.hypot(lx - KIOSK.x, lz - KIOSK.z) < 1.1) return true;
     return false;
   },
   enter() { closeDoor(); announced = false; },
