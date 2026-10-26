@@ -1,7 +1,7 @@
 import { $, ease, isTouch } from './util.js';
 import { POST } from '../settings/storage.js';
 import { T, introA, seed, setIntroA, setTime, setTween, state, tween } from './state.js';
-import { camera, canvas, renderer, scene } from '../world/renderer.js';
+import { camera, canvas, renderer, scene, view } from '../world/renderer.js';
 import { sky } from '../world/sky.js';
 import { windU } from '../world/wind.js';
 import { plants, setShadowDirty, shadowDirty } from '../plants/registry.js';
@@ -44,6 +44,7 @@ export function frame(now) {
   } else if (state.mode === 'walk') walk(dt);
   else if (state.mode === 'cinematic' && seed) updateSeed(dt);
   else if (state.mode === 'swing') updateSwing(dt);
+  else if (state.mode === 'boat') late.updateBoat && late.updateBoat(dt);
   swings.forEach(sw => { if (sw !== (state.mode === 'swing' ? state.swing : null)) { sw.omega += (-(9.8 / sw.Lw) * Math.sin(sw.theta) - 0.6 * sw.omega) * dt; sw.theta += sw.omega * dt; sw.pivot.rotation.x = sw.theta; } });
   updateFigure(dt);
   updateAnimals(dt);
@@ -58,11 +59,11 @@ export function frame(now) {
   airU.uCam.value.copy(camera.position); rainU.uCam.value.copy(camera.position);
   trampleU.uPlayer.value.set(player.pos.x, 0, player.pos.z);
   sky.position.copy(camera.position);
-  Music.update(state.rain);
+  Music.update(state.world === 'sun' ? 0 : state.rain);
   camera.updateMatrixWorld();
   noteFrame(now);
-  if (quality.reflEvery === 1 || (++reflFrame % quality.reflEvery) === 0) renderReflection();
-  if (POST.on && quality.post) renderPost(); else renderer.render(scene, camera);
+  if (view.scene === scene && (quality.reflEvery === 1 || (++reflFrame % quality.reflEvery) === 0)) renderReflection();
+  if (POST.on && quality.post) renderPost(); else renderer.render(view.scene, camera);
   if (first) { first = false; setTimeout(() => $('#loading').classList.add('done'), 200); }
   requestAnimationFrame(frame);
 }

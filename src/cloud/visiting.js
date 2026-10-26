@@ -37,12 +37,12 @@ async function visitGarden(g) {
   if (!state.visiting) { state.ownSaved = poems; state.ownSettings = SETTINGS; }
   const list = data.map(r => { const q = fromRow(r); q._oid = q.id; q.id = 'v.' + q.id; return q; });
   replaceSettings(cleanSettings(Object.assign({}, g.settings || {}, { season: (g.settings && g.settings.season) || g.theme || 'spring', music: state.ownSettings.music })));
-  state.visiting = { owner: g.owner, name: g.name || 'A quiet garden', by: g.display_name || 'A poet', sign: { name: g.name || 'A quiet garden', desc: g.description || '', by: g.display_name || '', links: SETTINGS.links, own: false } };
+  state.visiting = { owner: g.owner, username: g.username || '', name: g.name || 'A quiet garden', by: g.display_name || 'A poet', sign: { name: g.name || 'A quiet garden', desc: g.description || '', by: g.display_name || '', links: SETTINGS.links, own: false } };
   applyFilter('all', false);
   if (resolveSeason(SETTINGS.season) !== THEME) { setThemeName(resolveSeason(SETTINGS.season)); applyThemeMaterials(); setThemeUI(); }
   swapPlants(list, true); late.applyAllSettings();
   $('#visit-name').textContent = `${state.visiting.name}, by ${state.visiting.by}`;
-  const vb = $('#visitbar'); vb.hidden = false; requestAnimationFrame(() => vb.classList.add('show'));
+  const vb = $('#visitbar'); vb.hidden = false; requestAnimationFrame(() => vb.classList.add('show')); $('#h-home-garden').hidden = false;
   toast(g.description ? g.description : `Welcome to ${state.visiting.name}. Walk up to any plant to read it.`, 6000);
 }
 function returnHome(quiet) {
@@ -51,10 +51,11 @@ function returnHome(quiet) {
   const own = state.ownSaved; replaceSettings(state.ownSettings || SETTINGS); state.visiting = null; state.ownSaved = null; state.ownSettings = null;
   if (resolveSeason(SETTINGS.season) !== THEME) { setThemeName(resolveSeason(SETTINGS.season)); applyThemeMaterials(); setThemeUI(); }
   swapPlants(own, true); late.applyAllSettings();
-  const vb = $('#visitbar'); vb.classList.remove('show'); vb.hidden = true;
+  const vb = $('#visitbar'); vb.classList.remove('show'); vb.hidden = true; $('#h-home-garden').hidden = true;
   if (!quiet) toast('Welcome back to your own garden.');
 }
 $('#visit-home').onclick = () => returnHome(false);
+$('#h-home-garden').onclick = () => returnHome(false);
 async function maybeVisitFromLink() {
   const name = new URLSearchParams(location.search).get('garden'); if (!name || !Cloud.ready) return;
   const { data } = await Cloud.sb.from('public_gardens').select('*').eq('username', name.toLowerCase()).maybeSingle();

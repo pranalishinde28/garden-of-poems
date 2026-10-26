@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import { carved, fit, planks } from './signArt.js';
 import { C, V3, clamp, rng } from '../core/util.js';
-import { BRIDGES, RIVER, WATER_Y, bridgeH, groundH, riverDist } from './terrain.js';
+import { BRIDGES, RIVER, WATER_Y, bridgeH, gorgeLocal, groundH, riverDist } from './terrain.js';
 import { scene } from './renderer.js';
 import { glowTex } from './textures.js';
 import { GEO, M, Merge, VC, part, rockGeo } from './geometry.js';
@@ -172,6 +173,7 @@ function boulder(x, z, s, seed) {
   for (let i = 0; i < HN; i++) {
     const a = i / HN * 6.28 + R() * 0.02, r = 75 + R() * 2.5, x = Math.cos(a) * r, z = Math.sin(a) * r;
     if ((Math.abs(x) < 3.5 && z > 0) || riverDist(x, z) < 4.5) continue;
+    if (Math.abs(gorgeLocal(x, z).across) < 6.5 && x > 0) continue; // the hedge opens onto Takachiho Gorge
     d.position.set(x, groundH(x, z) + 0.15, z); d.scale.set(2.2 + R() * 0.9, 0.85 + R() * 0.35, 1.9 + R() * 0.8); d.rotation.set(0, R() * 6, 0); d.updateMatrix();
     hm.setMatrixAt(hi, d.matrix); hm.setColorAt(hi, hc[Math.floor(R() * 4)]); hi++;
   }
@@ -182,23 +184,21 @@ export const sign = new THREE.Group();
 (function buildSign() {
   // beside the path just outside the gate, turned toward where you arrive (0, 49)
   const x = 3.1, z = 34.6; sign.position.set(x, groundH(x, z), z); sign.rotation.y = Math.atan2(0 - x, 49 - z);
-  const wood = M('#6b5440'); part(sign, GEO.cylB, wood, [-1.1, 0, 0], [0.07, 1.75, 0.07]); part(sign, GEO.cylB, wood, [1.1, 0, 0], [0.07, 1.75, 0.07]);
+  const wood = M('#8a5a32'); part(sign, GEO.cylB, wood, [-1.1, 0, 0], [0.07, 1.75, 0.07]); part(sign, GEO.cylB, wood, [1.1, 0, 0], [0.07, 1.75, 0.07]);
   const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 430; sign.userData.canvas = cv;
   const tex = new THREE.CanvasTexture(cv); sign.userData.tex = tex;
-  part(sign, GEO.box, M('#5d4838'), [0, 1.45, -0.02], [2.5, 1.1, 0.08]);
+  part(sign, GEO.box, M('#6b4424'), [0, 1.45, -0.02], [2.5, 1.1, 0.08]);
   const face = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.0078), new THREE.MeshLambertMaterial({ map: tex })); face.position.set(0, 1.45, 0.03); sign.add(face);
   sign.traverse(o => { o.userData.sign = true; if (o.isMesh) o.castShadow = true; });
   scene.add(sign); drawSign();
 })();
 function drawSign() {
-  const cv = sign.userData.canvas, g = cv.getContext('2d');
-  g.fillStyle = '#7b6049'; g.fillRect(0, 0, cv.width, cv.height);
-  const R = rng(9); g.strokeStyle = 'rgba(40,26,16,.25)'; g.lineWidth = 2;
-  for (let i = 0; i < 18; i++) { g.beginPath(); const y = R() * cv.height; g.moveTo(0, y); g.bezierCurveTo(340, y + (R() - .5) * 40, 680, y + (R() - .5) * 40, 1024, y + (R() - .5) * 20); g.stroke(); }
-  g.strokeStyle = 'rgba(241,232,212,.5)'; g.lineWidth = 4; g.strokeRect(20, 20, 984, 390);
-  g.fillStyle = '#f1e8d4'; g.textAlign = 'center';
-  g.font = '500 76px "Cormorant Garamond", Georgia, serif'; g.fillText('Nothing is growing here yet.', 512, 175);
-  g.font = 'italic 400 92px "Cormorant Garamond", Georgia, serif'; g.fillText('Write something.', 512, 315);
+  // the same honey planks and dark carved lettering as the garden's sign at the gate (world/signArt.js)
+  const cv = sign.userData.canvas, g = cv.getContext('2d'), W = cv.width;
+  planks(g, W, cv.height, 2, 9);
+  g.fillStyle = '#2a1608'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  fit(g, 'Nothing is growing here yet.', W - 90, 700, 104, 60); carved(g, 'Nothing is growing here yet.', W / 2, 180);
+  fit(g, 'Write something.', W - 90, 700, 120, 60, 'italic '); carved(g, 'Write something.', W / 2, 345);
   sign.userData.tex.needsUpdate = true;
 }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawSign);

@@ -7,15 +7,21 @@ import { regEnd } from './paths.js';
 export const fujiMesh = [];
 export const fujiU = { uLight: { value: new V3(0, 1, 0) }, uHor: { value: new THREE.Color() }, uNight: { value: 0 }, uDusk: { value: 0 } };
 (function buildFuji() {
-  const H = 400, rb = 980, rt = 52, rings = 96, seg = 260, pos = [], at = [], idx = [];
+  const H = 400, rb = 980, rt = 30, rings = 96, seg = 260, pos = [], at = [], idx = [];
   const gul = a => Math.sin(a * 37 + 1.3) * 0.6 + Math.sin(a * 83 + 0.4) * 0.3 + Math.sin(a * 151) * 0.1;
   for (let i = 0; i <= rings; i++) {
-    const t = i / rings, rr = rt + (rb - rt) * Math.pow(1 - t, 1.75);
+    // concave flanks that steepen toward the summit but still taper in a straight cone to a soft point
+    // (with the flanks alone the top stood nearly vertical and read as a cylinder)
+    const t = i / rings, rr = rt + (rb - rt) * (Math.pow(1 - t, 1.75) * 0.72 + (1 - t) * 0.28);
     for (let k = 0; k <= seg; k++) {
       const a = k / seg * Math.PI * 2, g = gul(a);
       const shoulder = 1 + 0.07 * Math.exp(-Math.pow(Math.atan2(Math.sin(a - 0.35), Math.cos(a - 0.35)), 2) / 0.03) * Math.exp(-Math.pow(t - 0.42, 2) / 0.02);
       const f = (1 + 0.028 * g * Math.min(1, t * 2.5) * (1 - t * 0.6)) * shoulder;
-      let y = t * H; if (t > 0.975) y = H - (t - 0.975) * H * 0.9;
+      // a small flat summit with a shallow crater rim: a frustum, not a point and not a cylinder
+      let y = t * H - Math.pow(Math.max(0, t - 0.985) / 0.015, 2) * 5;
+      // its foot is nearly a kilometre across: the part toward the garden sinks away behind the hills,
+      // so they stand in front of Fuji instead of poking through its lower slopes
+      { const wx = -210 + Math.cos(a) * rr * f * 1.08, wz = -1000 + Math.sin(a) * rr * f * 1.08, d = Math.hypot(wx, wz), k = Math.min(1, Math.max(0, (720 - d) / 340)); y -= k * k * (3 - 2 * k) * 240; }
       pos.push(Math.cos(a) * rr * f, y, Math.sin(a) * rr * f); at.push(t, a);
       if (i < rings && k < seg) { const b = i * (seg + 1) + k; idx.push(b, b + seg + 1, b + 1, b + 1, b + seg + 1, b + seg + 2); }
     }
@@ -34,7 +40,7 @@ export const fujiU = { uLight: { value: new V3(0, 1, 0) }, uHor: { value: new TH
         float finger=smoothstep(0.1,0.9,-g)*smoothstep(0.18,0.6,t)*0.2*(0.6+0.8*fbm(vec2(a*60.,t*3.)));
         // after the owner's illustration: a clear periwinkle mountain in two tones (lit side and shade side),
         // a crisp white cap with jagged fingers reaching down the gullies, and a pale blue foot
-        float line=0.6+(n-0.5)*0.14+0.06*g;
+        float line=0.5+(n-0.5)*0.14+0.06*g;
         float snow=smoothstep(line-0.008,line+0.004,t+finger*1.3);
         vec3 L=normalize(uLight),N=normalize(vN);float lam=max(dot(N,L),0.),lit=smoothstep(.25,.45,lam);
         vec3 body=mix(vec3(.2,.29,.6),vec3(.32,.44,.78),lit);                 // shade side, lit side

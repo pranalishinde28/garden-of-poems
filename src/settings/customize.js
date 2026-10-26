@@ -232,7 +232,7 @@ export const board = new THREE.Group();
   part(board, GEO.box, wood, [0, 3.28, 0], [3.95, 0.12, 0.4]);
   const cv = document.createElement('canvas'); cv.width = 1536; cv.height = 960; board.userData.cv = cv;
   const tex = new THREE.CanvasTexture(cv); tex.anisotropy = Math.min(8, maxAniso); board.userData.tex = tex;
-  const fm = new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.15 }); nightGlow.push({ m: fm, day: 0.12, night: 0.55 });
+  const fm = new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.15 }); nightGlow.push({ m: fm, day: 0.02, night: 0.5 });
   const face = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 2.1875), fm); face.position.set(0, 2.05, 0.006); board.add(face);
   const vm = new Merge(), R = rng(808);
   for (let i = 0; i < 70; i++) { const p = new V3(-1.9 + R() * 3.8, 3.36 + R() * 0.08, (R() - .5) * 0.36); vm.add(GEO.ico, p, new V3(0.09, 0.075, 0.09), C(['#567a3a', '#668c45'][i % 2])); if (i % 3 === 0) vm.add(GEO.ico, p.clone().add(new V3(0, 0.06, 0.07)), new V3(0.055, 0.055, 0.055), C(['#f4b6c8', '#ffffff'][i % 2])); }
@@ -259,29 +259,20 @@ function woodGrain(g, W, H, seed, base) {
 function blossom(g, x, y, r, col) { g.fillStyle = col; for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2 - Math.PI / 2; g.beginPath(); g.ellipse(x + Math.cos(a) * r * 0.55, y + Math.sin(a) * r * 0.55, r * 0.5, r * 0.36, a, 0, Math.PI * 2); g.fill(); } g.fillStyle = '#e9b04a'; g.beginPath(); g.arc(x, y, r * 0.18, 0, Math.PI * 2); g.fill(); }
 export function drawBoard() {
   const info = boardInfo(), cv = board.userData.cv, g = cv.getContext('2d'), W = cv.width, H = cv.height;
+  // the welcome: "Welcome to your Garden" at home, "Welcome to <their garden>" when visiting; cream on the
+  // dark wood with a deep shadow, so it reads from where you arrive
   woodGrain(g, W, H, 19, '#6f553f');
   g.strokeStyle = 'rgba(240,226,200,.55)'; g.lineWidth = 5; g.strokeRect(32, 32, W - 64, H - 64);
-  g.fillStyle = '#f5ead6'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-  fitFont(g, info.name, W - 180, 600, 150, 84); g.fillText(info.name, W / 2, 190);
-  let y = 190;
-  // everything under the name is large enough to read from the path (it used to be a third of this)
-  if (info.by) { fitFont(g, 'a garden by ' + info.by, W - 200, 400, 104, 64); g.font = 'italic ' + g.font; g.fillStyle = 'rgba(245,234,214,.92)'; y += 125; g.fillText('a garden by ' + info.by, W / 2, y); }
-  if (info.desc) { g.font = serif(400, 88, 'italic '); g.fillStyle = '#f5ead6'; wrapText(g, info.desc, W - 200).slice(0, 2).forEach(l => { y += 104; g.fillText(l, W / 2, y); }); }
-  const links = (info.links || []).filter(l => safeUrl(l.url)).slice(0, 6);
-  y += 58; g.strokeStyle = 'rgba(245,234,214,.45)'; g.lineWidth = 4; g.beginPath(); g.moveTo(W * 0.3, y); g.lineTo(W * 0.7, y); g.stroke();
-  g.fillStyle = '#f5ead6';
-  // the links, by name, large enough to read from the path; their codes are on the board across the arch
-  if (links.length) {
-    g.font = serif(600, 116); const names = links.map(l => late.linkKind ? late.linkKind(l.url, l.label).name : (l.label || hostOf(l.url)));
-    const lines = []; let cur = '';
-    names.forEach(n => { const t = cur ? cur + '  ·  ' + n : n; if (g.measureText(t).width > W - 160 && cur) { lines.push(cur); cur = n; } else cur = t; }); if (cur) lines.push(cur);
-    lines.slice(0, 2).forEach(l => { y += 130; g.fillText(l, W / 2, y); });
-    g.font = serif(500, 76, 'italic '); g.fillStyle = 'rgba(245,234,214,.9)'; g.fillText('Click to open · codes on the board opposite', W / 2, Math.min(H - 56, y + 112));
-  }
-  else if (info.own) { g.font = serif(400, 84, 'italic '); g.fillStyle = 'rgba(245,234,214,.88)'; wrapText(g, 'Add your name, a welcome line and links with Customize.', W - 200).slice(0, 2).forEach(l => { y += 100; g.fillText(l, W / 2, y); }); }
+  const second = state.visiting ? info.name : 'your Garden';
+  g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillStyle = '#fff4de';
+  g.shadowColor = 'rgba(20,10,4,.75)'; g.shadowBlur = 14; g.shadowOffsetY = 6;
+  fitFont(g, 'Welcome to', W - 200, 600, 170, 90); g.font = 'italic ' + g.font; g.fillText('Welcome to', W / 2, H * 0.4);
+  fitFont(g, second, W - 120, 700, 270, 110); g.fillText(second, W / 2, H * 0.4 + 280);
+  g.shadowColor = 'transparent'; g.shadowBlur = 0; g.shadowOffsetY = 0;
   board.userData.tex.needsUpdate = true;
   drawPlaque(info.name);
-  if (late.drawLinkBoards) late.drawLinkBoards(); // the QR boards follow the same links
+  // the QR boards follow the same links
+  if (late.drawLinkBoards) late.drawLinkBoards();
 }
 function drawPlaque(name) {
   const cv = archPlaque.userData.cv, g = cv.getContext('2d'), W = cv.width, H = cv.height;

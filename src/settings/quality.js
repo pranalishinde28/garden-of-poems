@@ -33,21 +33,25 @@ function apply(level) {
 function setLabel() { $('#m-quality .t').textContent = quality.choice === 'auto' ? `Picture: Auto (${quality.level})` : `Picture: ${quality.choice[0].toUpperCase() + quality.choice.slice(1)}`; }
 
 // ---- Auto: sample frame times while walking, step down while the median is slow ----
-let samples = [], last = 0, settled = false;
-// Only frames drawn at the full rate count: when the garden rests on purpose (core/power.js draws 20 a
-// second standing still), the gaps are long by design, and counting them stepped Auto down to Low.
+let samples = [], last = 0, slowRuns = 0;
+// Only frames drawn at the full rate count (the map pauses drawing). Auto keeps watching for as long as you
+// walk: two slow stretches in a row (median over ~34 ms, under 30 fps) step it down one level. One quick
+// stretch never settles it for good, since frame times on a weak machine come and go.
 export function noteFrame(now) {
   const d = now - last; last = now;
-  if (quality.choice !== 'auto' || settled || state.mode !== 'walk' || power.target < 60 || d > 250) return;
-  samples.push(d); if (samples.length < 150) return;
+  if (quality.choice !== 'auto' || state.mode !== 'walk' || power.target < 60 || d > 250) return;
+  samples.push(d); if (samples.reduce((a, b) => a + b, 0) < 2000 || samples.length < 8) return; // two seconds of walking, however few frames that is
   samples.sort((a, b) => a - b); const median = samples[samples.length >> 1]; samples = [];
   const i = ORDER.indexOf(quality.level);
-  if (median > 40 && i < ORDER.length - 1) apply(ORDER[i + 1]); // only when truly struggling (under ~25 fps)
-  else settled = true;
+  slowRuns = median > 34 ? slowRuns + 1 : 0;
+  // very slow (under 20 fps) steps down at once; merely slow needs two windows in a row
+  if ((median > 50 || slowRuns >= 2) && i < ORDER.length - 1) { apply(ORDER[i + 1]); slowRuns = 0; }
 }
 export function chooseQuality(c) {
-  quality.choice = c; flag.set('quality', c); settled = false; samples = [];
-  apply(c === 'auto' ? 'high' : c);
+  quality.choice = c; flag.set('quality', c); slowRuns = 0; samples = [];
+  // Auto starts at High on a capable computer; a phone, tablet or a machine with few cores or little memory starts at Medium
+  const weak = isTouch || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
+  apply(c === 'auto' ? (weak ? 'medium' : 'high') : c);
 }
 $('#m-quality').onclick = () => {
   const next = { auto: 'high', high: 'medium', medium: 'low', low: 'auto' }[quality.choice];

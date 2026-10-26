@@ -3,6 +3,7 @@ import { toast } from '../ui/helpers.js';
 import { closePanel, openPanel } from '../ui/reading.js';
 import { Cloud, NEEDS_UPDATE, db, changeUsername, deleteAccount, exportGarden, listGardens, ownPoems, removedPoems, restoreRemoved, saveGardenSettings, suggestedGardens, syncNow, usernameAvailable } from './cloud.ts';
 import { state } from '../core/state.js';
+import { captchaOn, mountCaptcha, resetCaptcha } from './captcha.js';
 import { late, provide } from '../core/late.js';
 
 // names other modules reach through late (see core/late.js)
@@ -14,8 +15,12 @@ provide({
 /* ---------- the Gardens panel: account, your garden, visiting ---------- */
 const gardensPanel = $('#gardens');
 export const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+// signing out, from the Gardens panel or the ⋯ menu: save anything waiting first
+async function signOut() { await syncNow(); await Cloud.sb.auth.signOut(); late.closePops && late.closePops(); toast('You have signed out. Your poems are safe in your account.'); }
+$('#m-signout').onclick = signOut;
 function renderAccount() {
   const box = $('#g-account'); box.innerHTML = '';
+  { const on = !!(Cloud.ready && Cloud.user); $('#m-signout').hidden = !on; $('#m-acct-h').hidden = !on; if (on) $('#m-signout-who').textContent = 'signed in as ' + ((Cloud.profile && Cloud.profile.username) ? '@' + Cloud.profile.username : Cloud.user.email); }
   if (!Cloud.ready) {
     box.append(el('p', '', 'Accounts are not connected yet. Your garden is saved on this device only. To turn on sign-in and public gardens, add your Supabase keys to the .env file.'));
     $('#g-mine').hidden = true; $('#g-visit').hidden = true; return;
@@ -52,6 +57,7 @@ function renderAccount() {
     const user = mode === 'up' ? field('Username for your garden link (a-z, 0-9, _)', 'text', 'username', 'username') : null;
     const email = field('Email', 'email', 'email', 'email');
     const pass = field('Password', 'password', 'password', mode === 'up' ? 'new-password' : 'current-password');
+    const cap = el('div', 'g-captcha'), captcha = mountCaptcha(cap); if (captchaOn()) f.append(cap);
     const err = el('p', 'g-err'); err.setAttribute('role', 'alert');
     const submit = el('button', 'g-btn', mode === 'up' ? 'Create account' : 'Sign in'); submit.type = 'submit';
     f.append(err, submit);
@@ -60,20 +66,21 @@ function renderAccount() {
       const em = email.value.trim(), pw = pass.value;
       if (!/^\S+@\S+\.\S+$/.test(em)) { err.textContent = 'Enter a valid email address.'; return; }
       if (pw.length < 8) { err.textContent = 'Use a password of at least 8 characters.'; return; }
+      const captchaToken = captcha(); if (captchaOn() && !captchaToken) { err.textContent = 'Tick the box to show you are a person, then try again.'; return; }
       submit.disabled = true;
       try {
         if (mode === 'up') {
           const un = user.value.trim().toLowerCase();
           if (!/^[a-z0-9_]{3,24}$/.test(un)) throw new Error('Usernames are 3 to 24 characters: lowercase letters, numbers and _.');
           if (!(await usernameAvailable(un))) throw new Error('That username is taken. Try another.');
-          const { data, error } = await Cloud.sb.auth.signUp({ email: em, password: pw, options: { data: { username: un, display_name: disp.value.trim().slice(0, 60) }, emailRedirectTo: siteURL() } });
+          const { data, error } = await Cloud.sb.auth.signUp({ email: em, password: pw, options: { data: { username: un, display_name: disp.value.trim().slice(0, 60) }, emailRedirectTo: siteURL(), captchaToken } });
           if (error) throw error;
           if (!data.session) { box.innerHTML = ''; box.append(el('h3', '', 'Check your email'), el('p', '', `We sent a confirmation link to ${em}. Open it on this device to finish creating your account.`)); return; }
         } else {
-          const { error } = await Cloud.sb.auth.signInWithPassword({ email: em, password: pw });
+          const { error } = await Cloud.sb.auth.signInWithPassword({ email: em, password: pw, options: { captchaToken } });
           if (error) throw error;
         }
-      } catch (e2) { err.textContent = e2.message || 'Something went wrong. Try again.'; }
+      } catch (e2) { err.textContent = /captcha/i.test(e2.message || '') ? 'The check that you are human expired. Tick the box again.' : (e2.message || 'Something went wrong. Try again.'); resetCaptcha(); }
       submit.disabled = false;
     };
     box.append(f);
@@ -82,7 +89,7 @@ function renderAccount() {
     box.append(sw);
     if (mode === 'in') {
       const fg = el('button', 'g-link', 'Forgot your password?');
-      fg.onclick = async () => { const em = email.value.trim(); if (!/^\S+@\S+\.\S+$/.test(em)) { err.textContent = 'Type your email above first.'; return; } const { error } = await Cloud.sb.auth.resetPasswordForEmail(em, { redirectTo: siteURL() }); err.textContent = error ? error.message : 'If that email has an account, a reset link is on its way.'; };
+      fg.onclick = async () => { const em = email.value.trim(); if (!/^\S+@\S+\.\S+$/.test(em)) { err.textContent = 'Type your email above first.'; return; } const captchaToken = captcha(); if (captchaOn() && !captchaToken) { err.textContent = 'Tick the box to show you are a person first.'; return; } const { error } = await Cloud.sb.auth.resetPasswordForEmail(em, { redirectTo: siteURL(), captchaToken }); resetCaptcha(); err.textContent = error ? error.message : 'If that email has an account, a reset link is on its way.'; };
       box.append(fg);
     }
     return;
@@ -90,7 +97,7 @@ function renderAccount() {
   const p = Cloud.profile || {}, g = Cloud.garden || {};
   const who = el('div', 'g-who');
   who.append(el('div', 'g-n', p.display_name || 'Poet'), el('div', 'g-m', p.username ? '@' + p.username : Cloud.user.email));
-  const out = el('button', 'g-link', 'Sign out'); out.onclick = async () => { await syncNow(); await Cloud.sb.auth.signOut(); };
+  const out = el('button', 'g-btn', 'Sign out'); out.onclick = signOut;
   box.append(who, out);
   $('#g-mine').hidden = false;
   $('#g-status').textContent = g.is_public ? 'Your garden is public. Anyone can walk through it and read the poems you have not kept private.' : 'Your garden is private. Only you can see it.';

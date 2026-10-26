@@ -35,7 +35,7 @@ addEventListener('keydown', e => {
   if (e.code === 'Escape') { if (state.mode === 'focus') late.closeReader(); else if (state.mode === 'writing') late.closeEditor(); late.closePops(); return; }
   if (state.mode === 'focus' && !state.reflection) { if (e.code === 'ArrowLeft') { late.stepPoem(-1); return; } if (e.code === 'ArrowRight') { late.stepPoem(1); return; } }
   if ((e.key === '?' || e.code === 'KeyH') && !e.repeat && (state.mode === 'walk' || state.mode === 'swing')) { late.openHelp(); return; }
-  if (e.code === 'KeyM' && !e.repeat && (state.mode === 'walk' || state.mode === 'swing')) { late.toggleMap(); return; }
+  if (e.code === 'KeyM' && !e.repeat && (state.mode === 'walk' || state.mode === 'swing') && state.world !== 'sun') { late.toggleMap(); return; }
   if (e.code === 'KeyV' && !e.repeat && (state.mode === 'walk' || state.mode === 'swing')) { late.toggleView(); return; }
   if (e.code === 'KeyE' && state.mode === 'walk' && late.cueTarget) { e.preventDefault(); interact(late.cueTarget); return; }
   if (/^(Key[WASDQ]|Arrow|Shift|Space)/.test(e.code)) { keys.add(e.code); if ((e.code.startsWith('Arrow') || e.code === 'Space') && (state.mode === 'walk' || state.mode === 'swing')) e.preventDefault(); }
@@ -57,7 +57,7 @@ canvas.addEventListener('pointermove', e => {
   if (!drag || e.pointerId !== drag.id) return;
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
   if (state.mode === 'swing' && state.swing && drag.moved > 4) { const k = isTouch ? 0.0048 : 0.0034; state.swing.yaw = clamp(state.swing.yaw - dx * k, -1.4, 1.4); state.swing.pitch = clamp(state.swing.pitch - dy * k * 0.85, -0.8, 0.6); }
-  if (state.mode === 'walk' && drag.moved > 4) { const k = isTouch ? 0.0048 : 0.0034; player.yaw -= dx * k; player.pitch = clamp(player.pitch - dy * k * 0.85, -1.05, 0.85); }
+  if ((state.mode === 'walk' || state.mode === 'boat' || state.mode === 'ride') && drag.moved > 4) { const k = isTouch ? 0.0048 : 0.0034; player.yaw -= dx * k; player.pitch = clamp(player.pitch - dy * k * 0.85, -1.05, 0.85); }
 });
 function endDrag(e) {
   if (!drag || e.pointerId !== drag.id) return;

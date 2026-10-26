@@ -30,6 +30,8 @@ export const reader = $('#reader');
 // their own closing, and the swing reader never takes focus from the swing).
 const panels = [], CLOSERS = { youpanel: '#y-close', custom: '#c-close', gardens: '#g-close', signpanel: '#s-close', helpsheet: '#help-close' };
 export function openPanel(el) {
+  // one box at a time: opening a box closes the others (their own close buttons, so they tidy up properly)
+  if (el.id !== 'swreader') document.querySelectorAll('.panel.open').forEach(o => { if (o === el || o.id === 'swreader' || o.id === 'reader' || o.id === 'editor') return; const c = CLOSERS[o.id] && document.querySelector(CLOSERS[o.id]); if (c) c.click(); else closePanel(o); });
   el.hidden = false; requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
   if (el.id === 'swreader') return;
   if (!panels.includes(el)) { panels.push(el); el._returnTo = document.activeElement; }
