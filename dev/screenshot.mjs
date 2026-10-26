@@ -93,6 +93,8 @@ const VIEWS = {
   'creek': { pos: [-1, 3, -10], look: [-4, -0.6, -22] },
   'gorge-girl': { pos: [70.4, 2.1, 8.4], look: [110, -3, 13.2], season: 'spring' },
   'gorge-walk': { pos: [58, 2.1, 7], look: [110, -2, 13.2], season: 'spring' },
+  'gorge-sunset': { pos: [62, 2.6, 8], look: [140, 14, 16], season: 'spring', light: 'sunset' },
+  'gorge-mid': { pos: [66, 2.2, 6], look: [140, 14, 18], season: 'spring' },
   'gorge-far2': { pos: [45, 2.1, 2], look: [110, 0, 13.2], season: 'spring' },
   'gorge-far3': { pos: [40, 2.1, 20], look: [110, 0, 10], season: 'spring' },
   'edge-night': { pos: [20, 14, 20], look: [-30, 0, -40], season: 'spring', light: 'night' },
@@ -243,7 +245,7 @@ async function main() {
       await page.evaluate(() => window.__garden.setSetting('light', 'night')); await sleep(2500); await look('sun-night', 6, -80, 0.2, 0.16); await look('sun-night-plaza', 0, -44, 0, 0.15);
       await page.evaluate(() => window.__garden.setSetting('light', 'sunset')); await sleep(2500); await look('sun-sunset', 6, -80, 0.2, 0.16);
       await page.evaluate(() => window.__garden.setSetting('light', 'day')); await sleep(1500);
-      await page.evaluate(() => window.__garden.setSetting('light', 'night')); await sleep(2000); await look('sun-field-night', 4.1, 24, 0.15, 0.05);
+      await page.evaluate(() => window.__garden.setSetting('light', 'night')); await sleep(2000); await look('sun-field-night', 4.1, 24, 0.15, 0.05); await look('sun-field-wide', -14, 30, -0.6, -0.05); await look('sun-field-side', 20, 5, 1.2, 0.0);
       await page.evaluate(() => { const g = window.__garden; g.state.showFw = true; }); await look('sun-fair-night', 30, -40, 0.7, 0.18); await sleep(3000); await look('sun-fireworks', 0, -40, 0, 0.42);
       for (const k of ['wheel', 'carousel', 'coaster', 'swings', 'boats']) { await page.evaluate(k => { const g = window.__garden, r = g.rides.find(r => r.key === k); g.state.mode = 'walk'; g.late.startRide(r); }, k); await sleep(2500); await page.screenshot({ path: join(root, `dev/shots/row-ride-${k}.png`) }); const m = await page.evaluate(() => window.__garden.state.mode); if (m !== 'ride') errors.push('ride ' + k + ' did not start'); await page.click('#ride-off'); await sleep(600); }
       await page.evaluate(() => window.__garden.setSetting('light', 'day')); await sleep(1500);
