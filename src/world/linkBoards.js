@@ -58,10 +58,11 @@ function paint(cv, links, own) {
     // in the last row a lone card sits in the middle
     const x = (rows > 1 && i === links.length - 1 && links.length % 2) ? W / 2 : cx;
     const namePx = rows === 1 ? 130 : rows === 2 ? 110 : 88, handlePx = rows === 1 ? 80 : rows === 2 ? 68 : 58;
-    fit(g, k.name, cw - 30, 700, namePx, 44); chalk(g, k.name, x, cy + namePx * 0.85, chalkOf(k));
+    const npx = fit(g, k.name, cw - 30, 700, namePx, 44); chalk(g, k.name, x, cy + npx * 0.8, chalkOf(k));
     const handle = (l.label && l.label !== k.name ? l.label : handleOf(l.url)).slice(0, 22);
     // the code on a white card, as large as the space allows
-    const size = Math.min(cw - 60, ch - namePx * 1.0 - handlePx * 1.15 - 34), pad = size * 0.06, qx = x - size / 2, qy = cy + namePx * 1.05 + 10;
+    // the name's tails (y, g) hang below its line: the code's white card starts clear of them
+    const size = Math.min(cw - 60, (ch - namePx * 1.12 - handlePx * 1.3 - 20) / 1.12), pad = size * 0.06, qx = x - size / 2, qy = cy + namePx * 1.12 + pad + 12;
     g.fillStyle = 'rgba(0,0,0,.35)'; roundRect(g, qx - pad + 6, qy - pad + 8, size + pad * 2, size + pad * 2, 18); g.fill();
     g.fillStyle = '#fbfaf5'; roundRect(g, qx - pad, qy - pad, size + pad * 2, size + pad * 2, 18); g.fill();
     const qr = qrcode(0, 'M'); qr.addData(l.url); qr.make();

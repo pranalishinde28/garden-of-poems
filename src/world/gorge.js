@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { C, V3, clamp, lerp, rng, smooth } from '../core/util.js';
-import { GORGE, JETTY, gorgeHalf, gorgeJettyH, gorgeLocal, gorgePool, gorgeWorld, groundH } from './terrain.js';
+import { GORGE, JETTY, POOL, gorgeHalf, gorgeJettyH, gorgeLocal, gorgePool, gorgeWorld, groundH } from './terrain.js';
 import { scene } from './renderer.js';
 import { canvasTex, glowTex, softTex } from './textures.js';
 import { GEO, Merge } from './geometry.js';
@@ -302,7 +302,7 @@ const LEAF = ['#5a8634', '#6a963c', '#4b742c', '#78a646', '#55802f'].map(C);
   }
   // reeds and grasses along the pool's shore
   for (let k = 0; k < 90; k++) {
-    const a = R() * Math.PI * 2, e0 = 0.98 + R() * 0.1, u = A0 - 6 + Math.cos(a) * 12 * e0, v = Math.sin(a) * 19 * e0;
+    const a = R() * Math.PI * 2, e0 = 0.98 + R() * 0.1, u = POOL.u + Math.cos(a) * POOL.ru * e0, v = Math.sin(a) * POOL.rv * e0;
     if (u > A0 - 1 || gorgePool(u, v) < 0.95) continue;
     const p = gorgeWorld(u, v); p.y = groundMeshH(p.x, p.z);
     if (p.y < FLOOR - 0.2) continue;
@@ -319,8 +319,8 @@ let waterMat = null;
 const gwU = Object.assign({ uTime: waterU.uTime, uNight: waterU.uNight, uLightDir: waterU.uLightDir, uLightCol: waterU.uLightCol, uFall: { value: new THREE.Vector2(fallsBase.x, fallsBase.z) } }, nightU);
 {
   const pos = [], gv = [], idx = [], NJ = 16; let n = 0;
-  for (let u = A0 - 22; u <= A1 + 1; u += 0.9) {
-    const half = gorgeHalf(Math.max(u, A0)), du = (u - (A0 - 6)) / 12, pool = 19 * 1.16 * Math.sqrt(Math.max(0, 1.1 * 1.1 - du * du));
+  for (let u = POOL.u - POOL.ru * 1.12; u <= A1 + 1; u += 0.9) {
+    const half = gorgeHalf(Math.max(u, A0)), du = (u - POOL.u) / POOL.ru, pool = POOL.rv * 1.16 * Math.sqrt(Math.max(0, 1.1 * 1.1 - du * du));
     const wide = Math.max(u > A0 - 4 ? half + 0.9 : 0, u < A0 + 6 ? pool : 0, 1);
     for (let j = 0; j <= NJ; j++) {
       const t = j / NJ * 2 - 1, v = t * wide, p = gorgeWorld(u, v, FLOOR);
@@ -566,7 +566,7 @@ const shoreLamps = [];
 {
   const m = new Merge(), stone = C('#8a877d');
   for (const [a, side] of [[2.05, 1], [2.6, 1], [2.05, -1], [2.6, -1]]) {
-    const u = A0 - 6 + Math.cos(a) * 12 * 1.14, v = side * Math.sin(a) * 19 * 1.14, p = gorgeWorld(u, v); p.y = groundMeshH(p.x, p.z);
+    const u = POOL.u + Math.cos(a) * POOL.ru * 1.14, v = side * Math.sin(a) * POOL.rv * 1.14, p = gorgeWorld(u, v); p.y = groundMeshH(p.x, p.z);
     m.add(GEO.box, new V3(p.x, p.y + 0.15, p.z), new V3(0.75, 0.3, 0.75), stone);
     m.add(GEO.cylB, new V3(p.x, p.y + 0.3, p.z), new V3(0.16, 0.9, 0.16), stone);
     m.add(GEO.box, new V3(p.x, p.y + 1.25, p.z), new V3(0.55, 0.12, 0.55), stone);
@@ -613,7 +613,7 @@ addTick(() => {
     m.add(GEO.dode, new V3(p.x, FLOOR - s * 0.35, p.z), new V3(s * 1.3, s * 0.7, s), C(['#6e6a5f', '#5f5c52', '#77735f'][k % 3]).lerp(C('#5b7a33'), R() * 0.4), new THREE.Quaternion().setFromEuler(new THREE.Euler(R(), R() * 6, R())));
   }
   for (let k = 0; k < 30; k++) {
-    const a = R() * Math.PI * 2, u = A0 - 6 + Math.cos(a) * 12 * 0.98, v = Math.sin(a) * 19 * 0.98, p = gorgeWorld(u, v), s = 0.25 + R() * 0.5;
+    const a = R() * Math.PI * 2, u = POOL.u + Math.cos(a) * POOL.ru * 0.98, v = Math.sin(a) * POOL.rv * 0.98, p = gorgeWorld(u, v), s = 0.25 + R() * 0.5;
     if (u > A0 - 1) continue;
     m.add(GEO.dode, new V3(p.x, groundMeshH(p.x, p.z) - s * 0.3, p.z), new V3(s * 1.3, s * 0.6, s), C(['#7a766a', '#6a675d', '#85816f'][k % 3]).lerp(C('#5b7a33'), R() * 0.3), new THREE.Quaternion().setFromEuler(new THREE.Euler(R(), R() * 6, R())));
   }
@@ -680,14 +680,15 @@ export const gorgeDeck = new THREE.Group();
     const v = Math.sin(u * 0.35) * 0.9 + (k % 2 ? 0.25 : -0.25), p = gorgeWorld(u, v), s = 0.42 + R() * 0.1;
     m.add(GEO.dode, new V3(p.x, groundMeshH(p.x, p.z) - 0.02, p.z), new V3(s * 1.2, 0.08, s), C(['#9a968a', '#8c887c', '#a5a194'][k % 3]), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), R() * 3));
   }
-  const stones = new THREE.Mesh(m.build(), gorgeMat(new THREE.MeshLambertMaterial({ vertexColors: true }), false)); stones.receiveShadow = true;
+  // (the jetty now starts at the deck, so there may be no stones at all)
+  const pathMat = gorgeMat(new THREE.MeshLambertMaterial({ vertexColors: true }), false), sg = m.build(), stones = sg ? new THREE.Mesh(sg, pathMat) : new THREE.Group(); stones.receiveShadow = true;
   const j = new Merge();
   const WOOD = ['#7d5c40', '#86654a', '#71533a'].map(C), dark = C('#5e4532'), yaw = Math.atan2(gorgeWorld(JETTY.u1, 0).x - gorgeWorld(JETTY.u0, 0).x, gorgeWorld(JETTY.u1, 0).z - gorgeWorld(JETTY.u0, 0).z), q = new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), yaw);
   for (let u = JETTY.u0 + 0.15; u < JETTY.u1; u += 0.32) { const p = gorgeWorld(u, 0, JETTY.y - 0.04); j.add(GEO.box, p, new V3(JETTY.half * 2, 0.07, 0.28), WOOD[(R() * 3) | 0], q); }
   for (let u = JETTY.u0 + 0.6; u <= JETTY.u1; u += 2.5) for (const v of [-JETTY.half + 0.08, JETTY.half - 0.08]) { const p = gorgeWorld(u, v); j.limb(new V3(p.x, FLOOR - 1.2, p.z), new V3(p.x, JETTY.y + 0.5, p.z), 0.08, 0.07, dark); }
   // a mooring post and a coil of rope where the boat is tied
   { const p = gorgeWorld(JETTY.u1 - 0.3, JETTY.half - 0.1); j.limb(new V3(p.x, JETTY.y, p.z), new V3(p.x, JETTY.y + 0.75, p.z), 0.09, 0.08, dark); j.add(new THREE.TorusGeometry(0.2, 0.04, 6, 16).rotateX(Math.PI / 2), new V3(p.x, JETTY.y + 0.05, p.z), new V3(1, 1, 1), C('#c9b48a')); }
-  const mesh = new THREE.Mesh(j.build(), stones.material); mesh.receiveShadow = true;
+  const mesh = new THREE.Mesh(j.build(), pathMat); mesh.receiveShadow = true;
   // a group of its own (the deck's is turned and placed at the deck), hidden with the hills for the sea
   const path = new THREE.Group(); path.add(stones, mesh); scene.add(path); mountainMeshes.push(path);
   const end = gorgeWorld(JETTY.u1 - 0.5, 0);

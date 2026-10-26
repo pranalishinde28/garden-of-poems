@@ -37,10 +37,10 @@ export const fujiU = { uLight: { value: new V3(0, 1, 0) }, uHor: { value: new TH
         float t=vT.x,a=vT.y;
         float g=sin(a*37.+1.3)*0.6+sin(a*83.+.4)*0.3+sin(a*151.)*0.1;
         float n=fbm(vec2(a*16.,t*5.));
-        float finger=smoothstep(0.1,0.9,-g)*smoothstep(0.18,0.6,t)*0.2*(0.6+0.8*fbm(vec2(a*60.,t*3.)));
+        float finger=smoothstep(0.1,0.9,-g)*smoothstep(0.4,0.72,t)*0.11*(0.6+0.8*fbm(vec2(a*60.,t*3.)));
         // after the owner's illustration: a clear periwinkle mountain in two tones (lit side and shade side),
         // a crisp white cap with jagged fingers reaching down the gullies, and a pale blue foot
-        float line=0.5+(n-0.5)*0.14+0.06*g;
+        float line=0.64+(n-0.5)*0.08+0.03*g;
         float snow=smoothstep(line-0.008,line+0.004,t+finger*1.3);
         vec3 L=normalize(uLight),N=normalize(vN);float lam=max(dot(N,L),0.),lit=smoothstep(.25,.45,lam);
         vec3 body=mix(vec3(.2,.29,.6),vec3(.32,.44,.78),lit);                 // shade side, lit side

@@ -37,7 +37,7 @@ const HUES = [['#5b7fd6', '#7d9be6', '#4e6ec4'], ['#f08fb5', '#f6a9c6', '#e477a2
       if (R() > chance) continue;
       const a = (i + (R() - 0.5) * 0.6) / n * Math.PI * 2, r = r0 + (R() - 0.5) * 1.0, x = Math.cos(a) * r, z = Math.sin(a) * r;
       if (Math.abs(x) < 5.5 && z > 0) continue; // the way in at the gate
-      if (x > 50 && Math.abs(gorgeLocal(x, z).across) < 4.8) continue; // the way out to the gorge lookout
+      if (x > 50 && Math.abs(gorgeLocal(x, z).across) < 9) continue; // the way out to the gorge lookout, and a clear view down to its water
       if (riverDist(x, z) < 4.6 || stoneNear(x, z, 1.0)) continue;
       if (decor.some(o => o.collide > 0 && Math.hypot(o.x - x, o.z - z) < o.collide + 1.2)) continue;
       spots.push({ x, z, s: 1.25 + R() * 0.55, hue: Math.floor(R() * HUES.length) }); // fuller bushes, about a metre high
@@ -54,7 +54,7 @@ const HUES = [['#5b7fd6', '#7d9be6', '#4e6ec4'], ['#f08fb5', '#f6a9c6', '#e477a2
     const n = Math.sin(x * 0.11 + 1.7) * Math.cos(z * 0.09 - 0.4) + 0.55 * Math.sin(x * 0.23 - z * 0.19 + 2);
     if (n < -0.15 + (62 - r) * 0.03) continue;
     if (Math.abs(x) < 7 && z > 0) continue; // the way in at the gate
-    if (x > 50 && Math.abs(gorgeLocal(x, z).across) < 6) continue; // the way out to the gorge lookout
+    if (x > 40 && Math.abs(gorgeLocal(x, z).across) < 10) continue; // the way out to the gorge lookout
     if (riverDist(x, z) < 5 || stoneNear(x, z, 1.4) || inTulip(x, z, 1.5)) continue;
     if (decor.some(o => Math.hypot(o.x - x, o.z - z) < (o.collide > 0 ? o.collide + 1.8 : (o.r || 0) + 0.6))) continue;
     if (poemAt.some(p => Math.hypot(p.x - x, p.z - z) < 3)) continue;

@@ -91,6 +91,10 @@ const VIEWS = {
   'pond-night': { pos: [7, 2.4, 10], look: [0, -0.3, 0], season: 'spring', light: 'night', samples: true },
   'sky-night': { pos: [6, 2, 16], look: [-30, 30, -60], season: 'spring', light: 'night', samples: true },
   'creek': { pos: [-1, 3, -10], look: [-4, -0.6, -22] },
+  'gorge-girl': { pos: [70.4, 2.1, 8.4], look: [110, -3, 13.2], season: 'spring' },
+  'gorge-walk': { pos: [58, 2.1, 7], look: [110, -2, 13.2], season: 'spring' },
+  'gorge-far2': { pos: [45, 2.1, 2], look: [110, 0, 13.2], season: 'spring' },
+  'gorge-far3': { pos: [40, 2.1, 20], look: [110, 0, 10], season: 'spring' },
   'edge-night': { pos: [20, 14, 20], look: [-30, 0, -40], season: 'spring', light: 'night' },
   'edge-night2': { pos: [-40, 2, 40], look: [-72, 1, -10], season: 'spring', light: 'night' },
   'sign-face': { pos: [-4.4, 2.05, 41.8], look: [-6.3, 2.05, 38.6], links: [{ label: 'Instagram', url: 'https://instagram.com/prana_._' }, { label: 'Facebook', url: 'https://facebook.com/pranali' }, { label: 'Substack', url: 'https://pranali.substack.com' }, { label: 'Goodreads', url: 'https://www.goodreads.com/prana' }] },
@@ -219,7 +223,7 @@ async function main() {
       await sleep(800); await page.keyboard.down('KeyW'); await sleep(4500); await page.keyboard.up('KeyW');
       const walked = await page.evaluate(() => { const g = window.__garden, p = g.player.pos, c = Math.cos(0.12), s = Math.sin(0.12); return p.x * c + p.z * s; }); await shot('meadow');
       console.log(`  walked down the meadow to along = ${walked.toFixed(1)} m (the deck is at 72.6)`); if (walked < 78) errors.push('could not walk down from the lookout');
-      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden, p = g.gorgeWorld(88.5, 0), q = g.gorgeWorld(100, 0); g.player.pos.set(p.x, 0, p.z); g.player.yaw = Math.atan2(p.x - q.x, p.z - q.z); g.player.pitch = -0.05; });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); const g = window.__garden, p = g.gorgeWorld(83.5, 0), q = g.gorgeWorld(100, 0); g.player.pos.set(p.x, 0, p.z); g.player.yaw = Math.atan2(p.x - q.x, p.z - q.z); g.player.pitch = -0.05; });
       await sleep(1500); const cue = await page.$eval('#cue', e => e.textContent.trim()); await shot('jetty');
       await page.keyboard.press('KeyE'); await sleep(2600); const m1 = await page.evaluate(() => window.__garden.state.mode); await shot('aboard');
       await page.keyboard.down('KeyW'); await sleep(5000); await page.keyboard.up('KeyW'); await shot('rowing');
