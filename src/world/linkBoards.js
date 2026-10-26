@@ -82,13 +82,13 @@ const tex = new THREE.CanvasTexture(cv); tex.anisotropy = Math.min(8, maxAniso);
 (function build() {
   const x = 6.3, z = 38.6; board.position.set(x, groundH(x, z), z); board.rotation.y = Math.atan2(0 - x, 49 - z);
   const wood = M('#2f6a45'), dark = M('#24533a');
-  for (const sx of [-1.2, 1.2]) part(board, GEO.cylB, wood, [sx, 0, 0], [0.11, 3.75, 0.11]);
-  part(board, GEO.box, dark, [0, 2.2, -0.05], [2.42, 2.98, 0.1]);
+  for (const sx of [-1.58, 1.58]) part(board, GEO.cylB, wood, [sx, 0, 0], [0.13, 4.5, 0.13]);
+  part(board, GEO.box, dark, [0, 2.6, -0.05], [3.12, 3.86, 0.1]);
   const fm = new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.15 }); nightGlow.push({ m: fm, day: 0.1, night: 0.5 });
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 2.875), fm); face.position.set(0, 2.2, 0.005); board.add(face);
-  board.add(garland(2.4, 3.6, 809));
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 3.75), fm); face.position.set(0, 2.6, 0.005); board.add(face);
+  board.add(garland(3.15, 4.42, 809));
   board.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  scene.add(board); decor.push({ x, z, r: 1.2, collide: 0.5 });
+  scene.add(board); decor.push({ x, z, r: 1.7, collide: 0.6 });
   regThing(board, 'See the links', () => late.openBoard && late.openBoard(), { x, z, r: 2.6 });
 })();
 

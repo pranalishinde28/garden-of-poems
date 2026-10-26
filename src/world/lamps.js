@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { POND_R, RIVER, WORLD_R, groundH, riverDist } from './terrain.js';
+import { POND_R, RIVER, WORLD_R, gorgeLocal, groundH, riverDist } from './terrain.js';
 import { POINT_VS_HEAD, pointsMat, scene } from './renderer.js';
 import { glowTex } from './textures.js';
 import { GEO, M } from './geometry.js';
@@ -19,6 +19,13 @@ regBegin('lamps');
   for (let i = 12; i < 80; i += 16) { const p = RIVER[i], q = RIVER[i + 1]; let tx = q.x - p.x, tz = q.z - p.z; const L = Math.hypot(tx, tz); pts.push([p.x + tz / L * 5.5, p.z - tx / L * 5.5]); }
   pts.push([-6.8, 15.4]);
   const ok = pts.filter(([x, z]) => riverDist(x, z) > 3 && !inTulip(x, z, 0.3) && !decor.some(o => o.collide > 0 && Math.hypot(o.x - x, o.z - z) < 0.8) && Math.hypot(x, z) < WORLD_R && Math.hypot(x, z) > POND_R + 1);
+  // a ring of lamps all round the boundary, just inside the hedge, so the garden's edge glows at night
+  // (not at the gate, the stream or the opening to the gorge)
+  for (let k = 0; k < 28; k++) {
+    const a = k / 28 * Math.PI * 2 + 0.06, x = Math.cos(a) * 73.6, z = Math.sin(a) * 73.6;
+    if ((Math.abs(x) < 6 && z > 0) || riverDist(x, z) < 6 || (x > 50 && Math.abs(gorgeLocal(x, z).across) < 7)) continue;
+    ok.push([x, z]);
+  }
   const N = ok.length, iron = M('#2c2925');
   const posts = new THREE.InstancedMesh(GEO.cylB, iron, N), bases = new THREE.InstancedMesh(GEO.hexB, iron, N), caps = new THREE.InstancedMesh(GEO.pyr6, iron, N);
   const glassMat = new THREE.MeshLambertMaterial({ color: '#fbe9c6', emissive: '#f3b25e', emissiveIntensity: 0.2 });

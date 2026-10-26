@@ -15,8 +15,12 @@ provide({
 /* ---------- the Gardens panel: account, your garden, visiting ---------- */
 const gardensPanel = $('#gardens');
 export const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+// signing out, from the Gardens panel or the ⋯ menu: save anything waiting first
+async function signOut() { await syncNow(); await Cloud.sb.auth.signOut(); late.closePops && late.closePops(); toast('You have signed out. Your poems are safe in your account.'); }
+$('#m-signout').onclick = signOut;
 function renderAccount() {
   const box = $('#g-account'); box.innerHTML = '';
+  { const on = !!(Cloud.ready && Cloud.user); $('#m-signout').hidden = !on; $('#m-acct-h').hidden = !on; if (on) $('#m-signout-who').textContent = 'signed in as ' + ((Cloud.profile && Cloud.profile.username) ? '@' + Cloud.profile.username : Cloud.user.email); }
   if (!Cloud.ready) {
     box.append(el('p', '', 'Accounts are not connected yet. Your garden is saved on this device only. To turn on sign-in and public gardens, add your Supabase keys to the .env file.'));
     $('#g-mine').hidden = true; $('#g-visit').hidden = true; return;
@@ -93,7 +97,7 @@ function renderAccount() {
   const p = Cloud.profile || {}, g = Cloud.garden || {};
   const who = el('div', 'g-who');
   who.append(el('div', 'g-n', p.display_name || 'Poet'), el('div', 'g-m', p.username ? '@' + p.username : Cloud.user.email));
-  const out = el('button', 'g-link', 'Sign out'); out.onclick = async () => { await syncNow(); await Cloud.sb.auth.signOut(); };
+  const out = el('button', 'g-btn', 'Sign out'); out.onclick = signOut;
   box.append(who, out);
   $('#g-mine').hidden = false;
   $('#g-status').textContent = g.is_public ? 'Your garden is public. Anyone can walk through it and read the poems you have not kept private.' : 'Your garden is private. Only you can see it.';

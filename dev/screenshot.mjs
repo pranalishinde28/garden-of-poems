@@ -91,6 +91,8 @@ const VIEWS = {
   'pond-night': { pos: [7, 2.4, 10], look: [0, -0.3, 0], season: 'spring', light: 'night', samples: true },
   'sky-night': { pos: [6, 2, 16], look: [-30, 30, -60], season: 'spring', light: 'night', samples: true },
   'creek': { pos: [-1, 3, -10], look: [-4, -0.6, -22] },
+  'edge-night': { pos: [20, 14, 20], look: [-30, 0, -40], season: 'spring', light: 'night' },
+  'edge-night2': { pos: [-40, 2, 40], look: [-72, 1, -10], season: 'spring', light: 'night' },
   'sign-face': { pos: [-4.4, 2.05, 41.8], look: [-6.3, 2.05, 38.6], links: [{ label: 'Instagram', url: 'https://instagram.com/prana_._' }, { label: 'Facebook', url: 'https://facebook.com/pranali' }, { label: 'Substack', url: 'https://pranali.substack.com' }, { label: 'Goodreads', url: 'https://www.goodreads.com/prana' }] },
   'qr-face5': { pos: [4.6, 2.05, 41.4], look: [6.3, 2.05, 38.6], publicAs: 'prana', links: [{ label: 'Instagram', url: 'https://instagram.com/prana_._' }, { label: 'Facebook', url: 'https://facebook.com/pranali' }, { label: 'Substack', url: 'https://pranali.substack.com' }, { label: 'Goodreads', url: 'https://www.goodreads.com/prana' }] },
   'gate-arrive': { pos: [0, 1.7, 49], look: [0, 2, 38], links: [{ label: 'Instagram', url: 'https://instagram.com/prana_._' }, { label: 'Facebook', url: 'https://facebook.com/pranali' }, { label: 'Substack', url: 'https://pranali.substack.com' }, { label: 'Goodreads', url: 'https://www.goodreads.com/prana' }] },
