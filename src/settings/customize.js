@@ -263,7 +263,7 @@ export function drawBoard() {
   // dark wood with a deep shadow, so it reads from where you arrive
   woodGrain(g, W, H, 19, '#6f553f');
   g.strokeStyle = 'rgba(240,226,200,.55)'; g.lineWidth = 5; g.strokeRect(32, 32, W - 64, H - 64);
-  const second = state.visiting ? info.name : 'your Garden';
+  const second = state.visiting ? info.name : 'Your Garden';
   g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillStyle = '#fff4de';
   g.shadowColor = 'rgba(20,10,4,.75)'; g.shadowBlur = 14; g.shadowOffsetY = 6;
   fitFont(g, 'Welcome to', W - 200, 600, 170, 90); g.font = 'italic ' + g.font; g.fillText('Welcome to', W / 2, H * 0.4);
