@@ -117,8 +117,34 @@ const stoneNorm = canvasTex(STONE_W, STONE_H, g => {
 }, true);
 const wallMat = gorgeMat(new THREE.MeshPhongMaterial({ vertexColors: true, map: stoneTex, normalMap: stoneNorm, normalScale: new THREE.Vector2(1.3, 1.3), shininess: 10, specular: '#1c1d19', fog: false }), false);
 fillMats.push([wallMat, [0.07, 0.072, 0.064]]);
+// Seen from afar, thousands of thin columns each with its own shade, facets and grain shrink to a pixel or
+// two and shimmer as you move. So with distance the wall eases into one smooth face (each column's normal
+// toward the wall's own outward direction, aSN), its grain and facet colours into soft broad tones of stone
+// and moss. Close up nothing changes.
 {
-  const pos = [], nor = [], col = [], uv = [];
+  const prev = wallMat.onBeforeCompile;
+  wallMat.onBeforeCompile = sh => {
+    prev(sh);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 aSN;varying vec3 vSN;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvSN=normalMatrix*aSN;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vSN;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        float kFar=smoothstep(16.,55.,length(vViewPosition));
+        { float nn=auN(vGW.xz*.06+vec2(vGW.y*.04,0.))*.6+auN(vGW.xz*.19+vec2(0.,vGW.y*.1))*.4;
+          vec3 far=mix(vec3(.2,.19,.17),vec3(.19,.26,.12),smoothstep(.5,.78,nn))*(.82+.36*nn);
+          // soft broad columns, a smooth wave across the wall that never flickers, fading out far away
+          float al=vGW.x*${Math.cos(GORGE.a).toFixed(4)}+vGW.z*${Math.sin(GORGE.a).toFixed(4)}+vGW.x*.3,dd=length(vViewPosition);
+          float col=.5+.5*sin(al*4.2+auN(vec2(al*.7,1.))*3.),cw=.5+.5*sin(al*1.3+2.);
+          far*=1.+(col*.22+cw*.12-.17)*(1.-smoothstep(70.,140.,dd));
+          far=mix(far,vec3(.13,.16,.12),smoothstep(${(FLOOR + 3).toFixed(1)},${(FLOOR - 0.2).toFixed(1)},vGW.y)*.7);
+          diffuseColor.rgb=mix(diffuseColor.rgb,far,kFar*.9); }`)
+      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nnormal=normalize(mix(normal,normalize(vSN),kFar*.75));');
+  };
+  wallMat.customProgramCacheKey = () => 'gorge-wall-far';
+}
+{
+  const pos = [], nor = [], col = [], uv = [], sn = [];
+  // the outward direction of the column being built (into the gorge), for the smooth far-away face
+  let curSN = new V3(0, 0, 1);
   const BASALT = ['#5c574e', '#686253', '#4f4c45', '#736b5b', '#5a5a54', '#625b4f'].map(C), MOSS = ['#5f7f30', '#71913a', '#54702b', '#7d9c45'].map(C);
   const WET = C('#2f3a2b'), STAIN = C('#33302b'), LICHEN = C('#a3a690'), tmp = new THREE.Color(), e1 = new V3(), e2 = new V3(), nn = new V3();
   // the stone's colour at a point: its own shade, darker and greener near the water, dark streaks where water
@@ -133,7 +159,8 @@ fillMats.push([wallMat, [0.07, 0.072, 0.064]]);
   }
   const tri = (a, b, d, ca, cb, cd, ua, ub, ud) => {
     e1.subVectors(b, a); e2.subVectors(d, a); nn.crossVectors(e1, e2).normalize();
-    for (const [p, c, t] of [[a, ca, ua], [b, cb, ub], [d, cd, ud]]) { pos.push(p.x, p.y, p.z); nor.push(nn.x, nn.y, nn.z); col.push(c.r, c.g, c.b); uv.push(t[0], t[1]); }
+    const s = nn.y > 0.7 ? nn : curSN;
+    for (const [p, c, t] of [[a, ca, ua], [b, cb, ub], [d, cd, ud]]) { pos.push(p.x, p.y, p.z); nor.push(nn.x, nn.y, nn.z); col.push(c.r, c.g, c.b); uv.push(t[0], t[1]); sn.push(s.x, s.y, s.z); }
   };
   // one weathered prism: rings every metre and a half, each a little out of true, so the faces bow and twist;
   // the top is chipped at some corners and tilted; moss gathers on it
@@ -161,6 +188,7 @@ fillMats.push([wallMat, [0.07, 0.072, 0.064]]);
   }
   function column(u, v, top, rr, y0 = FLOOR - 1.2) {
     const base = BASALT[(R() * BASALT.length) | 0].clone().offsetHSL(0, 0, (R() - 0.5) * 0.05), lean = new V3((R() - 0.5) * 0.012, 0, (R() - 0.5) * 0.012);
+    curSN = gorgeWorld(u, 0).sub(gorgeWorld(u, v)).setY(0); if (curSN.lengthSq() < 1e-6) curSN.copy(gorgeWorld(u - 1, 0)).sub(gorgeWorld(u, 0)); curSN.normalize();
     let y = y0, d = 0;
     while (y < top - 0.3) {
       const seg = Math.min(top - y, 2.5 + R() * 6.5), y1 = y + seg, w = gorgeWorld(u, v + d);
@@ -183,7 +211,7 @@ fillMats.push([wallMat, [0.07, 0.072, 0.064]]);
   for (let v = -gorgeHalf(A1) - 0.5; v <= gorgeHalf(A1) + 0.5; v += 0.6) column(A1 + 0.4, v, rimY(A1, 1), 0.5);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setAttribute('aSN', new THREE.Float32BufferAttribute(sn, 3));
   g.computeBoundingSphere();
   gorge.add(new THREE.Mesh(g, wallMat));
 }

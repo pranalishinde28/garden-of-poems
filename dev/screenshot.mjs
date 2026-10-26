@@ -93,6 +93,8 @@ const VIEWS = {
   'creek': { pos: [-1, 3, -10], look: [-4, -0.6, -22] },
   'gorge-girl': { pos: [70.4, 2.1, 8.4], look: [110, -3, 13.2], season: 'spring' },
   'gorge-walk': { pos: [58, 2.1, 7], look: [110, -2, 13.2], season: 'spring' },
+  'gorge-sunset': { pos: [62, 2.6, 8], look: [140, 14, 16], season: 'spring', light: 'sunset' },
+  'gorge-mid': { pos: [66, 2.2, 6], look: [140, 14, 18], season: 'spring' },
   'gorge-far2': { pos: [45, 2.1, 2], look: [110, 0, 13.2], season: 'spring' },
   'gorge-far3': { pos: [40, 2.1, 20], look: [110, 0, 10], season: 'spring' },
   'edge-night': { pos: [20, 14, 20], look: [-30, 0, -40], season: 'spring', light: 'night' },

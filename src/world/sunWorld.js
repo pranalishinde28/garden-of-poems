@@ -84,8 +84,11 @@ sunScene.add(sky);
 const hemi = new THREE.HemisphereLight('#e2f1ff', '#4d7a32', 0.62); sunScene.add(hemi);
 const sun = new THREE.DirectionalLight('#fff1d8', 0.95); sun.position.set(40, 100, 120); sunScene.add(sun);
 sunScene.add(new THREE.AmbientLight('#ffffff', 0.06));
-// the fair's lit windows and lamp globes, brighter as the light fails
-const winMats = [];
+// the fair's lit windows and lamp globes, brighter as the light fails; the field's own night glow
+const winMats = [], fieldMats = [];
+// every small light in this world (lamps, rides, lanterns): [x, y, z, r, g, b, phase], drawn as one set of glowing points
+const bulbs = [];
+const bulb = (p, col, ph = R()) => { const c = new THREE.Color(col); bulbs.push(p.x, p.y, p.z, c.r, c.g, c.b, ph * 100); };
 
 /* ---------- the land: lawn, the lake, wooded hills, blue mountains ---------- */
 const lawnTex = canvasTex(256, 256, (g, w, h) => {
@@ -219,8 +222,10 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
     const d = Math.abs(px - pathX(pz));
     spots.push([px, pz, 1.1 + Math.min(1, d / 6) * 0.7 + R() * 0.6]);
   }
-  const stemMat = windify(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 0.012, 'blade');
-  const headMat = new THREE.MeshLambertMaterial({ map: sunTex, alphaTest: 0.4, side: THREE.DoubleSide });
+  // at night the field holds a soft glow of its own: the petals warm gold, the leaves a faint green
+  const stemMat = windify(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, emissive: '#2c5a1c', emissiveIntensity: 0 }), 0.012, 'blade');
+  const headMat = new THREE.MeshLambertMaterial({ map: sunTex, alphaTest: 0.4, side: THREE.DoubleSide, emissive: '#ffffff', emissiveMap: sunTex, emissiveIntensity: 0 });
+  fieldMats.push([stemMat, 0.38], [headMat, 0.42]);
   const stems = new THREE.InstancedMesh(stemGeo, stemMat, spots.length), heads = new THREE.InstancedMesh(headGeo, headMat, spots.length), d = new THREE.Object3D();
   spots.forEach(([x, z, h], i) => {
     d.position.set(x, sunH(x, z), z); d.rotation.set(0, (R() - 0.5) * 0.8, 0); d.scale.set(1, h, 1); d.updateMatrix(); stems.setMatrixAt(i, d.matrix);
@@ -229,6 +234,21 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
     d.position.set(x, sunH(x, z) + h + 0.02, z); d.rotation.set(-0.2 - R() * 0.25, face + (R() - 0.5) * 0.5, (R() - 0.5) * 0.5, 'YXZ'); const s = 0.85 + R() * 0.45; d.scale.set(s, s, s); d.updateMatrix(); heads.setMatrixAt(i, d.matrix);
   });
   root.add(stems, heads);
+  // lanterns on bamboo stakes scattered through the field, lit after dusk, so you can wander it at night
+  { const m = new Merge(), lanterns = [];
+    for (let z = FIELD.z0 - 2; z > FIELD.z1 + 2; z -= 6) for (let x = -30; x < 30; x += 6.5) {
+      const px = x + (R() - 0.5) * 3.5, pz = z + (R() - 0.5) * 3.5;
+      if (Math.abs(px - pathX(pz)) < 2.6 || lakeE(px, pz) < 1.35 || Math.hypot(px - DOOR.x, pz - DOOR.z) < 3.6) continue;
+      const y = sunH(px, pz), h = 2.6 + R() * 0.5;
+      m.limb(new V3(px, y, pz), new V3(px, y + h, pz), 0.03, 0.025, C('#8a7a4a'));
+      lanterns.push(new V3(px, y + h - 0.25, pz));
+    }
+    root.add(new THREE.Mesh(m.build(), new THREE.MeshLambertMaterial({ vertexColors: true })));
+    const lm = new THREE.MeshLambertMaterial({ color: '#fff0d0', emissive: '#ffb860', emissiveIntensity: 0.1 }); winMats.push(lm);
+    const im = new THREE.InstancedMesh(GEO.sph, lm, lanterns.length), dd = new THREE.Object3D();
+    lanterns.forEach((p, i) => { dd.position.copy(p); dd.scale.set(0.2, 0.26, 0.2); dd.updateMatrix(); im.setMatrixAt(i, dd.matrix); bulb(p, i % 3 ? '#ffd890' : '#ffb8c8'); });
+    root.add(im);
+  }
   // further off, painted on crossed cards: the sea of sunflowers runs on to the woods
   const far = canvasTex(512, 256, g => {
     for (let i = 0; i < 70; i++) { const x = R() * 512, y = 120 + R() * 136; g.fillStyle = `rgb(${60 + R() * 20 | 0},${110 + R() * 40 | 0},${40 + R() * 20 | 0})`; g.beginPath(); g.ellipse(x, y, 14 + R() * 12, 22 + R() * 20, R() * 2, 0, 7); g.fill(); }
@@ -263,8 +283,7 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
 // bulbs: [x, y, z, r, g, b, phase]; ref: lights the water mirrors
 const lit = (k = 0.45) => nightLit(new THREE.MeshLambertMaterial({ vertexColors: true }), k);
 // the castle has its own, so it can be washed in shifting colour at night
-const body = lit(), castleMat = lit(0.9), bulbs = [], ref = [];
-const bulb = (p, col, ph = R()) => { const c = new THREE.Color(col); bulbs.push(p.x, p.y, p.z, c.r, c.g, c.b, ph * 100); };
+const body = lit(), castleMat = lit(0.9), ref = [];
 
 // the castle: pink walls, blue conical spires with gold finials, a gate in its front wall
 {
@@ -641,7 +660,7 @@ const flies = [];
   }
 }
 {
-  const N = 400, p = new Float32Array(N * 3), ph = new Float32Array(N);
+  const N = 900, p = new Float32Array(N * 3), ph = new Float32Array(N);
   for (let i = 0; i < N; i++) { p.set([(R() - 0.5) * 60, 0.4 + R() * 3, 30 - R() * 80], i * 3); ph[i] = R() * 100; }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); g.setAttribute('aPh', new THREE.BufferAttribute(ph, 1));
   // pollen by day, fireflies by night
@@ -707,7 +726,7 @@ regThing(canalBoats[0].g, rides[4].label, () => late.startRide && late.startRide
 /* ---------- every frame while you are here ---------- */
 const DAY = { hemiS: C('#e2f1ff'), hemiG: C('#4d7a32'), sun: C('#fff1d8'), fog: C('#d4e6f4') };
 const DUSK = { hemiS: C('#ffc9a8'), hemiG: C('#5a5a3a'), sun: C('#ffa060'), fog: C('#f0b48c') };
-const NIGHT = { hemiS: C('#38497e'), hemiG: C('#1a2418'), sun: C('#9fb4ff'), fog: C('#141c33') };
+const NIGHT = { hemiS: C('#4a5c96'), hemiG: C('#1a2418'), sun: C('#9fb4ff'), fog: C('#141c33') };
 const mix3 = (n, d, key) => DAY[key].clone().lerp(DUSK[key], d).lerp(NIGHT[key], n);
 const DUSK_TINT = C('#ffb3a0'), tmp = new V3();
 let announced = false;
@@ -715,7 +734,7 @@ addTick(dt => {
   if (state.world !== 'sun') return;
   const n = state.night, d = (state.dusk || 0) * (1 - n);
   skyU.uNight.value = n; skyU.uDusk.value = d; waterU.uTime.value = T; sky.position.copy(camera.position);
-  hemi.color.copy(mix3(n, d, 'hemiS')); hemi.groundColor.copy(mix3(n, d, 'hemiG')); hemi.intensity = lerp(lerp(0.5, 0.45, d), 0.3, n);
+  hemi.color.copy(mix3(n, d, 'hemiS')); hemi.groundColor.copy(mix3(n, d, 'hemiG')); hemi.intensity = lerp(lerp(0.5, 0.45, d), 0.48, n);
   sun.color.copy(mix3(n, d, 'sun')); sun.intensity = lerp(lerp(0.78, 0.65, d), 0.22, n);
   sun.position.set(lerp(lerp(40, -120, d), 60, n), lerp(lerp(100, 25, d), 80, n), lerp(lerp(120, -200, d), -100, n));
   sunScene.fog.color.copy(mix3(n, d, 'fog')); sunScene.background.copy(sunScene.fog.color); renderer.setClearColor(sunScene.fog.color);
@@ -724,6 +743,7 @@ addTick(dt => {
   // the fair's lights: a little by day, warm at sunset, full at night
   const glow = Math.max(n, d * 0.6, 0.12); waterU.uGlow.value = glow;
   winMats.forEach(m => { m.emissiveIntensity = glow * 1.2; });
+  fieldMats.forEach(([m, k]) => { m.emissiveIntensity = Math.max(n, d * 0.4) * k; });
   // the rides
   wheel.rotation.z = T * 0.05; cabins.forEach(c => { c.rotation.z = -wheel.rotation.z; });
   for (let i = 0; i < WHEEL_REF; i++) { const a = i / WHEEL_REF * Math.PI * 2 + wheel.rotation.z; waterU.uL.value[i].set(O.x + WHEEL.x + Math.cos(a) * WHEEL.r, O.y + sunH(WHEEL.x, WHEEL.z) + WHEEL.hub + Math.sin(a) * WHEEL.r, O.z + WHEEL.z); waterU.uLC.value[i].setHSL(((i / WHEEL_REF - T * 0.08) % 1 + 1) % 1, 0.9, 0.62); }
