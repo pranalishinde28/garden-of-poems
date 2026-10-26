@@ -259,10 +259,16 @@ function woodGrain(g, W, H, seed, base) {
 function blossom(g, x, y, r, col) { g.fillStyle = col; for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2 - Math.PI / 2; g.beginPath(); g.ellipse(x + Math.cos(a) * r * 0.55, y + Math.sin(a) * r * 0.55, r * 0.5, r * 0.36, a, 0, Math.PI * 2); g.fill(); } g.fillStyle = '#e9b04a'; g.beginPath(); g.arc(x, y, r * 0.18, 0, Math.PI * 2); g.fill(); }
 export function drawBoard() {
   const info = boardInfo(), cv = board.userData.cv, g = cv.getContext('2d'), W = cv.width, H = cv.height;
-  // the owner's choice: the plain wooden board, its grain and inset frame, with no lettering
-  // (the garden's name is on the arch's plaque; the links are on the chalkboard opposite)
+  // the welcome: "Welcome to your Garden" at home, "Welcome to <their garden>" when visiting; cream on the
+  // dark wood with a deep shadow, so it reads from where you arrive
   woodGrain(g, W, H, 19, '#6f553f');
   g.strokeStyle = 'rgba(240,226,200,.55)'; g.lineWidth = 5; g.strokeRect(32, 32, W - 64, H - 64);
+  const second = state.visiting ? info.name : 'your Garden';
+  g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillStyle = '#fff4de';
+  g.shadowColor = 'rgba(20,10,4,.75)'; g.shadowBlur = 14; g.shadowOffsetY = 6;
+  fitFont(g, 'Welcome to', W - 200, 600, 170, 90); g.font = 'italic ' + g.font; g.fillText('Welcome to', W / 2, H * 0.4);
+  fitFont(g, second, W - 120, 700, 270, 110); g.fillText(second, W / 2, H * 0.4 + 280);
+  g.shadowColor = 'transparent'; g.shadowBlur = 0; g.shadowOffsetY = 0;
   board.userData.tex.needsUpdate = true;
   drawPlaque(info.name);
   // the QR boards follow the same links

@@ -7,7 +7,7 @@ import { regEnd } from './paths.js';
 export const fujiMesh = [];
 export const fujiU = { uLight: { value: new V3(0, 1, 0) }, uHor: { value: new THREE.Color() }, uNight: { value: 0 }, uDusk: { value: 0 } };
 (function buildFuji() {
-  const H = 400, rb = 980, rt = 4, rings = 96, seg = 260, pos = [], at = [], idx = [];
+  const H = 400, rb = 980, rt = 30, rings = 96, seg = 260, pos = [], at = [], idx = [];
   const gul = a => Math.sin(a * 37 + 1.3) * 0.6 + Math.sin(a * 83 + 0.4) * 0.3 + Math.sin(a * 151) * 0.1;
   for (let i = 0; i <= rings; i++) {
     // concave flanks that steepen toward the summit but still taper in a straight cone to a soft point
@@ -17,7 +17,8 @@ export const fujiU = { uLight: { value: new V3(0, 1, 0) }, uHor: { value: new TH
       const a = k / seg * Math.PI * 2, g = gul(a);
       const shoulder = 1 + 0.07 * Math.exp(-Math.pow(Math.atan2(Math.sin(a - 0.35), Math.cos(a - 0.35)), 2) / 0.03) * Math.exp(-Math.pow(t - 0.42, 2) / 0.02);
       const f = (1 + 0.028 * g * Math.min(1, t * 2.5) * (1 - t * 0.6)) * shoulder;
-      let y = t * H - Math.pow(Math.max(0, t - 0.96) / 0.04, 2) * 6;
+      // a small flat summit with a shallow crater rim: a frustum, not a point and not a cylinder
+      let y = t * H - Math.pow(Math.max(0, t - 0.985) / 0.015, 2) * 5;
       // its foot is nearly a kilometre across: the part toward the garden sinks away behind the hills,
       // so they stand in front of Fuji instead of poking through its lower slopes
       { const wx = -210 + Math.cos(a) * rr * f * 1.08, wz = -1000 + Math.sin(a) * rr * f * 1.08, d = Math.hypot(wx, wz), k = Math.min(1, Math.max(0, (720 - d) / 340)); y -= k * k * (3 - 2 * k) * 240; }

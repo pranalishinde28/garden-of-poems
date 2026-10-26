@@ -44,7 +44,7 @@ export function renderPost() {
     quad.material = blurMat; blurMat.uniforms.tDiffuse.value = bloomA.texture; blurMat.uniforms.uDir.value.set((1 + i * 1.5) / bloomA.width, 0); renderer.setRenderTarget(bloomB); renderer.render(postScene, postCam);
     blurMat.uniforms.tDiffuse.value = bloomB.texture; blurMat.uniforms.uDir.value.set(0, (1 + i * 1.5) / bloomA.height); renderer.setRenderTarget(bloomA); renderer.render(postScene, postCam);
   }
-  quad.material = compMat; compMat.uniforms.tScene.value = sceneRT.texture; compMat.uniforms.tBloom.value = bloomA.texture; compMat.uniforms.uTime.value = T; const away = state.world === 'sun'; compMat.uniforms.uNight.value = away ? 0 : state.night; compMat.uniforms.uAutumn.value = THEME === 'autumn' && !away ? 1 : 0; compMat.uniforms.uDusk.value = away ? 0 : (state.dusk || 0) * (1 - state.night);
+  quad.material = compMat; compMat.uniforms.tScene.value = sceneRT.texture; compMat.uniforms.tBloom.value = bloomA.texture; compMat.uniforms.uTime.value = T; const away = state.world === 'sun'; compMat.uniforms.uNight.value = state.night; compMat.uniforms.uAutumn.value = THEME === 'autumn' && !away ? 1 : 0; compMat.uniforms.uDusk.value = (state.dusk || 0) * (1 - state.night);
   renderer.setRenderTarget(null); renderer.render(postScene, postCam);
 }
 

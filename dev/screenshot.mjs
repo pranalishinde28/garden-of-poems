@@ -235,14 +235,25 @@ async function main() {
       await page.keyboard.up('KeyW'); await sleep(3200); await shot('sun-arrive');
       const world = await page.evaluate(() => window.__garden.state.world);
       const look = async (n, x, z, yaw, pitch = -0.02) => { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + x, 0, O.z - 34.8 + z); g.player.yaw = yaw; g.player.pitch = pitch; }, x, z, yaw, pitch); await sleep(1400); await shot(n); };
-      await look('sun-back', 0, 33, Math.PI); await look('sun-beds', -6, 14, -0.4); await look('sun-bands', 3, -10, 0.2); await look('sun-arch', 0, -32, 0, 0.05); await look('sun-field', 0, -70, 0); await look('sun-side', 2, -60, -1.2, 0.05);
-      await look('sun-door', 0, -109.6, 0, 0.12);
+      await look('sun-back', 0, 33, Math.PI); await look('sun-field', 3, 10, 0.1); await look('sun-arch', 0, -30, 0, 0.05); await look('sun-plaza', 0, -44, 0, 0.12); await look('sun-lagoon', 6, -84, 0.15, 0.16); await look('sun-castle', 0, -128, 0, 0.3);
+      await page.evaluate(() => window.__garden.setSetting('light', 'night')); await sleep(2500); await look('sun-night', 6, -80, 0.2, 0.16); await look('sun-night-plaza', 0, -44, 0, 0.15);
+      await page.evaluate(() => window.__garden.setSetting('light', 'sunset')); await sleep(2500); await look('sun-sunset', 6, -80, 0.2, 0.16);
+      await page.evaluate(() => window.__garden.setSetting('light', 'day')); await sleep(1500);
+      await look('sun-door', -16, -48.4, 0, 0.12);
       const dcue = await page.$eval('#cue', e => e.textContent.trim()); await page.keyboard.press('KeyE'); await sleep(1200); await shot('door-open');
       await page.waitForFunction(() => window.__garden.state.world !== 'sun' && window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }).catch(() => {});
       await sleep(2600); await shot('home');
       const back = await page.evaluate(() => [window.__garden.state.world, window.__garden.state.mode]);
       console.log(`  cue "${cue}", aboard: ${m1}, rowed ${moved.toFixed(1)} m, world after the cave: ${world}, door cue "${dcue}", after the door: ${back}`);
       if (m1 !== 'boat' || moved < 2 || world !== 'sun' || back[0] === 'sun' || back[1] !== 'walk') errors.push('rowing or crossing worlds failed');
+    }
+    else if (FLOW === 'secret') { // the map's secret garden goes straight to the Sunflower Garden
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await page.keyboard.press('KeyM'); await sleep(1500);
+      await page.evaluate(() => [...document.querySelectorAll('#map-marks .map-place')].find(b => /secret garden/i.test(b.getAttribute('aria-label'))).click());
+      await page.waitForFunction(() => window.__garden.state.world === 'sun' && window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }).catch(() => {});
+      await sleep(2500); await page.screenshot({ path: join(root, 'dev/shots/secret.png') });
+      const w = await page.evaluate(() => window.__garden.state.world); console.log(`  after the map's secret garden: ${w}`); if (w !== 'sun') errors.push('secret garden did not open');
     }
     else if (FLOW === 'gorge') { // walk to the lookout, look into the gorge (E), then step back
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });

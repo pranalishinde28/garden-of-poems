@@ -107,9 +107,10 @@ const GLYPHS = {
   rose: '<circle cx="12" cy="11" r="5"/><path d="M12 8c-1.5 1-1.5 3 0 4 1.5-1 1.5-3 0-4M12 16v5"/>', stream: '<path d="M5 8c3-2 5 2 8 0s5-2 6 0M5 13c3-2 5 2 8 0s5-2 6 0M5 18c3-2 5 2 8 0s5-2 6 0"/>',
   fountain: '<path d="M6 18h12M8 18l1-4h6l1 4M12 14V8M9 8c0-2 1.5-3 3-3s3 1 3 3"/>', torii: '<path d="M4 7h16M6 10h12M8 7v12M16 7v12"/>', pagoda: '<path d="M12 3v3M7 9h10l-2-3H9zM6 14h12l-2-3H8zM8 19h8v-5H8z"/>',
   bell: '<path d="M8 17V11a4 4 0 0 1 8 0v6M6 17h12M12 7V5M11 20h2"/>',
+  secret: '<path d="M12 4l1.8 4.6 4.9.3-3.8 3.1 1.3 4.8L12 14l-4.2 2.8 1.3-4.8-3.8-3.1 4.9-.3z"/><path d="M12 17v4"/>',
   lantern: '<path d="M12 3v2M9 5h6M9 19h6M8 8c0-1.6 1.8-3 4-3s4 1.4 4 3v8c0 1.6-1.8 3-4 3s-4-1.4-4-3z"/><path d="M8 10h8M8 14h8"/>',
 };
-const glyphFor = name => /lantern/i.test(name) ? 'lantern' : /bench/i.test(name) ? 'bench' : /pond/i.test(name) ? 'pond' : /swing/i.test(name) ? 'swing' : /gate/i.test(name) ? 'gate' : /tulip/i.test(name) ? 'tulip' : /rose/i.test(name) ? 'rose' : /stream|gorge/i.test(name) ? 'stream' : /fountain/i.test(name) ? 'fountain' : /shrine/i.test(name) ? 'torii' : /pagoda/i.test(name) ? 'pagoda' : /bell/i.test(name) ? 'bell' : 'gate';
+const glyphFor = name => /lantern/i.test(name) ? 'lantern' : /bench/i.test(name) ? 'bench' : /pond/i.test(name) ? 'pond' : /swing/i.test(name) ? 'swing' : /gate/i.test(name) ? 'gate' : /tulip/i.test(name) ? 'tulip' : /rose/i.test(name) ? 'rose' : /secret/i.test(name) ? 'secret' : /stream|gorge/i.test(name) ? 'stream' : /fountain/i.test(name) ? 'fountain' : /shrine/i.test(name) ? 'torii' : /pagoda/i.test(name) ? 'pagoda' : /bell/i.test(name) ? 'bell' : 'gate';
 const medal = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${GLYPHS[glyphFor(name)]}</svg>`;
 
 // ---- the full map ----
@@ -136,6 +137,8 @@ function places() {
   { const [dx, dz] = toPond(FOUNTAIN.x, FOUNTAIN.z); L.push({ name: 'The fountain', hint: 'toss a coin, make a wish', x: FOUNTAIN.x, z: FOUNTAIN.z, stand: [FOUNTAIN.x - dx * 4, FOUNTAIN.z - dz * 4], face: [FOUNTAIN.x, FOUNTAIN.z], side: 'r' }); }
   const before = (Lm, d, name, hint, side) => { const a = Math.atan2(-Lm.x, -Lm.z); L.push({ name, hint, x: Lm.x, z: Lm.z, stand: [Lm.x + Math.sin(a) * d, Lm.z + Math.cos(a) * d], face: [Lm.x, Lm.z], side }); };
   { const W = LANTERN_WALL; L.push({ name: 'The lantern wall', hint: 'your newest poems, lit', x: W.x, z: W.z, stand: [W.x - 4.5, W.z], face: [W.x, W.z], side: 'r' }); }
+  // the secret garden: straight through the falls to the Sunflower Garden and its fairground
+  if (SETTINGS.view !== 'sea') L.push({ name: 'The secret garden', hint: 'sunflowers and a fairground, beyond the falls', x: LOOKOUT.x - 4, z: LOOKOUT.z - 12, stand: [0, 0], face: [0, 0], side: 'l', go: () => late.enterSunWorld && late.enterSunWorld() });
   if (SETTINGS.view !== 'sea') { const r = Math.hypot(LOOKOUT.x, LOOKOUT.z), k = (r - 3) / r; L.push({ name: 'The gorge lookout', hint: 'Takachiho Gorge and its falls', x: LOOKOUT.x, z: LOOKOUT.z, stand: [LOOKOUT.x * k, LOOKOUT.z * k], face: [LOOKOUT.x * 2, LOOKOUT.z * 2], side: 'l' }); }
   before(LANDMARKS.shrine, 15, 'The shrine', 'ring the bell, make a wish', 'r');
   before(LANDMARKS.pagoda, 9, 'The pagoda', 'three storeys, and a lantern each side', 'r');
@@ -152,7 +155,7 @@ function buildMarks() {
   marks.innerHTML = ''; const list = $('#map-places'); list.innerHTML = '';
   const add = (cls, x, z, attrs, html) => { const [sx, sy] = P(x, z), b = document.createElement('button'); b.className = cls; b.style.left = sx + 'px'; b.style.top = sy + 'px'; Object.entries(attrs).forEach(([k, v]) => b.setAttribute(k, v)); if (html) b.innerHTML = html; marks.appendChild(b); return b; };
   places().forEach(pl => {
-    const go = () => { const [x, z] = standNear(pl.stand[0], pl.stand[1], pl.face[0], pl.face[1]); closeMap(false); glideTo(x, z, pl.face[0], pl.face[1]); };
+    const go = pl.go ? () => { closeMap(false); pl.go(); } : () => { const [x, z] = standNear(pl.stand[0], pl.stand[1], pl.face[0], pl.face[1]); closeMap(false); glideTo(x, z, pl.face[0], pl.face[1]); };
     const b = add('map-place side-' + pl.side + (pl.small ? ' small' : ''), pl.x, pl.z, { 'aria-label': `${pl.name}: ${pl.hint}`, 'data-side': pl.side }, `<span class="dot">${medal(pl.name)}</span><span class="t"><em>${pl.name}</em><small>${pl.hint}</small></span>`);
     b.onclick = go;
     // on narrow screens the hints live in a row under the map instead of crowding it

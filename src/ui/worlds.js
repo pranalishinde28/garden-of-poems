@@ -33,13 +33,14 @@ function cross(words, swap, after) {
   }, 2000);
 }
 
+worlds.sun.announce = () => showRegion({ name: 'The Starlight Fair', sub: 'A castle, a wheel of lights, a carousel. The white door is by the plaza.' });
 function enterSunWorld() {
   cross('The light beyond the falls…', () => {
     late.mooreBoat && late.mooreBoat(); setVeil(0);
     view.scene = worlds.sun.scene; state.world = 'sun'; document.body.classList.add('otherworld');
     moveFigureTo(worlds.sun.scene); worlds.sun.enter();
     place(worlds.sun.arrive.pos, worlds.sun.arrive.yaw);
-  }, () => showRegion({ name: 'The Sunflower Garden', sub: 'Somewhere among the flowers, a white door leads home.' }));
+  }, () => showRegion({ name: 'The Sunflower Garden', sub: 'Walk up through the sunflowers. A fair lies beyond the arch, and a white door home.' }));
 }
 
 function leaveSunWorld() {
