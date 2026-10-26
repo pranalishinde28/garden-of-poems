@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { C, V3, clamp, lerp, rng, smooth } from '../core/util.js';
 import { GORGE, JETTY, POOL, gorgeHalf, gorgeJettyH, gorgeLocal, gorgePool, gorgeWorld, groundH } from './terrain.js';
-import { scene } from './renderer.js';
+import { camera, scene } from './renderer.js';
 import { canvasTex, glowTex, softTex } from './textures.js';
 import { GEO, Merge } from './geometry.js';
 import { groundMeshH, mountainMeshes, mountainU } from './ground.js';
@@ -391,13 +391,16 @@ const gwU = Object.assign({ uTime: waterU.uTime, uNight: waterU.uNight, uLightDi
 /* ---------- 5. the falls: Manai Falls over the cave, and slender falls down both walls ---------- */
 const fallU = Object.assign({ uTime: waterU.uTime }, nightU), mist = [];
 // a ribbon of water leaving the lip of a wall at `along`, spreading as it falls, with mist at its foot
-function falls(u0, s, w, out, alpha, speed, mistN) {
+// a ribbon of water leaving the lip of a wall at `along`, spreading as it falls: streaks race down it (faster
+// as they fall), it thickens into white water at the foot, and spray bursts up where it lands
+const spray = [];
+function falls(u0, s, w, out, alpha, speed, mistN, splash = 0) {
   const top = rimY(u0, s) - 0.2, H = top - FLOOR, half = gorgeHalf(u0);
-  const g = new THREE.PlaneGeometry(1, 1, 1, 28), p = g.attributes.position;
+  const g = new THREE.PlaneGeometry(1, 1, 6, 40), p = g.attributes.position;
   for (let i = 0; i < p.count; i++) {
-    // t: 0 at the lip, 1 at the water
+    // t: 0 at the lip, 1 at the water; the sheet bows outward a little across its width
     const x = p.getX(i), t = 0.5 - p.getY(i);
-    const a = gorgeWorld(u0 + x * w * (1 + t * 0.4), s * (half - 0.25 - out * (1 - Math.pow(1 - t, 2.2)) - 0.15), top - t * H);
+    const a = gorgeWorld(u0 + x * w * (1 + t * 0.55), s * (half - 0.25 - out * (1 - Math.pow(1 - t, 2.2)) - 0.15 - (0.25 - x * x) * 0.5 * w * 0.3), top - t * H);
     p.setXYZ(i, a.x, a.y, a.z);
   }
   gorge.add(new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: fallU, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false,
@@ -406,27 +409,57 @@ function falls(u0, s, w, out, alpha, speed, mistN) {
       float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
       float nz(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);return mix(mix(h2(i),h2(i+vec2(1,0)),u.x),mix(h2(i+vec2(0,1)),h2(i+vec2(1,1)),u.x),u.y);}
       void main(){
-        float t=uTime*${speed.toFixed(2)};
-        float n=nz(vec2(vUv.x*11.,vUv.y*4.+t))*.55+nz(vec2(vUv.x*31.,vUv.y*11.+t*1.6))*.45;
-        float edge=smoothstep(0.,.22,vUv.x)*smoothstep(1.,.78,vUv.x);
-        float a=edge*(.3+.7*smoothstep(.3,.75,n))*smoothstep(0.,.06,vUv.y);
-        vec3 c=mix(vec3(.7,.82,.8),vec3(1.),n);c=mix(c,c*vec3(.72,.84,.95),uGN);
-        gl_FragColor=vec4(c,a*${alpha.toFixed(2)});
+        float fall=1.-vUv.y, t=uTime*${speed.toFixed(2)};
+        // water accelerates as it falls: the pattern runs faster lower down
+        float y=vUv.y*(1.+fall*.8);
+        float n=nz(vec2(vUv.x*13.,y*5.+t*1.2))*.45+nz(vec2(vUv.x*34.,y*14.+t*2.2))*.35+nz(vec2(vUv.x*70.,y*30.+t*3.4))*.2;
+        float streak=smoothstep(.35,.9,nz(vec2(vUv.x*22.,y*2.+t*1.6)));
+        float edge=smoothstep(0.,.16,vUv.x)*smoothstep(1.,.84,vUv.x);
+        float a=edge*(.45+.55*smoothstep(.25,.7,n)+streak*.3)*smoothstep(0.,.04,vUv.y);
+        // white water thickening toward the foot
+        a=mix(a,max(a,edge*.95),smoothstep(.75,1.,fall));
+        vec3 c=mix(vec3(.74,.86,.86),vec3(1.),clamp(n*.8+streak*.5+fall*.25,0.,1.));
+        c=mix(c,c*vec3(.72,.84,.95),uGN);
+        gl_FragColor=vec4(c*1.06,clamp(a,0.,1.)*${alpha.toFixed(2)});
       }` })));
   const base = gorgeWorld(u0, s * (half - out - 0.4), FLOOR);
   for (let k = 0; k < mistN; k++) {
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: softTex, color: '#eef6f4', transparent: true, opacity: 0.3, depthWrite: false, fog: false }));
-    const sc = (3 + k * 1.4) * Math.max(0.6, w / 3);
-    sp.position.copy(base).add(new V3((R() - 0.5) * w, 1 + k * 1.0, (R() - 0.5) * 2)); sp.scale.setScalar(sc); sp.userData = { ph: R() * 6, sc }; gorge.add(sp); mist.push(sp);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: softTex, color: '#f2f8f8', transparent: true, opacity: 0.3, depthWrite: false, fog: false }));
+    const sc = (3.5 + k * 1.8) * Math.max(0.6, w / 3);
+    sp.position.copy(base).add(new V3((R() - 0.5) * w, 0.8 + k * 1.3, (R() - 0.5) * 2)); sp.scale.setScalar(sc); sp.userData = { ph: R() * 6, sc, y0: sp.position.y }; gorge.add(sp); mist.push(sp);
   }
+  if (splash) spray.push({ base, w, n: splash });
 }
-// Manai Falls, wide enough at its foot to row through into the cave behind it
-falls(FALLS.along, FALLS.side, 3.0, 1.4, 0.95, 1.5, 5); falls(FALLS.along, FALLS.side, 6.0, 1.9, 0.3, 1.1, 0);
+// Manai Falls, full and wide, in three sheets: wide enough at its foot to row through into the cave behind it
+falls(FALLS.along, FALLS.side, 4.6, 1.4, 0.98, 1.6, 7, 260); falls(FALLS.along, FALLS.side, 7.5, 1.9, 0.4, 1.2, 0); falls(FALLS.along, FALLS.side, 2.6, 1.15, 0.7, 2.1, 0);
 // slender falls on both walls, so you row between waterfalls
-for (const [u0, s, w] of [[118, 1, 0.9], [126, -1, 1.2], [133, 1, 1.4], [139, -1, 0.8], [152, 1, 1.1], [158, -1, 0.9], [164, 1, 0.7]]) {
-  falls(u0, s, w, 0.7, 0.85, 1.4 + R() * 0.3, 2); falls(u0, s, w * 2.2, 1.0, 0.22, 1.0, 0);
+for (const [u0, s, w] of [[118, 1, 1.4], [126, -1, 1.8], [133, 1, 2.0], [139, -1, 1.3], [152, 1, 1.7], [158, -1, 1.4], [164, 1, 1.1]]) {
+  falls(u0, s, w, 0.7, 0.92, 1.5 + R() * 0.3, 3, 60); falls(u0, s, w * 2.2, 1.0, 0.28, 1.1, 0);
 }
-addTick(() => { if (!gorge.visible) return; mist.forEach(sp => { const w = Math.sin(T * 0.5 + sp.userData.ph); sp.material.opacity = 0.2 + 0.1 * w; sp.scale.setScalar(sp.userData.sc + w * 0.6); }); }, true);
+// spray: droplets thrown up and out where each fall lands, falling back in arcs
+{
+  const pos = [], dir = [], ph = [];
+  for (const sp of spray) for (let k = 0; k < sp.n; k++) { pos.push(sp.base.x + (R() - 0.5) * sp.w, FLOOR + 0.1, sp.base.z + (R() - 0.5) * sp.w * 0.6); const a = R() * Math.PI * 2, r = 0.6 + R() * 1.4; dir.push(Math.cos(a) * r, 2.2 + R() * 3, Math.sin(a) * r); ph.push(R()); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aDir', new THREE.Float32BufferAttribute(dir, 3)); g.setAttribute('aPh', new THREE.Float32BufferAttribute(ph, 1));
+  const pts = new THREE.Points(g, new THREE.ShaderMaterial({ uniforms: fallU, transparent: true, depthWrite: false, fog: false,
+    vertexShader: `uniform float uTime;attribute vec3 aDir;attribute float aPh;varying float vA;
+      void main(){float t=fract(uTime*.55+aPh);vec3 p=position+aDir*t-vec3(0.,4.9*t*t,0.)*1.2;p.y=max(p.y,position.y);vA=(1.-t)*smoothstep(0.,.08,t);
+        vec4 mv=modelViewMatrix*vec4(p,1.);gl_PointSize=clamp(140./-mv.z,1.,9.);gl_Position=projectionMatrix*mv;}`,
+    fragmentShader: 'uniform float uGN;varying float vA;void main(){float d=length(gl_PointCoord-.5);float a=smoothstep(.5,0.,d)*vA*.8;vec3 c=mix(vec3(1.),vec3(.75,.85,.95),uGN);gl_FragColor=vec4(c,a);}' }));
+  pts.frustumCulled = false; gorge.add(pts);
+}
+// a faint rainbow in Manai Falls' spray by day
+const bowMat = new THREE.ShaderMaterial({ uniforms: { uOp: { value: 0 } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
+  vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader: `uniform float uOp;varying vec2 vUv;
+    vec3 hue(float h){return clamp(abs(mod(h*6.+vec3(0.,4.,2.),6.)-3.)-1.,0.,1.);}
+    void main(){vec2 q=vUv*2.-1.;float r=length(vec2(q.x,q.y+.2));float b=smoothstep(.7,.74,r)*smoothstep(.92,.88,r);
+      vec3 c=hue((r-.72)/.2*.75);gl_FragColor=vec4(c*b*uOp,b*uOp);}` });
+{
+  const bow = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), bowMat), c = gorgeWorld(FALLS.along - 1, FALLS.side * (gorgeHalf(FALLS.along) - 4), FLOOR + 3.2);
+  bow.position.copy(c); const look = gorgeWorld(FALLS.along - 20, 0, FLOOR + 3); bow.lookAt(look); gorge.add(bow);
+}
+addTick(() => { if (!gorge.visible) return; mist.forEach(sp => { const w = Math.sin(T * 0.5 + sp.userData.ph), near = THREE.MathUtils.smoothstep(sp.position.distanceTo(camera.position), sp.userData.sc * 0.4, sp.userData.sc * 1.6); sp.material.opacity = (0.22 + 0.12 * w) * near; sp.scale.setScalar(sp.userData.sc + w * 0.9); sp.position.y = sp.userData.y0 + 0.4 * Math.sin(T * 0.3 + sp.userData.ph); }); bowMat.uniforms.uOp.value = 0.22 * (1 - state.night) * (1 - (state.dusk || 0) * 0.7); }, true);
 
 /* ---------- 5b. the cave behind the falls: wet rock, ferns, and a light at its end ---------- */
 // Row through the curtain and the passage runs back into the hill toward a warm, white light; reaching it

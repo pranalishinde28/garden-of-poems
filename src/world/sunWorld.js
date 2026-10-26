@@ -106,7 +106,8 @@ const lawnTex = canvasTex(256, 256, (g, w, h) => {
     col.push(c.r, c.g, c.b);
   }
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
-  root.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, map: lawnTex })));
+  const lawnMat = new THREE.MeshLambertMaterial({ vertexColors: true, map: lawnTex, emissive: '#5c9a3a', emissiveIntensity: 0 }); fieldMats.push([lawnMat, 0.16]);
+  root.add(new THREE.Mesh(g, lawnMat));
 }
 const mountMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, fog: false });
 {
@@ -236,8 +237,8 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
   root.add(stems, heads);
   // lanterns on bamboo stakes scattered through the field, lit after dusk, so you can wander it at night
   { const m = new Merge(), lanterns = [];
-    for (let z = FIELD.z0 - 2; z > FIELD.z1 + 2; z -= 6) for (let x = -30; x < 30; x += 6.5) {
-      const px = x + (R() - 0.5) * 3.5, pz = z + (R() - 0.5) * 3.5;
+    for (let z = FIELD.z0 - 1; z > FIELD.z1 + 1; z -= 4) for (let x = -33; x < 33; x += 4.2) {
+      const px = x + (R() - 0.5) * 2.2, pz = z + (R() - 0.5) * 2.2;
       if (Math.abs(px - pathX(pz)) < 2.6 || lakeE(px, pz) < 1.35 || Math.hypot(px - DOOR.x, pz - DOOR.z) < 3.6) continue;
       const y = sunH(px, pz), h = 2.6 + R() * 0.5;
       m.limb(new V3(px, y, pz), new V3(px, y + h, pz), 0.03, 0.025, C('#8a7a4a'));
@@ -248,6 +249,12 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
     const im = new THREE.InstancedMesh(GEO.sph, lm, lanterns.length), dd = new THREE.Object3D();
     lanterns.forEach((p, i) => { dd.position.copy(p); dd.scale.set(0.2, 0.26, 0.2); dd.updateMatrix(); im.setMatrixAt(i, dd.matrix); bulb(p, i % 3 ? '#ffd890' : '#ffb8c8'); });
     root.add(im);
+    // and lights floating low over the far reaches of the field, all the way to the woods
+    for (let z = FIELD.z0 + 4; z > FIELD.z1 - 2; z -= 4.5) for (const s of [-1, 1]) for (let x = 35; x < 108; x += 4.5) {
+      const px = s * (x + (R() - 0.5) * 2), pz = z + (R() - 0.5) * 2;
+      if (lakeE(px, pz) < 1.4) continue;
+      bulb(new V3(px, sunH(px, pz) + 2.4 + R() * 0.8, pz), ['#ffd890', '#ffe8b0', '#ffc0d0'][(R() * 3) | 0]);
+    }
   }
   // further off, painted on crossed cards: the sea of sunflowers runs on to the woods
   const far = canvasTex(512, 256, g => {
@@ -256,7 +263,8 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
   });
   const card = (() => { const a = new THREE.PlaneGeometry(4, 2.3).translate(0, 1.15, 0), b = a.clone().rotateY(Math.PI / 2); const m = new Merge(); m.add(a, new V3(), new V3(1, 1, 1), C('#ffffff')); m.add(b, new V3(), new V3(1, 1, 1), C('#ffffff')); return m.build(); })();
   const list = []; for (let z = FIELD.z0 + 4; z > FIELD.z1 - 2; z -= 2.6) for (const s of [-1, 1]) for (let x = 34; x < 110; x += 2.8) if (lakeE(s * x, z) > 1.4) list.push([s * (x + R()), z + R()]);
-  const im = new THREE.InstancedMesh(card, new THREE.MeshLambertMaterial({ map: far, alphaTest: 0.45, side: THREE.DoubleSide }), list.length);
+  const farMat = new THREE.MeshLambertMaterial({ map: far, alphaTest: 0.45, side: THREE.DoubleSide, emissive: '#ffffff', emissiveMap: far, emissiveIntensity: 0 }); fieldMats.push([farMat, 0.4]);
+  const im = new THREE.InstancedMesh(card, farMat, list.length);
   list.forEach(([x, z], i) => { d.position.set(x, sunH(x, z) - 0.2, z); d.rotation.set(0, R() * 0.6 - 0.3 + Math.PI / 4, 0); d.scale.setScalar(0.9 + R() * 0.3); d.updateMatrix(); im.setMatrixAt(i, d.matrix); });
   root.add(im);
 }
