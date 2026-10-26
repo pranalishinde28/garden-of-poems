@@ -681,14 +681,14 @@ export const gorgeDeck = new THREE.Group();
     m.add(GEO.dode, new V3(p.x, groundMeshH(p.x, p.z) - 0.02, p.z), new V3(s * 1.2, 0.08, s), C(['#9a968a', '#8c887c', '#a5a194'][k % 3]), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), R() * 3));
   }
   // (the jetty now starts at the deck, so there may be no stones at all)
-  const sg = m.build(), stones = sg ? new THREE.Mesh(sg, gorgeMat(new THREE.MeshLambertMaterial({ vertexColors: true }), false)) : new THREE.Group(); stones.receiveShadow = true;
+  const pathMat = gorgeMat(new THREE.MeshLambertMaterial({ vertexColors: true }), false), sg = m.build(), stones = sg ? new THREE.Mesh(sg, pathMat) : new THREE.Group(); stones.receiveShadow = true;
   const j = new Merge();
   const WOOD = ['#7d5c40', '#86654a', '#71533a'].map(C), dark = C('#5e4532'), yaw = Math.atan2(gorgeWorld(JETTY.u1, 0).x - gorgeWorld(JETTY.u0, 0).x, gorgeWorld(JETTY.u1, 0).z - gorgeWorld(JETTY.u0, 0).z), q = new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), yaw);
   for (let u = JETTY.u0 + 0.15; u < JETTY.u1; u += 0.32) { const p = gorgeWorld(u, 0, JETTY.y - 0.04); j.add(GEO.box, p, new V3(JETTY.half * 2, 0.07, 0.28), WOOD[(R() * 3) | 0], q); }
   for (let u = JETTY.u0 + 0.6; u <= JETTY.u1; u += 2.5) for (const v of [-JETTY.half + 0.08, JETTY.half - 0.08]) { const p = gorgeWorld(u, v); j.limb(new V3(p.x, FLOOR - 1.2, p.z), new V3(p.x, JETTY.y + 0.5, p.z), 0.08, 0.07, dark); }
   // a mooring post and a coil of rope where the boat is tied
   { const p = gorgeWorld(JETTY.u1 - 0.3, JETTY.half - 0.1); j.limb(new V3(p.x, JETTY.y, p.z), new V3(p.x, JETTY.y + 0.75, p.z), 0.09, 0.08, dark); j.add(new THREE.TorusGeometry(0.2, 0.04, 6, 16).rotateX(Math.PI / 2), new V3(p.x, JETTY.y + 0.05, p.z), new V3(1, 1, 1), C('#c9b48a')); }
-  const mesh = new THREE.Mesh(j.build(), stones.material); mesh.receiveShadow = true;
+  const mesh = new THREE.Mesh(j.build(), pathMat); mesh.receiveShadow = true;
   // a group of its own (the deck's is turned and placed at the deck), hidden with the hills for the sea
   const path = new THREE.Group(); path.add(stones, mesh); scene.add(path); mountainMeshes.push(path);
   const end = gorgeWorld(JETTY.u1 - 0.5, 0);
