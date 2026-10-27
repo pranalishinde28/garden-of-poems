@@ -1,0 +1,14 @@
+{
+  "name": "The Garden of Poems",
+  "short_name": "Garden of Poems",
+  "description": "Every poem you write leaves something growing here.",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f6ead2",
+  "theme_color": "#2d3a33"
+}
