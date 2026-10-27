@@ -43,12 +43,15 @@ function paint(cv, links, own) {
   const { x0, y0, w, h } = chalkboard(g, W, H, 58, 23);
   g.textAlign = 'center'; g.textBaseline = 'alphabetic';
   // the heading, with a chalk sprig either side
-  fit(g, 'Find me here!', w - 220, 700, 150, 90); chalk(g, 'Find me here!', W / 2, y0 + 150);
+  const head = links.length === 1 && links[0].garden ? 'Visit this garden' : 'Find me here!';
+  fit(g, head, w - 220, 700, 150, 90); chalk(g, head, W / 2, y0 + 150);
   chalkSprig(g, x0 + 30, y0 + 150, 0.8, false); chalkSprig(g, x0 + w - 30, y0 + 150, 0.8, true);
   g.strokeStyle = 'rgba(246,243,234,.7)'; g.lineWidth = 4; g.beginPath(); g.moveTo(W / 2 - 230, y0 + 186); g.quadraticCurveTo(W / 2, y0 + 200, W / 2 + 230, y0 + 186); g.stroke();
   if (!links.length) {
     g.font = serif(600, 96, 'italic ');
-    (own ? ['Add your links', 'in Your garden,', 'and their codes', 'appear here.'] : ['No links', 'shared yet.']).forEach((l, i) => chalk(g, l, W / 2, y0 + 400 + i * 130));
+    // what to say depends on why there is no code yet
+    const why = own ? (!Cloud.user ? ['Sign in and make', 'your garden public:', 'its code appears here', 'for anyone to scan.'] : ['Make your garden', 'public in Gardens:', 'its code appears here', 'for anyone to scan.']) : ['No links', 'shared yet.'];
+    why.forEach((l, i) => chalk(g, l, W / 2, y0 + 400 + i * 130));
     return;
   }
   // one card fills the board; two or more sit two to a row
@@ -99,7 +102,7 @@ export function drawLinkBoards() {
   // a public garden gets its own code first, so a visitor can come back to it (or share it)
   const user = own ? (Cloud.garden && Cloud.garden.is_public && Cloud.profile && Cloud.profile.username) : state.visiting.username;
   if (user) links.unshift({ label: own ? 'My garden' : 'This garden', url: siteURL() + '?garden=' + encodeURIComponent(user), garden: true });
-  const k = JSON.stringify([own, links]); if (k === key) return; key = k;
+  const k = JSON.stringify([own, links, !!Cloud.user]); if (k === key) return; key = k;
   paint(cv, links, own); tex.needsUpdate = true;
 }
 drawLinkBoards();
