@@ -181,7 +181,8 @@ async function main() {
     await page.setViewport({ width: 1400, height: 820 });
     page.on('pageerror', e => errors.push('page error: ' + e.message + (process.env.STACK ? '\n' + e.stack : '')));
     page.on('console', m => { if (m.type() === 'error') errors.push('console error: ' + m.text()); });
-    page.on('requestfailed', r => { if (!/fonts\.g/.test(r.url())) errors.push('request failed: ' + r.url()); });
+    // third-party files (Google Fonts, hCaptcha's widget and images) may be slow or blocked on the test machine; only our own files must load
+    page.on('requestfailed', r => { if (!/fonts\.g|hcaptcha\.com/.test(r.url())) errors.push('request failed: ' + r.url()); });
     page.on('response', r => { if (r.status() >= 400 && /^http:\/\/(127\.0\.0\.1|localhost)/.test(r.url())) errors.push(`HTTP ${r.status()}: ${r.url()}`); });
     // the same random numbers on every run, so before and after shots line up
     await page.evaluateOnNewDocument(() => { let s = 1; Math.random = () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; });
