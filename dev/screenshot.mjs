@@ -91,6 +91,8 @@ const VIEWS = {
   'pond-night': { pos: [7, 2.4, 10], look: [0, -0.3, 0], season: 'spring', light: 'night', samples: true },
   'sky-night': { pos: [6, 2, 16], look: [-30, 30, -60], season: 'spring', light: 'night', samples: true },
   'creek': { pos: [-1, 3, -10], look: [-4, -0.6, -22] },
+  'qr-garden': { pos: [3.2, 2.3, 43], look: [6.3, 2.5, 38.6], publicAs: 'pranaaa28', links: [] },
+  'qr-empty': { pos: [3.2, 2.3, 43], look: [6.3, 2.5, 38.6], links: [] },
   'gorge-girl': { pos: [70.4, 2.1, 8.4], look: [110, -3, 13.2], season: 'spring' },
   'gorge-walk': { pos: [58, 2.1, 7], look: [110, -2, 13.2], season: 'spring' },
   'gorge-sunset': { pos: [62, 2.6, 8], look: [140, 14, 16], season: 'spring', light: 'sunset' },
@@ -258,6 +260,11 @@ async function main() {
       const back = await page.evaluate(() => [window.__garden.state.world, window.__garden.state.mode]);
       console.log(`  cue "${cue}", aboard: ${m1}, rowed ${moved.toFixed(1)} m, world after the cave: ${world}, door cue "${dcue}", after the door: ${back}`);
       if (m1 !== 'boat' || moved < 2 || world !== 'sun' || back[0] === 'sun' || back[1] !== 'walk') errors.push('rowing or crossing worlds failed');
+    }
+    else if (FLOW === 'help') { // the guide: each tab
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await page.keyboard.press('KeyH'); await sleep(1200);
+      for (const t of ['move', 'do', 'keys', 'read']) { await page.click('#ht-' + t); await sleep(500); await page.screenshot({ path: join(root, `dev/shots/help-${t}.png`) }); }
     }
     else if (FLOW === 'secret') { // the map's secret garden goes straight to the Sunflower Garden
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });

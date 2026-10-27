@@ -27,6 +27,20 @@ export const maybeStartSteps = () => { if (!flag.get('seen-steps')) setTimeout(s
 const help = $('#helpsheet');
 export const openHelp = () => { if (help.hidden || !help.classList.contains('open')) openPanel(help); };
 $('#help-close').onclick = () => closePanel(help);
+// the guide's tabs: click, or the arrow keys along the row
+const tabs = [...help.querySelectorAll('[role="tab"]')];
+function showTab(t, focus) {
+  tabs.forEach(b => { const on = b === t; b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1; $('#' + b.getAttribute('aria-controls')).hidden = !on; });
+  if (focus) t.focus();
+}
+tabs.forEach(b => {
+  b.onclick = () => showTab(b);
+  b.onkeydown = e => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const vis = tabs.filter(x => x.offsetParent !== null), i = vis.indexOf(b);
+    showTab(vis[(i + (e.key === 'ArrowRight' ? 1 : vis.length - 1)) % vis.length], true); e.preventDefault();
+  };
+});
 $('#help-steps').onclick = () => { closePanel(help); startSteps(); };
 provide({ get openHelp() { return openHelp; }, get maybeStartSteps() { return maybeStartSteps; } });
 
