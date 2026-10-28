@@ -524,6 +524,8 @@ const caveGlow = { value: 1 };
 
 // where the "Secret Garden" sign stands, in the water beside the falls (built further down)
 export const SECRET_SIGN = gorgeWorld(FALLS.along - 6, FALLS.side * (gorgeHalf(FALLS.along) - 1.6), FLOOR);
+// and a great one at the canyon's mouth, facing the lookout, so it is seen from the garden
+export const SECRET_SIGN_BIG = gorgeWorld(GORGE.r0 - 2, -(gorgeHalf(GORGE.r0) - 7), FLOOR);
 
 /* ---------- 5c. shafts of sunlight slanting down into the canyon by day ---------- */
 const beamU = { uOp: { value: 0 }, uTime: waterU.uTime };
@@ -613,7 +615,7 @@ export const myBoat = (() => {
 export function boatWater(x, z) {
   const g = gorgeLocal(x, z), u = g.along, v = g.across;
   if (gorgeJettyH(x, z) !== null || Math.abs(u - (JETTY.u0 + JETTY.u1) / 2) < (JETTY.u1 - JETTY.u0) / 2 + 0.6 && Math.abs(v) < JETTY.half + 0.7) return false;
-  if (Math.hypot(x - SECRET_SIGN.x, z - SECRET_SIGN.z) < 2.4) return false;
+  if (Math.hypot(x - SECRET_SIGN.x, z - SECRET_SIGN.z) < 2.4 || Math.hypot(x - SECRET_SIGN_BIG.x, z - SECRET_SIGN_BIG.z) < 5.5) return false;
   if (gorgePool(u, v) < 0.88) return true;
   if (u > A0 - 4 && u < A1 - 10 && Math.abs(v) < gorgeHalf(u) - 1.4) return true;
   if (Math.abs(u - CAVE.along) < CAVE.half - 1.2 && v * FALLS.side > 0 && Math.abs(v) < gorgeHalf(u) + CAVE.depth - 0.5) return true;
@@ -683,34 +685,49 @@ addTick(() => {
 }
 /* ---------- 5b'. the sign at the falls: "Secret Garden", on posts in the water beside Manai Falls ---------- */
 // It faces the boats coming up the canyon, and glows softly after dusk so it can be read from the water.
-const signMat = new THREE.MeshLambertMaterial({ emissive: '#ffffff', emissiveIntensity: 0.05 });
+// pulled forward in the depth buffer, so the painted face never flickers against the board behind it from afar
+const signMat = new THREE.MeshLambertMaterial({ emissive: '#ffffff', emissiveIntensity: 0.05, fog: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -8 });
 {
-  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 384; const g = cv.getContext('2d'), RS = rng(33);
+  // a power-of-two canvas, so the sign gets mipmaps and stays clean (not striped) seen from far off;
+  // it is drawn in 1024 × 384 units and stretched to fit
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 512; const g = cv.getContext('2d');
+  // drawn now and again once the garden's font has loaded (a fallback font is wider and would spill off the board)
+  const paint = () => { const RS = rng(33); g.setTransform(1, 0, 0, 512 / 384, 0, 0); g.shadowColor = 'transparent'; g.shadowBlur = 0; g.shadowOffsetY = 0;
   g.fillStyle = '#4a3426'; g.fillRect(0, 0, 1024, 384);
   g.strokeStyle = 'rgba(25,14,8,.35)'; g.lineWidth = 3; for (let i = 0; i < 24; i++) { const y = RS() * 384; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(340, y + (RS() - .5) * 30, 680, y + (RS() - .5) * 30, 1024, y + (RS() - .5) * 14); g.stroke(); }
   g.strokeStyle = 'rgba(232,206,150,.75)'; g.lineWidth = 6; g.strokeRect(22, 22, 980, 340);
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#f6e3b4';
   g.shadowColor = 'rgba(0,0,0,.7)'; g.shadowBlur = 12; g.shadowOffsetY = 5;
-  g.font = '700 168px "Cormorant Garamond", Georgia, serif'; g.fillText('Secret Garden', 512, 168);
+  { let px = 176; do { g.font = `700 ${px}px "Cormorant Garamond", Georgia, serif`; px -= 4; } while (g.measureText('Secret Garden').width > 900); } g.fillText('Secret Garden', 512, 168);
   g.font = 'italic 600 70px "Cormorant Garamond", Georgia, serif'; g.fillText('through the falls', 512, 300);
   // leaf sprigs in the corners
   g.shadowColor = 'transparent'; for (const [x, y, fl] of [[70, 70, 1], [954, 70, -1], [70, 314, 1], [954, 314, -1]]) { g.save(); g.translate(x, y); g.scale(fl, 1); for (let k = 0; k < 5; k++) { g.fillStyle = ['#5d8a34', '#4b742c', '#78a646'][k % 3]; g.save(); g.rotate(-0.9 + k * 0.45); g.beginPath(); g.ellipse(26, 0, 26, 9, 0, 0, 7); g.fill(); g.restore(); } g.fillStyle = '#f7b9cd'; g.beginPath(); g.arc(0, 0, 9, 0, 7); g.fill(); g.restore(); }
-  const tex = new THREE.CanvasTexture(cv); signMat.map = tex; signMat.emissiveMap = tex;
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { tex.needsUpdate = true; });
-  const s = new THREE.Group(); s.position.copy(SECRET_SIGN);
-  const look = gorgeWorld(FALLS.along - 20, 0, FLOOR); s.rotation.y = Math.atan2(look.x - SECRET_SIGN.x, look.z - SECRET_SIGN.z);
+  };
+  paint();
+  const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 8; signMat.map = tex; signMat.emissiveMap = tex;
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { paint(); tex.needsUpdate = true; });
+  const build = (at, look, k) => {
+  const s = new THREE.Group(); s.position.copy(at); s.scale.setScalar(k);
+  s.rotation.y = Math.atan2(look.x - at.x, look.z - at.z);
   const m = new Merge(), wood = C('#5a4030');
   for (const x of [-1.55, 1.55]) m.limb(new V3(x, -1.2, 0), new V3(x, 3.4, 0), 0.09, 0.08, wood);
-  m.add(GEO.box, new V3(0, 2.4, -0.05), new V3(3.3, 1.3, 0.08), C('#3a2a1e'));
+  m.add(GEO.box, new V3(0, 2.4, -0.07), new V3(3.3, 1.3, 0.06), C('#3a2a1e'));
   m.add(GEO.box, new V3(0, 3.12, 0), new V3(3.5, 0.1, 0.3), wood);
   s.add(new THREE.Mesh(m.build(), gorgeMat(new THREE.MeshLambertMaterial({ vertexColors: true, fog: false }), false)));
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.2), signMat); face.position.set(0, 2.4, 0.0); s.add(face);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.2), signMat); face.position.set(0, 2.4, 0.04); s.add(face);
   // painted on both sides, so it reads coming and going
-  const back = face.clone(); back.rotation.y = Math.PI; back.position.z = -0.1; s.add(back);
+  const back = face.clone(); back.rotation.y = Math.PI; back.position.z = -0.14; s.add(back);
   // a little lantern hanging from one post
   const lp = new THREE.Mesh(GEO.cylB, lampMat); lp.position.set(1.55, 2.95, 0.25); lp.scale.set(0.09, 0.2, 0.09); s.add(lp);
   const gl = glowSprite('#ffc77a', 1.6); gl.position.set(1.55, 3.05, 0.25); s.add(gl);
-  gorge.add(s);
+  gorge.add(s); return s;
+  };
+  build(SECRET_SIGN, gorgeWorld(FALLS.along - 20, 0, FLOOR), 1);
+  // the great sign stands on a mossy rock at the canyon's mouth, raised high, lanterns on both posts
+  const big = build(SECRET_SIGN_BIG, gorgeWorld(60, 0, FLOOR), 3.6); big.position.y = FLOOR + 1.8;
+  const rock = new THREE.Mesh(GEO.dode, gorgeMat(new THREE.MeshLambertMaterial({ color: '#6e6a5f', fog: false }), false)); rock.position.copy(SECRET_SIGN_BIG).setY(FLOOR - 0.4); rock.scale.set(5.2, 2.4, 3.2); rock.rotation.y = 0.6; gorge.add(rock);
+  const lp2 = new THREE.Mesh(GEO.cylB, lampMat); lp2.position.set(-1.55, 2.95, 0.25); lp2.scale.set(0.09, 0.2, 0.09); big.add(lp2);
+  const gl2 = glowSprite('#ffc77a', 1.6); gl2.position.set(-1.55, 3.05, 0.25); big.add(gl2);
 }
 
 onLayer2(gorge);
@@ -763,7 +780,7 @@ addTick(() => {
   if (!gorge.visible) return;
   const d = 1 - state.night, k = Math.max(state.night, (state.dusk || 0) * 0.45);
   fillMats.forEach(([m, c]) => m.emissive.setRGB(c[0], c[1], c[2]).multiplyScalar(d));
-  nightU.uGN.value = state.night; lampMat.emissiveIntensity = 0.15 + k * 1.6; signMat.emissiveIntensity = 0.05 + k * 0.5;
+  nightU.uGN.value = state.night; lampMat.emissiveIntensity = 0.15 + k * 1.6; signMat.emissiveIntensity = 0.22 + k * 0.5;
   beamU.uOp.value = 0.2 * (1 - state.night) * (1 - (state.dusk || 0) * 0.6) * (1 - (state.rain || 0));
   glows.forEach(g => { g.material.opacity = k * 0.85; });
 }, true);
