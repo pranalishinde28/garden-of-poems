@@ -292,8 +292,19 @@ async function main() {
       await page.evaluate(() => { const g = window.__garden, p = g.worlds.sun.arrive.pos; }); 
       await page.evaluate(() => { const g = window.__garden; g.player.yaw = 0; g.player.pitch = 1.0; }); await sleep(1200); await shot('vault');
       await page.evaluate(() => { const g = window.__garden; g.player.yaw = -1.2; g.player.pitch = 0.1; }); await sleep(1000); await shot('mirrors');
-      await page.evaluate(() => { const g = window.__garden, p = g.camera.position; g.player.pos.set(p.x - 24, 0, p.z - 19); g.player.yaw = Math.PI / 2; g.player.pitch = 0.08; }); await sleep(1500); await shot('poem');
-      await page.evaluate(() => { const g = window.__garden, p = g.camera.position; g.player.pos.set(p.x + 24, 0, p.z + 19); }); await sleep(800);
+      // a poem on the wall, from the middle of the hall and close up; the curtains between them; reading one
+      const back = await page.evaluate(() => { const p = window.__garden.player.pos; return { x: p.x, z: p.z }; });
+      const sp = await page.evaluate(() => window.__garden.POEM_SPOTS);
+      if (sp.length < 22) errors.push('only ' + sp.length + ' poems on the walls');
+      const s0 = sp.find(s => s.k === 9) || sp[0], cx = (sp[0].x + sp[sp.length - 1].x) / 2;
+      await page.evaluate((x, z) => { const g = window.__garden; g.player.pos.set(x, 0, z); g.player.yaw = Math.PI / 2; g.player.pitch = 0.1; }, cx, s0.z); await sleep(1500); await shot('poem-far');
+      await page.evaluate((x, z) => { const g = window.__garden; g.player.pos.set(x, 0, z); g.player.yaw = Math.PI / 2; g.player.pitch = 0.12; }, cx - (cx - s0.x) * 0.1, s0.z + 8); await sleep(1500); await shot('curtains');
+      await page.evaluate((x, z) => { const g = window.__garden; g.player.pos.set(x, 0, z); g.player.yaw = Math.PI / 2; g.player.pitch = 0.22; }, (s0.x + cx) / 2, s0.z); await sleep(1500); await shot('poem'); await page.evaluate((x, z) => { window.__garden.player.pos.set(x, 0, z); }, s0.x, s0.z); await sleep(900);
+      const pcue = await page.$eval('#cue', e => e.textContent.trim()); await page.keyboard.press('KeyE'); await sleep(1200); await shot('poem-read');
+      const ptitle = await page.$eval('#wp-title', e => e.textContent); await page.keyboard.press('ArrowRight'); await sleep(300); const ptitle2 = await page.$eval('#wp-title', e => e.textContent);
+      console.log(`  poem cue "${pcue}"; reads "${ptitle}", then "${ptitle2}"`); if (!/read/i.test(pcue) || !ptitle || ptitle === ptitle2) errors.push('reading a wall poem did not work');
+      await page.keyboard.press('Escape'); await sleep(900);
+      await page.evaluate(b => { const g = window.__garden; g.player.pos.set(b.x, 0, b.z); g.player.yaw = 0; }, back); await sleep(800);
       await page.evaluate(() => { const g = window.__garden, p = g.camera.position; g.player.pos.set(p.x, 0, p.z - 70); g.player.yaw = 0; g.player.pitch = 0.05; }); await sleep(1200); await shot('north');
       await page.evaluate(() => { const g = window.__garden, p = g.camera.position; g.player.pos.set(p.x, 0, p.z + 119); g.player.yaw = Math.PI; }); await sleep(300); await page.keyboard.down('KeyW'); await sleep(1500); await page.keyboard.up('KeyW'); await sleep(2500); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }); await sleep(2600); await shot('out');
       const outside = await page.evaluate(() => window.__garden.camera.position.y > -20);
@@ -316,7 +327,10 @@ async function main() {
       const walked = await speed(); await page.keyboard.press('ShiftLeft'); await sleep(300); const ran = await speed();
       const runOn = await page.evaluate(() => window.__garden.state.run); await page.screenshot({ path: join(root, 'dev/shots/run-btn.png') });
       console.log(`  walked ${walked.toFixed(1)} m, ran ${ran.toFixed(1)} m in the same time; run is ${runOn}`); if (!runOn || ran < walked * 1.4) errors.push('tapping Shift did not make you run');
-      await page.keyboard.press('ShiftLeft'); await sleep(300);
+      await page.keyboard.press('ShiftLeft'); await sleep(300); const sprinted = await speed(); const pace = await page.evaluate(() => window.__garden.state.pace);
+      await page.screenshot({ path: join(root, 'dev/shots/sprint-btn.png') });
+      console.log(`  sprinted ${sprinted.toFixed(1)} m; pace ${pace}`); if (pace !== 2 || sprinted < ran * 1.4) errors.push('a second tap of Shift did not sprint');
+      await page.keyboard.press('ShiftLeft'); await sleep(300); if (await page.evaluate(() => window.__garden.state.pace) !== 0) errors.push('a third tap of Shift did not go back to walking');
       await page.evaluate(() => window.__garden.late.enterSunWorld()); await page.waitForFunction(() => window.__garden.state.world === 'sun' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 }); await sleep(2500);
       await page.keyboard.press('KeyM'); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/sunmap.png') });
       const n = await page.$$eval('#sm-marks .sm-place', b => b.length); if (n < 10) errors.push('the secret map has too few places: ' + n);

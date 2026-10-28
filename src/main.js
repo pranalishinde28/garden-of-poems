@@ -59,6 +59,7 @@ import './ui/gorgeView.js';
 import './ui/boating.js';
 import './ui/worlds.js';
 import './ui/sunMap.js';
+import './ui/wallPoems.js';
 import './ui/themes.js';
 import './cloud/cloud.ts';
 import './cloud/gardensPanel.js';

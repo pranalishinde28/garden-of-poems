@@ -29,13 +29,15 @@ addEventListener('keydown', e => { if (e.code === 'Space' && !e.repeat && state.
 // the touch button for flying or pouncing holds this, like Space
 export let flyHeld = false;
 export const setFlyHeld = v => { flyHeld = v; };
-/* running: a toggle, so you need not hold a key. Tap Shift, or press the Run button (bottom left); on a
-   phone, pushing the joystick right to its edge runs too. Holding Shift while walking still runs. */
-state.run = false;
-const runBtn = $('#run-btn');
-export function toggleRun(on = !state.run) {
-  state.run = on; runBtn.setAttribute('aria-pressed', String(on)); runBtn.querySelector('.t').textContent = on ? 'Running' : 'Walking';
-  try { if (!localStorage.getItem('garden-of-poems:ran')) { localStorage.setItem('garden-of-poems:ran', '1'); toast(on ? 'Running. Tap Shift again, or the button, to walk.' : 'Walking.', 3200); } } catch (e) { /* storage may be off */ }
+/* three paces: walking, running and sprinting. Tap Shift, or press the pace button (bottom left), to go
+   up a pace; from a sprint it comes back to a walk. On a phone, pushing the joystick right to its edge
+   runs too. Holding Shift while walking still runs. */
+state.pace = 0; state.run = false;
+const runBtn = $('#run-btn'), PACES = ['Walking', 'Running', 'Sprinting'];
+export function toggleRun(p = (state.pace + 1) % 3) {
+  if (p === true) p = 1; else if (p === false) p = 0;
+  state.pace = p; state.run = p > 0; runBtn.setAttribute('aria-pressed', String(p > 0)); runBtn.dataset.pace = PACES[p].toLowerCase(); runBtn.querySelector('.t').textContent = PACES[p];
+  try { if (!localStorage.getItem('garden-of-poems:ran')) { localStorage.setItem('garden-of-poems:ran', '1'); toast('Running. Tap Shift again to sprint, and once more to walk.', 3600); } } catch (e) { /* storage may be off */ }
 }
 runBtn.onclick = () => { toggleRun(); runBtn.blur(); };
 provide({ get toggleRun() { return toggleRun; } });
@@ -52,7 +54,7 @@ export function walk(dt) {
   const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
   // each kind moves as it would: a cat is quick and can pounce (Space); a bird hops on the ground and
   // flies while Space is held, gliding down when it is let go, over hedges and roofs
-  const av = getAvatar(), kind = av.kind, fast = keys.has('ShiftLeft') || keys.has('ShiftRight') || state.run || jv.n > 0.94;
+  const av = getAvatar(), kind = av.kind, fast = keys.has('ShiftLeft') || keys.has('ShiftRight') || state.run || jv.n > 0.94, sprint = state.pace === 2;
   player.alt = player.alt || 0; player.vy = player.vy || 0;
   const up = keys.has('Space') || flyHeld;
   if (kind === 'bird') {
@@ -73,7 +75,7 @@ export function walk(dt) {
   player.alt = clamp(player.alt + player.vy * dt, 0, 24); if (player.alt === 0 && player.vy < 0) player.vy = 0;
   if (kind !== 'bird') player.flying = false;
   const flying = kind === 'bird' && player.alt > 0.15, high = player.alt > 3.2;
-  let sp = kind === 'bird' ? (flying ? (fast ? 9 : 6) : (fast ? 3.4 : 2.2)) : kind === 'cat' ? (fast ? 6.4 : 3.4) : fast ? 5.2 : 3.0;
+  let sp = kind === 'bird' ? (flying ? (sprint ? 15 : fast ? 9 : 6) : (sprint ? 4.6 : fast ? 3.4 : 2.2)) : kind === 'cat' ? (sprint ? 10.5 : fast ? 6.4 : 3.4) : sprint ? 9 : fast ? 5.2 : 3.0;
   const away = state.world === 'sun';
   { const dep = away ? 0 : seaDepth(player.pos.x, player.pos.z); if (dep > 0 && !flying) sp *= 1 - Math.min(0.6, dep * 0.7); } // wading is slow
   const sy = Math.sin(player.yaw), cy = Math.cos(player.yaw);

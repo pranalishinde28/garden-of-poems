@@ -28,7 +28,7 @@ export const reader = $('#reader');
 // One behaviour for every panel: focus moves in and comes back when it closes, Tab stays inside,
 // and Esc or a click on the garden closes the settings-like panels (the reader and the editor keep
 // their own closing, and the swing reader never takes focus from the swing).
-const panels = [], CLOSERS = { youpanel: '#y-close', custom: '#c-close', gardens: '#g-close', signpanel: '#s-close', helpsheet: '#help-close', sunmap: '#sm-close' };
+const panels = [], CLOSERS = { youpanel: '#y-close', custom: '#c-close', gardens: '#g-close', signpanel: '#s-close', helpsheet: '#help-close', sunmap: '#sm-close', wallpoem: '#wp-close' };
 export function openPanel(el) {
   // one box at a time: opening a box closes the others (their own close buttons, so they tidy up properly)
   if (el.id !== 'swreader') document.querySelectorAll('.panel.open').forEach(o => { if (o === el || o.id === 'swreader' || o.id === 'reader' || o.id === 'editor') return; const c = CLOSERS[o.id] && document.querySelector(CLOSERS[o.id]); if (c) c.click(); else closePanel(o); });

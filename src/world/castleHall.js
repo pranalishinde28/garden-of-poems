@@ -224,41 +224,127 @@ const POEMS = [
   ['The Old Pond', 'Matsuo Bashō (tr. Lafcadio Hearn, 1898)', 1686, "Old pond —\nfrogs jumped in —\nsound of water."],
   ['A Dream Within a Dream', 'Edgar Allan Poe', 1849, "Take this kiss upon the brow!\nAnd, in parting from you now,\nThus much let me avow —\nYou are not wrong, who deem\nThat my days have been a dream;\n…\nAll that we see or seem\nIs but a dream within a dream."],
   ['There Will Come Soft Rains', 'Sara Teasdale', 1918, "There will come soft rains and the smell of the ground,\nAnd swallows circling with their shimmering sound;\n\nAnd frogs in the pools singing at night,\nAnd wild plum trees in tremulous white."],
+  ['A Red, Red Rose', 'Robert Burns', 1794, "O my Luve is like a red, red rose\nThat's newly sprung in June;\nO my Luve is like the melody\nThat's sweetly play'd in tune."],
+  ['She Walks in Beauty', 'Lord Byron', 1814, "She walks in beauty, like the night\nOf cloudless climes and starry skies;\nAnd all that's best of dark and bright\nMeet in her aspect and her eyes;\nThus mellowed to that tender light\nWhich heaven to gaudy day denies."],
+  ['A Psalm of Life', 'Henry Wadsworth Longfellow', 1838, "Lives of great men all remind us\nWe can make our lives sublime,\nAnd, departing, leave behind us\nFootprints on the sands of time."],
+  ['Ulysses', 'Alfred, Lord Tennyson', 1842, "Though much is taken, much abides; and though\nWe are not now that strength which in old days\nMoved earth and heaven, that which we are, we are;\nOne equal temper of heroic hearts,\nMade weak by time and fate, but strong in will\nTo strive, to seek, to find, and not to yield."],
+  ['How Do I Love Thee?', 'Elizabeth Barrett Browning', 1850, "How do I love thee? Let me count the ways.\nI love thee to the depth and breadth and height\nMy soul can reach, when feeling out of sight\nFor the ends of being and ideal grace."],
+  ['When I Heard the Learn’d Astronomer', 'Walt Whitman', 1865, "When I heard the learn’d astronomer,\nWhen the proofs, the figures, were ranged in columns before me,\n…\nTill rising and gliding out I wander’d off by myself,\nIn the mystical moist night-air, and from time to time,\nLook’d up in perfect silence at the stars."],
+  ['The Lake Isle of Innisfree', 'W. B. Yeats', 1890, "I will arise and go now, and go to Innisfree,\nAnd a small cabin build there, of clay and wattles made;\nNine bean-rows will I have there, a hive for the honey-bee,\nAnd live alone in the bee-loud glade."],
+  ['Quiet Night Thought', 'Li Bai (tr. Herbert Giles, 1898)', 726, "I wake, and moonbeams play around my bed,\nGlittering like hoar-frost to my wondering eyes;\nUp towards the glorious moon I raise my head,\nThen lay me down — and thoughts of home arise."],
+  ['Rubáiyát', 'Omar Khayyám (tr. Edward FitzGerald, 1889)', 'c. 1120', "A Book of Verses underneath the Bough,\nA Jug of Wine, a Loaf of Bread — and Thou\nBeside me singing in the Wilderness —\nOh, Wilderness were Paradise enow!"],
+  ['On Children', 'Kahlil Gibran', 1923, "Your children are not your children.\nThey are the sons and daughters of Life’s longing for itself.\nThey come through you but not from you,\nAnd though they are with you yet they belong not to you."],
 ];
+export { POEMS as HALL_POEMS };
 function poemTex([title, poet, year, text]) {
-  return canvasTex(768, 1024, (g, w, h) => {
-    const pg = g.createLinearGradient(0, 0, 0, h); pg.addColorStop(0, '#fbf3df'); pg.addColorStop(1, '#efe0bf'); g.fillStyle = pg; g.fillRect(0, 0, w, h);
-    const vg = g.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, h * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(120,80,30,.22)'); g.fillStyle = vg; g.fillRect(0, 0, w, h);
-    g.strokeStyle = '#b8902e'; g.lineWidth = 3; g.strokeRect(34, 34, w - 68, h - 68); g.lineWidth = 1.5; g.strokeRect(44, 44, w - 88, h - 88);
-    g.textAlign = 'center'; g.fillStyle = '#1a0e04';
-    const font = (wt, px, it = '') => `${it}${wt} ${px}px "Cormorant Garamond", Georgia, serif`;
-    let px = 58; g.font = font(700, px); while (g.measureText(title).width > w - 140 && px > 34) { px -= 2; g.font = font(700, px); }
-    g.fillText(title, w / 2, 128);
-    g.fillStyle = '#b8902e'; g.fillRect(w / 2 - 90, 152, 180, 3);
-    // the lines, as large as fit the page
-    const lines = text.split('\n'); let lp = 46;
-    const wrapAll = () => { g.font = font(700, lp); const out = []; lines.forEach(l => { const words = l.split(' '); let cur = ''; words.forEach(wd => { const t = cur ? cur + ' ' + wd : wd; if (g.measureText(t).width > w - 140 && cur) { out.push(cur); cur = wd; } else cur = t; }); out.push(cur); }); return out; };
-    let wrapped = wrapAll(); while (wrapped.length * lp * 1.32 > h - 380 && lp > 26) { lp -= 2; wrapped = wrapAll(); }
-    g.fillStyle = '#1a0e04'; let y = 230 + Math.max(0, (h - 380 - wrapped.length * lp * 1.32) / 2);
-    wrapped.forEach(l => { g.fillText(l, w / 2, y); y += lp * 1.32; });
-    g.font = font(700, 40, 'italic '); g.fillStyle = '#3a2208'; let pp = 40; while (g.measureText(poet).width > w - 140 && pp > 24) { pp -= 2; g.font = font(600, pp, 'italic '); }
-    g.fillText(poet, w / 2, h - 132);
-    g.font = font(700, 38); g.fillStyle = '#6a4a10'; g.fillText(String(year), w / 2, h - 84);
+  return canvasTex(1024, 1440, (g, w, h) => {
+    const pg = g.createLinearGradient(0, 0, 0, h); pg.addColorStop(0, '#fcf5e3'); pg.addColorStop(1, '#f0e2c2'); g.fillStyle = pg; g.fillRect(0, 0, w, h);
+    const vg = g.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, h * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(120,80,30,.2)'); g.fillStyle = vg; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#a8801e'; g.lineWidth = 5; g.strokeRect(36, 36, w - 72, h - 72); g.lineWidth = 2; g.strokeRect(50, 50, w - 100, h - 100);
+    g.textAlign = 'center'; g.fillStyle = '#140a02';
+    const font = (wt, px, it = '') => `${it}${wt} ${px}px "Cormorant Garamond", Georgia, serif`, room = w - 150;
+    // the title, two lines if it must
+    let tp = 96, tl; const tLines = () => { g.font = font(700, tp); const ws = title.split(' '), out = []; let cur = ''; ws.forEach(wd => { const t = cur ? cur + ' ' + wd : wd; if (g.measureText(t).width > room && cur) { out.push(cur); cur = wd; } else cur = t; }); out.push(cur); return out; };
+    tl = tLines(); while ((tl.length > 2 || tl.some(l => g.measureText(l).width > room)) && tp > 50) { tp -= 4; tl = tLines(); }
+    let ty = 150; tl.forEach(l => { g.fillText(l, w / 2, ty); ty += tp * 1.08; });
+    const rule = ty - tp * 0.55; g.fillStyle = '#a8801e'; g.fillRect(w / 2 - 120, rule, 240, 4);
+    // the lines, as large as fit the page: as big as the width allows, then smaller until they fit the height
+    const lines = text.split('\n'), top = rule + 60, bottom = h - 250;
+    let lp = 112;
+    const wrapAll = () => { g.font = font(700, lp); const out = []; lines.forEach(l => { const words = l.split(' '); let cur = ''; words.forEach(wd => { const t = cur ? cur + ' ' + wd : wd; if (g.measureText(t).width > room && cur) { out.push(cur); cur = wd; } else cur = t; }); out.push(cur); }); return out; };
+    let wrapped = wrapAll();
+    while ((wrapped.length * lp * 1.3 > bottom - top || wrapped.length > (lp > 66 ? lines.length : lines.length * 1.6 + 1)) && lp > 34) { lp -= 2; wrapped = wrapAll(); }
+    g.fillStyle = '#140a02'; let y = top + lp * 0.9 + Math.max(0, (bottom - top - wrapped.length * lp * 1.3) / 2);
+    wrapped.forEach(l => { g.fillText(l, w / 2, y); y += lp * 1.3; });
+    // the poet; a translator goes on a smaller line beneath
+    const [who, tr] = poet.includes(' (') ? [poet.slice(0, poet.indexOf(' (')), poet.slice(poet.indexOf(' (') + 2, -1)] : [poet, ''];
+    let pp = 60; g.font = font(700, pp, 'italic '); while (g.measureText(who).width > room && pp > 30) { pp -= 2; g.font = font(700, pp, 'italic '); }
+    g.fillStyle = '#2e1a06'; g.fillText(who, w / 2, tr ? h - 178 : h - 140);
+    if (tr) { g.font = font(600, 40, 'italic '); g.fillText(tr, w / 2, h - 128); }
+    g.font = font(700, 52); g.fillStyle = '#5a3c0c'; g.fillText(String(year), w / 2, h - 76);
   });
 }
+// one poem in every other bay down both walls (22 in all), big enough to read from the middle of the hall;
+// walk up to one (or click it) to read it in a box. Every bay between them is hung with curtains.
+export const POEM_SPOTS = [];
 {
   const m = new Merge(), bays = Math.round(HALL.hl * 2 / HALL.bay), spots = [];
-  for (const side of [-1, 1]) for (let i = 2; i < bays; i += 4) spots.push({ side, z: -HALL.hl + i * HALL.bay + HALL.bay / 2 });
+  for (const side of [-1, 1]) for (let i = 0; i < bays; i += 2) spots.push({ side, z: -HALL.hl + i * HALL.bay + HALL.bay / 2 });
   spots.forEach((sp, k) => {
-    const P = POEMS[k % POEMS.length], t = poemTex(P), pw = 4.4, ph = 5.9, x = sp.side * (HALL.hw - 0.45), y = 4.9;
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshBasicMaterial({ map: t, color: '#c9bca2', fog: false }));
+    const P = POEMS[k % POEMS.length], t = poemTex(P), pw = 5.4, ph = 7.6, x = sp.side * (HALL.hw - 0.45), y = 5.6;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshBasicMaterial({ map: t, color: '#ddd2ba', fog: false }));
     mesh.position.set(x, y, sp.z); mesh.rotation.y = -sp.side * Math.PI / 2; hall.add(mesh);
     // a deep gilded frame, and a little lamp over it
     const fx = sp.side * (HALL.hw - 0.38);
-    for (const [fz, fy, fw, fh] of [[sp.z, y + ph / 2 + 0.22, pw + 0.9, 0.44], [sp.z, y - ph / 2 - 0.22, pw + 0.9, 0.44], [sp.z - pw / 2 - 0.22, y, 0.44, ph], [sp.z + pw / 2 + 0.22, y, 0.44, ph]]) m.add(GEO.box, new V3(fx, fy, fz), new V3(0.3, fh, fw), GOLD);
+    for (const [fz, fy, fw, fh] of [[sp.z, y + ph / 2 + 0.2, pw + 0.8, 0.4], [sp.z, y - ph / 2 - 0.2, pw + 0.8, 0.4], [sp.z - pw / 2 - 0.2, y, 0.4, ph], [sp.z + pw / 2 + 0.2, y, 0.4, ph]]) m.add(GEO.box, new V3(fx, fy, fz), new V3(0.3, fh, fw), GOLD);
     m.limb(new V3(sp.side * (HALL.hw - 0.3), y + ph / 2 + 0.7, sp.z), new V3(sp.side * (HALL.hw - 1.0), y + ph / 2 + 0.55, sp.z), 0.05, 0.05, GOLD);
     bulb(sp.side * (HALL.hw - 1.05), y + ph / 2 + 0.45, sp.z, '#fff0c8');
+    const k2 = k % POEMS.length, at = W(sp.side * (HALL.hw - 5), sp.z);
+    POEM_SPOTS.push({ k: k2, x: at.x, z: at.z });
+    regThing(mesh, 'Read “' + P[0] + '”', () => late.readWallPoem && late.readWallPoem(k2), { x: at.x, z: at.z, r: 4.2 });
   });
+  hall.add(new THREE.Mesh(m.build(), gilt));
+}
+
+/* ---------- antique curtains: crimson velvet, gathered back with gold cords, under a fringed valance ---------- */
+// hung in every bay without a poem (framing its mirror or its window) and either side of the door out
+{
+  const velvet = canvasTex(256, 512, (g, w, h) => {
+    const RS = rng(31); g.fillStyle = '#7a1420'; g.fillRect(0, 0, w, h);
+    // soft vertical pile, a faint damask, a little wear
+    for (let x = 0; x < w; x += 2) { const v = Math.sin(x / w * Math.PI * 6) * 0.5 + 0.5; g.fillStyle = `rgba(${40 + v * 60 | 0},0,8,${0.18 + RS() * 0.1})`; g.fillRect(x, 0, 2, h); }
+    g.strokeStyle = 'rgba(220,150,120,.13)'; g.lineWidth = 3;
+    for (let y = 40; y < h; y += 128) for (let x = 64; x < w; x += 128) { g.beginPath(); g.ellipse(x, y, 22, 40, 0, 0, 7); g.stroke(); g.beginPath(); g.moveTo(x, y - 52); g.lineTo(x, y + 52); g.stroke(); g.beginPath(); g.arc(x - 26, y + 20, 14, 0, Math.PI); g.stroke(); g.beginPath(); g.arc(x + 26, y + 20, 14, 0, Math.PI); g.stroke(); }
+    for (let k = 0; k < 40; k++) { g.fillStyle = `rgba(255,220,200,${RS() * 0.04})`; g.fillRect(RS() * w, RS() * h, 3 + RS() * 10, 20 + RS() * 60); }
+  }, true);
+  const cm = new THREE.MeshLambertMaterial({ map: velvet, color: '#ffffff', emissive: '#ffffff', emissiveMap: velvet, emissiveIntensity: 0.22, side: THREE.DoubleSide, fog: false });
+  const pos = [], uv = [], idx = [];
+  // one panel hung from (a0 → a1 along the wall) at the top, gathered toward a0 at the tie-back, flaring below.
+  // c: the opening's centre; (ax, az) along the wall; (nx, nz) into the room
+  const panel = (cx, cz, ax, az, nx, nz, out, inn, top, tie, off) => {
+    const NU = 14, NV = 30, base = pos.length / 3;
+    for (let j = 0; j <= NV; j++) {
+      const y = top * (1 - j / NV), t = y > tie ? (top - y) / (top - tie) : 1 + (tie - y) / tie;
+      // how far in the inner edge reaches: wide at the top, pinched at the tie-back, flaring to the floor
+      const floorR = out - (out - inn) * 0.6, reach = t <= 1 ? inn + (out - 0.35 - inn) * Math.pow(t, 1.6) : (out - 0.35) - (out - 0.35 - floorR) * Math.pow(t - 1, 0.8);
+      const pinch = t <= 1 ? 1 - 0.75 * Math.pow(t, 1.4) : 0.25 + 0.55 * Math.pow(t - 1, 0.8);
+      for (let i = 0; i <= NU; i++) {
+        const u = i / NU, along = out + (reach - out) * u, fold = Math.sin(u * Math.PI * 7 + j * 0.03) * (0.1 + 0.16 * (1 - pinch)) + 0.18 * (1 - pinch);
+        pos.push(cx + ax * along + nx * (off + fold), y, cz + az * along + nz * (off + fold)); uv.push(u * 1.6, y / 4);
+      }
+    }
+    for (let j = 0; j < NV; j++) for (let i = 0; i < NU; i++) { const a = base + j * (NU + 1) + i, b = a + NU + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  };
+  // a valance across the top, falling in two swags
+  const valance = (cx, cz, ax, az, nx, nz, half, top, off) => {
+    const NU = 40, NV = 6, base = pos.length / 3;
+    for (let j = 0; j <= NV; j++) for (let i = 0; i <= NU; i++) {
+      const u = i / NU, along = -half + 2 * half * u, sag = 0.9 + 0.8 * Math.abs(Math.sin(u * Math.PI * 2)), y = top - sag * (j / NV);
+      const bulge = Math.sin(j / NV * Math.PI) * 0.12 + 0.05 * Math.sin(u * Math.PI * 16);
+      pos.push(cx + ax * along + nx * (off + bulge), y, cz + az * along + nz * (off + bulge)); uv.push(u * 4, y / 4);
+    }
+    for (let j = 0; j < NV; j++) for (let i = 0; i < NU; i++) { const a = base + j * (NU + 1) + i, b = a + NU + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  };
+  const m = new Merge(), bays = Math.round(HALL.hl * 2 / HALL.bay);
+  const hang = (cx, cz, ax, az, nx, nz, half, top, tie, off, innF = 0.45) => {
+    for (const o of [-1, 1]) {
+      panel(cx, cz, ax * o, az * o, nx, nz, half, half * innF, top, tie, off);
+      // the gold cord and its tassel at the tie-back
+      const tx = cx + ax * o * (half - 0.45) + nx * (off + 0.3), tz = cz + az * o * (half - 0.45) + nz * (off + 0.3);
+      m.add(GEO.sph, new V3(tx, tie, tz), new V3(0.16, 0.16, 0.16), GOLD2);
+      m.add(GEO.cone, new V3(tx, tie - 0.42, tz), new V3(0.14, 0.55, 0.14), GOLD);
+    }
+    valance(cx, cz, ax, az, nx, nz, half + 0.15, top + 0.1, off + 0.12);
+    // the gilded pelmet board, and a fringe of little gold tassels along the swags
+    m.add(GEO.box, new V3(cx + nx * (off + 0.05), top + 0.25, cz + nz * (off + 0.05)), new V3(Math.abs(ax) * (2 * half + 0.6) + Math.abs(nx) * 0.3, 0.4, Math.abs(az) * (2 * half + 0.6) + Math.abs(nz) * 0.3), GOLD);
+    for (let k = 0; k <= 24; k++) { const u = k / 24, along = -half - 0.15 + (2 * half + 0.3) * u, sag = 0.9 + 0.8 * Math.abs(Math.sin(u * Math.PI * 2)); m.add(GEO.cone, new V3(cx + ax * along + nx * (off + 0.2), top + 0.1 - sag - 0.12, cz + az * along + nz * (off + 0.2)), new V3(0.06, 0.24, 0.06), GOLD); }
+  };
+  for (const side of [-1, 1]) for (let i = 1; i < bays; i += 2) hang(side * HALL.hw, -HALL.hl + i * HALL.bay + HALL.bay / 2, 0, 1, -side, 0, 3.1, 14.6, 4.6, 0.55);
+  // either side of the door at the south end, and the great painting at the north end
+  hang(0, HALL.hl, 1, 0, 0, -1, 5.2, 11.6, 3.8, 0.7, 0.75);
+  hang(0, -HALL.hl, 1, 0, 0, 1, 14, 15.2, 5.0, 0.9, 0.86);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+  hall.add(new THREE.Mesh(g, cm));
   hall.add(new THREE.Mesh(m.build(), gilt));
 }
 
@@ -342,7 +428,7 @@ function poemTex([title, poet, year, text]) {
     m.limb(new V3(x, 4.2, z), new V3(x, 5.0, z), 0.08, 0.08, GOLD);
     for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, r = k % 2 ? 0.7 : 0.45, cy = 5.0 + (k % 2 ? 0 : 0.35); m.limb(new V3(x, 5.0, z), new V3(x + Math.cos(a) * r, cy, z + Math.sin(a) * r), 0.04, 0.04, GOLD); m.limb(new V3(x + Math.cos(a) * r, cy, z + Math.sin(a) * r), new V3(x + Math.cos(a) * r, cy + 0.35, z + Math.sin(a) * r), 0.05, 0.05, C('#fffaf0')); bulb(x + Math.cos(a) * r, cy + 0.5, z + Math.sin(a) * r, '#ffcf80'); }
     // busts of white marble on columns between the candelabra, and a crimson bench by every other one
-    if (i < bays && (i - 2) % 4 !== 0) {
+    if (i < bays && i % 2 === 1) {
       const zb = z + HALL.bay / 2, xb = s * (HALL.hw - 2.2);
       m.add(new THREE.CylinderGeometry(0.4, 0.45, 1.6, 12), new V3(xb, 0.8, zb), new V3(1, 1, 1), C('#e8e2d8'));
       m.add(GEO.sph, new V3(xb, 1.95, zb), new V3(0.42, 0.32, 0.3), C('#f2eee6'));
