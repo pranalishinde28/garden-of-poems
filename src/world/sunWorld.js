@@ -431,17 +431,68 @@ const carousel = new THREE.Group(), ring = new THREE.Group(), horses = [];
   carousel.add(new THREE.Mesh(top.build(), body));
   for (let k = 0; k < 40; k++) { const a = k / 40 * Math.PI * 2; bulb(at(CAROUSEL.x + Math.cos(a) * 7.5, CAROUSEL.z + Math.sin(a) * 7.5, base + 6.35), '#ffd890'); }
   carousel.add(ring);
-  const COAT = ['#f8f4ec', '#f2e2c6', '#e8d3b8', '#f8f4ec'];
+  // the horses, after the owner's picture: a white horse rearing, flowing gold mane and tail, a pink saddle
+  // trimmed and studded in gold, a pink bridle, gold hooves, on a pink-and-white twisted pole with a gold ball.
+  // They face the way the ring turns (forward), so a rider looks ahead.
+  const SPH = new THREE.SphereGeometry(1, 18, 12), WHITE = C('#f7f3ec'), SHADE = C('#e6ded2'), PINK = C('#de7aa2'), PINK2 = C('#e98fb2'), HGOLD = C('#c99a32'), HGOLD2 = C('#e2bc58'), DARK = C('#3a2a24');
+  const q = (x, y, z, a) => new THREE.Quaternion().setFromAxisAngle(new V3(x, y, z).normalize(), a);
+  const twist = canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#fbf3f4'; g.fillRect(0, 0, w, h); g.fillStyle = '#e48aac'; for (let k = -2; k < 3; k++) { g.beginPath(); g.moveTo(k * 32, 0); g.lineTo(k * 32 + 16, 0); g.lineTo(k * 32 + 16 + 64, h); g.lineTo(k * 32 + 64, h); g.fill(); } g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(26, 0, 6, h); }, true);
+  twist.repeat.set(1, 14);
+  const poleMat = nightLit(new THREE.MeshLambertMaterial({ map: twist }), 0.45), poleGeo = new THREE.CylinderGeometry(0.075, 0.075, 4.9, 14);
+  const horse = (lead) => {
+    const m = new Merge();
+    // body, chest and quarters: the front raised a little, as in a rear
+    m.add(SPH, new V3(0, 2.05, 0), new V3(0.4, 0.46, 0.9), WHITE, q(1, 0, 0, -0.18));
+    m.add(SPH, new V3(0, 2.28, 0.6), new V3(0.38, 0.47, 0.44), WHITE);
+    m.add(SPH, new V3(0, 1.98, -0.62), new V3(0.41, 0.46, 0.46), WHITE);
+    // the neck, arched, and the head turned down a little toward the chest
+    m.limb(new V3(0, 2.45, 0.78), new V3(0, 3.15, 1.12), 0.24, 0.15, WHITE);
+    m.add(SPH, new V3(0, 3.2, 1.3), new V3(0.16, 0.19, 0.34), WHITE, q(1, 0, 0, 0.55));
+    m.add(SPH, new V3(0, 3.0, 1.52), new V3(0.13, 0.13, 0.16), SHADE);
+    for (const sx of [-1, 1]) {
+      m.add(GEO.cone, new V3(sx * 0.08, 3.45, 1.18), new V3(0.05, 0.16, 0.05), WHITE, q(1, 0, sx * 0.4, -0.3));
+      m.add(SPH, new V3(sx * 0.13, 3.22, 1.33), new V3(0.035, 0.04, 0.04), DARK);
+      m.add(SPH, new V3(sx * 0.1, 2.97, 1.63), new V3(0.02, 0.025, 0.02), DARK);
+    }
+    // a pink bridle: a noseband, a cheek strap and reins to the saddle
+    m.add(new THREE.TorusGeometry(0.15, 0.022, 6, 18), new V3(0, 3.06, 1.5), new V3(1.05, 1, 1.15), PINK, q(1, 0, 0, Math.PI / 2 + 0.55));
+    m.add(new THREE.TorusGeometry(0.17, 0.022, 6, 18), new V3(0, 3.28, 1.24), new V3(1, 1, 1), PINK, q(0, 1, 0, Math.PI / 2));
+    for (const sx of [-1, 1]) m.limb(new V3(sx * 0.16, 3.04, 1.42), new V3(sx * 0.3, 2.6, 0.25), 0.018, 0.018, PINK);
+    // the mane, gold and flowing, down the crest of the neck; a forelock
+    for (let k = 0; k < 12; k++) { const f = k / 11, y = 3.3 - f * 0.85, z = 1.1 - f * 0.4; m.add(SPH, new V3(0.05 * (k % 2 ? 1 : -1), y, z - 0.1), new V3(0.06, 0.15, 0.1), k % 2 ? HGOLD : HGOLD2, q(1, 0, 0, -0.7 - f * 0.4)); }
+    m.add(SPH, new V3(0, 3.4, 1.3), new V3(0.07, 0.07, 0.12), HGOLD2, q(1, 0, 0, 0.5));
+    // the tail: gold, sweeping out behind and curling down
+    const tail = [new V3(0, 2.25, -1.02), new V3(0, 2.35, -1.38), new V3(0, 2.1, -1.72), new V3(0, 1.62, -1.84), new V3(0, 1.35, -1.68)];
+    for (let k = 0; k < tail.length - 1; k++) { m.limb(tail[k], tail[k + 1], 0.12 - k * 0.012, 0.11 - k * 0.012, k % 2 ? HGOLD : HGOLD2); m.add(SPH, tail[k + 1], new V3(0.11 - k * 0.012, 0.11 - k * 0.012, 0.11 - k * 0.012), k % 2 ? HGOLD : HGOLD2); }
+    // legs: the fore legs lifted and folded, one higher than the other; the hind legs reaching back
+    const leg = (pts, r) => { for (let k = 0; k < pts.length - 1; k++) { m.limb(pts[k], pts[k + 1], r[k], r[k + 1], WHITE); m.add(SPH, pts[k + 1], new V3(r[k + 1], r[k + 1], r[k + 1]), WHITE); } const h = pts[pts.length - 1]; m.add(new THREE.CylinderGeometry(0.06, 0.075, 0.12, 10), new V3(h.x, h.y - 0.04, h.z), new V3(1, 1, 1), HGOLD2); };
+    leg([new V3(-0.17, 2.0, 0.68), new V3(-0.17, 1.62, 1.08), new V3(-0.17, 1.3, 0.92)], [0.11, 0.075, 0.06]);
+    leg([new V3(0.17, 2.0, 0.66), new V3(0.17, 1.78, 1.12), new V3(0.17, 1.42, 1.1)], [0.11, 0.075, 0.06]);
+    leg([new V3(-0.18, 1.85, -0.72), new V3(-0.18, 1.32, -0.98), new V3(-0.18, 0.82, -0.84)], [0.13, 0.08, 0.06]);
+    leg([new V3(0.18, 1.85, -0.7), new V3(0.18, 1.38, -1.08), new V3(0.18, 0.95, -1.32)], [0.13, 0.08, 0.06]);
+    // the saddle: pink seat on a gold-edged pink cloth hanging down each side, studded with gold; a gold girth
+    m.add(SPH, new V3(0, 2.47, -0.05), new V3(0.36, 0.1, 0.46), PINK, q(1, 0, 0, -0.12));
+    m.add(SPH, new V3(0, 2.6, -0.42), new V3(0.26, 0.12, 0.1), HGOLD2, q(1, 0, 0, -0.3));
+    m.add(SPH, new V3(0, 2.62, 0.3), new V3(0.12, 0.13, 0.09), HGOLD2);
+    for (const sx of [-1, 1]) {
+      m.add(GEO.box, new V3(sx * 0.4, 2.18, -0.05), new V3(0.03, 0.5, 0.82), PINK2, q(0, 0, 1, sx * 0.12));
+      m.add(GEO.box, new V3(sx * 0.37, 1.94, -0.05), new V3(0.04, 0.07, 0.86), HGOLD, q(0, 0, 1, sx * 0.12));
+      for (let k = 0; k < 6; k++) m.add(SPH, new V3(sx * 0.4, 1.86, -0.42 + k * 0.15), new V3(0.03, 0.035, 0.03), HGOLD2);
+      m.limb(new V3(sx * 0.38, 2.3, 0.0), new V3(sx * 0.42, 1.55, 0.06), 0.015, 0.015, HGOLD);
+      m.add(new THREE.TorusGeometry(0.07, 0.015, 6, 12), new V3(sx * 0.43, 1.5, 0.06), new V3(1, 1, 1), HGOLD2, q(0, 1, 0, Math.PI / 2));
+    }
+    m.add(new THREE.TorusGeometry(0.43, 0.03, 6, 24), new V3(0, 2.05, 0.28), new V3(0.95, 1.08, 1), HGOLD, q(0, 1, 0, Math.PI / 2));
+    // a gold collar on the chest
+    m.add(new THREE.TorusGeometry(0.3, 0.035, 6, 20), new V3(0, 2.62, 0.86), new V3(1, 1, 1), HGOLD2, q(1, 0, 0, Math.PI / 2 - 0.7));
+    return m.build();
+  };
+  const HG = horse();
   for (let k = 0; k < 12; k++) {
-    const a = k / 12 * Math.PI * 2, hg = new THREE.Group(), r = k % 2 ? 5.3 : 4.0; hg.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); hg.rotation.y = -a; ring.add(hg);
-    const hm = new Merge(), coat = C(COAT[k % 4]), mane = C(['#c9a24a', '#8a5a3a', '#e4b23a'][k % 3]);
-    hm.limb(new V3(0, 0.6, 0), new V3(0, 5.4, 0), 0.05, 0.05, C('#e4b23a'));
-    hm.add(GEO.box, new V3(0, 2.0, 0), new V3(0.45, 0.6, 1.35), coat);
-    hm.limb(new V3(0, 2.15, 0.55), new V3(0, 2.85, 0.85), 0.16, 0.12, coat); hm.add(GEO.box, new V3(0, 2.95, 1.05), new V3(0.3, 0.32, 0.55), coat);
-    hm.add(GEO.box, new V3(0, 2.55, 0.62), new V3(0.12, 0.6, 0.35), mane);
-    for (const [x, z] of [[-0.15, 0.5], [0.15, 0.5], [-0.15, -0.5], [0.15, -0.5]]) hm.limb(new V3(x, 1.8, z), new V3(x, 1.25, z + (z > 0 ? 0.25 : -0.2)), 0.05, 0.04, coat);
-    hm.add(GEO.box, new V3(0, 2.33, -0.05), new V3(0.5, 0.08, 0.55), C(['#c94a4a', '#3f86d6', '#4fb35a'][k % 3]));
-    hg.add(new THREE.Mesh(hm.build(), body)); horses.push({ hg, ph: k * 1.3 });
+    const a = k / 12 * Math.PI * 2, hg = new THREE.Group(), r = k % 2 ? 5.3 : 4.0; hg.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); hg.rotation.y = Math.PI - a; ring.add(hg);
+    hg.add(new THREE.Mesh(HG, body));
+    const pole = new THREE.Mesh(poleGeo, poleMat); pole.position.y = 2.95; hg.add(pole);
+    const cap = new Merge(); cap.add(SPH, new V3(0, 5.42, 0), new V3(0.17, 0.17, 0.17), HGOLD2); cap.add(new THREE.CylinderGeometry(0.11, 0.11, 0.1, 12), new V3(0, 0.55, 0), new V3(1, 1, 1), HGOLD); hg.add(new THREE.Mesh(cap.build(), body));
+    horses.push({ hg, ph: k * 1.3 });
   }
   ref.push([at(CAROUSEL.x, CAROUSEL.z, base + 6.4), '#ffd890']);
 }
@@ -719,7 +770,7 @@ export const rides = [
     board() { let lo = 1e9; cabins.forEach((c, k) => { c.getWorldPosition(tmp); if (tmp.y < lo) { lo = tmp.y; wheelCab = k; } }); },
     seat(v) { cabins[wheelCab].getWorldPosition(v); v.y -= 1.1; } },
   { key: 'carousel', label: 'Ride the carousel', name: 'On the carousel', follow: true, exit: w(CAROUSEL.x, CAROUSEL.z + CAROUSEL.r + 3),
-    seat(v) { horses[0].hg.getWorldPosition(v); v.y += 3.25; } },
+    seat(v) { horses[0].hg.getWorldPosition(v); v.y += 3.75; } },
   { key: 'coaster', label: 'Ride the roller coaster', name: 'On the roller coaster', exit: w(29, -118),
     seat(v) { train[0].getWorldPosition(v); v.y += 1.95; }, fwd(v) { v.copy(track.getTangentAt(trainT)); } },
   { key: 'swings', label: 'Ride the swings', name: 'On the swings', follow: true, exit: w(SWING.x - SWING.r - 2.5, SWING.z),
@@ -757,7 +808,7 @@ addTick(dt => {
   winMats.forEach(m => { m.emissiveIntensity = glow * 1.2; });
   fieldMats.forEach(([m, k]) => { m.emissiveIntensity = Math.max(n, d * 0.4) * k; });
   // the rides
-  wheel.rotation.z = T * 0.05; cabins.forEach(c => { c.rotation.z = -wheel.rotation.z; });
+  wheel.rotation.z = T * 0.14; cabins.forEach(c => { c.rotation.z = -wheel.rotation.z; });
   for (let i = 0; i < WHEEL_REF; i++) { const a = i / WHEEL_REF * Math.PI * 2 + wheel.rotation.z; waterU.uL.value[i].set(O.x + WHEEL.x + Math.cos(a) * WHEEL.r, O.y + sunH(WHEEL.x, WHEEL.z) + WHEEL.hub + Math.sin(a) * WHEEL.r, O.z + WHEEL.z); waterU.uLC.value[i].setHSL(((i / WHEEL_REF - T * 0.08) % 1 + 1) % 1, 0.9, 0.62); }
   train.forEach((c, i) => { const t = ((T * 0.03) - i * 0.006 + 10) % 1, p = track.getPointAt(t), q = track.getPointAt((t + 0.002) % 1); c.position.copy(p); c.lookAt(tmp.copy(q).add(O)); });
   ring.rotation.y = T * 0.25; horses.forEach(h => { h.hg.position.y = 0.35 + Math.sin(T * 1.6 + h.ph) * 0.35; });

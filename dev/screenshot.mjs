@@ -311,6 +311,8 @@ async function main() {
       // out at the fair: the drop tower and the teacups, seen and ridden
       const lookAt = async (n, x, z, yaw, pitch) => { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + x, 0, O.z - 34.8 + z); g.player.yaw = yaw; g.player.pitch = pitch; }, x, z, yaw, pitch); await sleep(1500); await shot(n); };
       await lookAt('tower', -2, -50, -1.03, 0.32); await lookAt('teacups', -18, -40, 1.6, 0.05);
+      await lookAt('carousel', 0, -49.5, 0, 0.12); await lookAt('carousel-near', 7.5, -55.5, 0.8, 0.18); await lookAt('wheel', 0, -64, 0.6, 0.25);
+      await page.evaluate(() => { const g = window.__garden; g.late.startRide(g.rides.find(r => r.key === 'carousel')); }); await sleep(3500); await page.screenshot({ path: join(root, 'dev/shots/castle-ride-carousel.png') }); await page.click('#ride-off'); await sleep(700);
       for (const [k, wait] of [['teacups', 2500], ['drop', 17500], ['drop', 3000]]) {
         if (!(k === 'drop' && wait === 3000)) { await page.evaluate(k => { const g = window.__garden, r = g.rides.find(r => r.key === k); g.late.startRide(r); }, k); }
         await sleep(wait); await page.screenshot({ path: join(root, `dev/shots/castle-ride-${k}${wait === 3000 ? '-fall' : ''}.png`) });

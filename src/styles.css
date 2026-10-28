@@ -779,11 +779,11 @@ body.panel-open #run-btn{opacity:0;pointer-events:none}
 .sm-place.side-t{flex-direction:column-reverse;transform:translate(-50%,calc(-100% + 12px));text-align:center}
 
 /* a poem from the Hall of Mirrors, large and easy to read */
-#wallpoem{left:50%;top:50%;width:min(760px,94vw);max-height:90vh;overflow:auto;transform:translate(-50%,-47%);border-radius:6px;padding:1.8rem 2.2rem 1.4rem;text-align:center}
+#wallpoem{left:50%;top:50%;width:min(880px,94vw);max-height:90vh;overflow:auto;transform:translate(-50%,-47%);border-radius:6px;padding:1.8rem 2.2rem 1.4rem;text-align:center}
 #wallpoem.open{transform:translate(-50%,-50%)}
 #wallpoem h2{font-size:clamp(1.9rem,4.4vw,2.6rem);font-weight:700;line-height:1.1;margin:.2rem 2rem .4rem}
 #wallpoem .wp-by{font-style:italic;font-size:1.3rem;font-weight:600;opacity:.85;margin:0 0 1.1rem}
-#wp-text{white-space:pre-line;font-size:clamp(1.3rem,2.9vw,1.6rem);font-weight:600;line-height:1.55;padding:1rem 0 1.2rem;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+#wp-text{white-space:pre-line;font-size:clamp(1.5rem,3.6vw,2rem);font-weight:600;line-height:1.55;padding:1rem 0 1.2rem;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 #wallpoem .wp-nav{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-top:1rem;font-size:1.05rem}
 #wallpoem .wp-nav button{font:inherit;font-weight:700;padding:.4rem 1rem;border-radius:999px;border:1px solid var(--line);background:transparent;color:inherit;cursor:pointer}
 #wallpoem .wp-nav button:hover{background:rgba(120,92,60,.12)}

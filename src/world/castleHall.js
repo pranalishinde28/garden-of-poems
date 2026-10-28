@@ -236,26 +236,52 @@ const POEMS = [
   ['On Children', 'Kahlil Gibran', 1923, "Your children are not your children.\nThey are the sons and daughters of Life’s longing for itself.\nThey come through you but not from you,\nAnd though they are with you yet they belong not to you."],
 ];
 export { POEMS as HALL_POEMS };
+// what the plaque itself carries: the best-known lines of the longer poems, in the largest lettering the
+// frame allows (the reading box, ui/wallPoems.js, always shows the whole poem)
+const PLAQUE = {
+  "Sonnet 18": "Shall I compare thee\nto a summer's day?\nThou art more lovely\nand more temperate …\nSo long lives this,\nand this gives life\nto thee.",
+  "I Wandered Lonely as a Cloud": "I wandered lonely\nas a cloud …\nWhen all at once\nI saw a crowd,\nA host, of golden\ndaffodils.",
+  "\"Hope\" is the thing with feathers": "“Hope” is the thing\nwith feathers –\nThat perches\nin the soul –\nAnd sings the tune\nwithout the words –",
+  "Endymion": "A thing of beauty\nis a joy for ever:\nIts loveliness\nincreases;\nit will never\nPass into nothingness.",
+  "Auguries of Innocence": "To see a World\nin a Grain of Sand\nAnd a Heaven\nin a Wild Flower,\nHold Infinity\nin the palm of your hand\nAnd Eternity in an hour.",
+  "Ozymandias": "My name is\nOzymandias,\nKing of Kings;\nLook on my Works,\nye Mighty,\nand despair!",
+  "Where the Mind is Without Fear": "Where the mind\nis without fear\nand the head\nis held high;\nWhere knowledge\nis free …",
+  "Stopping by Woods on a Snowy Evening": "The woods are lovely,\ndark and deep,\nBut I have promises\nto keep,\nAnd miles to go\nbefore I sleep.",
+  "Who Has Seen the Wind?": "Who has seen\nthe wind?\nNeither I nor you:\nBut when the leaves\nhang trembling,\nThe wind is\npassing through.",
+  "A Dream Within a Dream": "All that we see\nor seem\nIs but a dream\nwithin a dream.",
+  "There Will Come Soft Rains": "There will come\nsoft rains\nand the smell\nof the ground,\nAnd swallows circling\nwith their\nshimmering sound.",
+  "A Red, Red Rose": "O my Luve is like\na red, red rose\nThat's newly sprung\nin June.",
+  "She Walks in Beauty": "She walks in beauty,\nlike the night\nOf cloudless climes\nand starry skies.",
+  "A Psalm of Life": "Lives of great men\nall remind us\nWe can make\nour lives sublime …\nFootprints on\nthe sands of time.",
+  "Ulysses": "Made weak\nby time and fate,\nbut strong in will\nTo strive, to seek,\nto find,\nand not to yield.",
+  "How Do I Love Thee?": "How do I love thee?\nLet me count\nthe ways.",
+  "When I Heard the Learn’d Astronomer": "… and from\ntime to time,\nLook’d up\nin perfect silence\nat the stars.",
+  "The Lake Isle of Innisfree": "I will arise\nand go now,\nand go to Innisfree …\nAnd live alone\nin the bee-loud\nglade.",
+  "Quiet Night Thought": "Up towards\nthe glorious moon\nI raise my head,\nThen lay me down —\nand thoughts\nof home arise.",
+  "Rubáiyát": "A Book of Verses\nunderneath the Bough,\nA Jug of Wine,\na Loaf of Bread —\nand Thou.",
+  "On Children": "Your children\nare not\nyour children.\nThey are the sons\nand daughters\nof Life’s longing\nfor itself.",
+};
 function poemTex([title, poet, year, text]) {
-  return canvasTex(1024, 1440, (g, w, h) => {
+  return canvasTex(1024, 1756, (g, w, h) => {
     const pg = g.createLinearGradient(0, 0, 0, h); pg.addColorStop(0, '#fcf5e3'); pg.addColorStop(1, '#f0e2c2'); g.fillStyle = pg; g.fillRect(0, 0, w, h);
     const vg = g.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, h * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(120,80,30,.2)'); g.fillStyle = vg; g.fillRect(0, 0, w, h);
     g.strokeStyle = '#a8801e'; g.lineWidth = 5; g.strokeRect(36, 36, w - 72, h - 72); g.lineWidth = 2; g.strokeRect(50, 50, w - 100, h - 100);
     g.textAlign = 'center'; g.fillStyle = '#140a02';
-    const font = (wt, px, it = '') => `${it}${wt} ${px}px "Cormorant Garamond", Georgia, serif`, room = w - 150;
+    const font = (wt, px, it = '') => `${it}${wt} ${px}px "Cormorant Garamond", Georgia, serif`, room = w - 96;
     // the title, two lines if it must
     let tp = 96, tl; const tLines = () => { g.font = font(700, tp); const ws = title.split(' '), out = []; let cur = ''; ws.forEach(wd => { const t = cur ? cur + ' ' + wd : wd; if (g.measureText(t).width > room && cur) { out.push(cur); cur = wd; } else cur = t; }); out.push(cur); return out; };
     tl = tLines(); while ((tl.length > 2 || tl.some(l => g.measureText(l).width > room)) && tp > 50) { tp -= 4; tl = tLines(); }
     let ty = 150; tl.forEach(l => { g.fillText(l, w / 2, ty); ty += tp * 1.08; });
     const rule = ty - tp * 0.55; g.fillStyle = '#a8801e'; g.fillRect(w / 2 - 120, rule, 240, 4);
     // the lines, as large as fit the page: as big as the width allows, then smaller until they fit the height
-    const lines = text.split('\n'), top = rule + 60, bottom = h - 250;
-    let lp = 112;
+    // a dash never starts a line on its own
+    const lines = (PLAQUE[title] || text).replace(/ ([—–])/g, '\u00a0$1').split('\n'), top = rule + 60, bottom = h - 250;
+    let lp = 150;
     const wrapAll = () => { g.font = font(700, lp); const out = []; lines.forEach(l => { const words = l.split(' '); let cur = ''; words.forEach(wd => { const t = cur ? cur + ' ' + wd : wd; if (g.measureText(t).width > room && cur) { out.push(cur); cur = wd; } else cur = t; }); out.push(cur); }); return out; };
     let wrapped = wrapAll();
-    while ((wrapped.length * lp * 1.3 > bottom - top || wrapped.length > (lp > 66 ? lines.length : lines.length * 1.6 + 1)) && lp > 34) { lp -= 2; wrapped = wrapAll(); }
-    g.fillStyle = '#140a02'; let y = top + lp * 0.9 + Math.max(0, (bottom - top - wrapped.length * lp * 1.3) / 2);
-    wrapped.forEach(l => { g.fillText(l, w / 2, y); y += lp * 1.3; });
+    while ((wrapped.length * lp * 1.22 > bottom - top || wrapped.length > (lp > 80 ? lines.length : lines.length * 2 + 1)) && lp > 40) { lp -= 2; wrapped = wrapAll(); }
+    g.fillStyle = '#140a02'; let y = top + lp * 0.9 + Math.max(0, (bottom - top - wrapped.length * lp * 1.22) / 2);
+    wrapped.forEach(l => { g.fillText(l, w / 2, y); y += lp * 1.22; });
     // the poet; a translator goes on a smaller line beneath
     const [who, tr] = poet.includes(' (') ? [poet.slice(0, poet.indexOf(' (')), poet.slice(poet.indexOf(' (') + 2, -1)] : [poet, ''];
     let pp = 60; g.font = font(700, pp, 'italic '); while (g.measureText(who).width > room && pp > 30) { pp -= 2; g.font = font(700, pp, 'italic '); }
@@ -271,12 +297,12 @@ export const POEM_SPOTS = [];
   const m = new Merge(), bays = Math.round(HALL.hl * 2 / HALL.bay), spots = [];
   for (const side of [-1, 1]) for (let i = 0; i < bays; i += 2) spots.push({ side, z: -HALL.hl + i * HALL.bay + HALL.bay / 2 });
   spots.forEach((sp, k) => {
-    const P = POEMS[k % POEMS.length], t = poemTex(P), pw = 5.4, ph = 7.6, x = sp.side * (HALL.hw - 0.45), y = 5.6;
+    const P = POEMS[k % POEMS.length], t = poemTex(P), pw = 6.1, ph = 9.6, x = sp.side * (HALL.hw - 0.45), y = 6.6;
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshBasicMaterial({ map: t, color: '#ddd2ba', fog: false }));
     mesh.position.set(x, y, sp.z); mesh.rotation.y = -sp.side * Math.PI / 2; hall.add(mesh);
     // a deep gilded frame, and a little lamp over it
     const fx = sp.side * (HALL.hw - 0.38);
-    for (const [fz, fy, fw, fh] of [[sp.z, y + ph / 2 + 0.2, pw + 0.8, 0.4], [sp.z, y - ph / 2 - 0.2, pw + 0.8, 0.4], [sp.z - pw / 2 - 0.2, y, 0.4, ph], [sp.z + pw / 2 + 0.2, y, 0.4, ph]]) m.add(GEO.box, new V3(fx, fy, fz), new V3(0.3, fh, fw), GOLD);
+    for (const [fz, fy, fw, fh] of [[sp.z, y + ph / 2 + 0.16, pw + 0.5, 0.32], [sp.z, y - ph / 2 - 0.16, pw + 0.5, 0.32], [sp.z - pw / 2 - 0.12, y, 0.24, ph], [sp.z + pw / 2 + 0.12, y, 0.24, ph]]) m.add(GEO.box, new V3(fx, fy, fz), new V3(0.3, fh, fw), GOLD);
     m.limb(new V3(sp.side * (HALL.hw - 0.3), y + ph / 2 + 0.7, sp.z), new V3(sp.side * (HALL.hw - 1.0), y + ph / 2 + 0.55, sp.z), 0.05, 0.05, GOLD);
     bulb(sp.side * (HALL.hw - 1.05), y + ph / 2 + 0.45, sp.z, '#fff0c8');
     const k2 = k % POEMS.length, at = W(sp.side * (HALL.hw - 5), sp.z);
