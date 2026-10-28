@@ -740,3 +740,10 @@ body.otherworld #h-write,body.otherworld #h-gardens,body.otherworld #h-home,body
 #hp-keys .hk .caps{min-width:2.4rem}
 @media (max-width:820px){#hp-keys .hgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:640px){#hp-keys .hgrid{grid-template-columns:1fr}}
+
+/* the welcome buttons: one line each, a readable frosted green, slim */
+#intro .enter,#intro .alt{box-sizing:border-box;width:min(440px,92vw);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:999px;background:rgba(34,48,38,.68);border:1.5px solid rgba(255,250,240,.75);color:#fffaf0;backdrop-filter:blur(10px) saturate(1.1);-webkit-backdrop-filter:blur(10px) saturate(1.1);box-shadow:0 6px 22px rgba(0,0,0,.28);text-shadow:0 1px 4px rgba(0,0,0,.45)}
+#intro .enter{font-size:clamp(1.15rem,4.6vw,1.75rem);padding:.45rem 1rem .55rem;margin-top:.2rem}
+#intro .alt{display:block;font-size:clamp(.95rem,3.6vw,1.3rem);padding:.4rem 1rem .5rem;margin-top:.7rem;text-decoration:none}
+#intro .enter:hover,#intro .alt:hover{background:rgba(34,48,38,.85);color:#fffaf0}
+@media (pointer:coarse){#intro .alt,#intro .enter{min-height:44px;padding-top:.45rem;padding-bottom:.5rem}}
