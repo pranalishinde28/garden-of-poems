@@ -275,8 +275,11 @@ async function main() {
       await page.waitForFunction(() => window.__garden.state.world === 'sun' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 });
       await sleep(2500);
       await page.evaluate(() => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + 1, 0, O.z - 34.8 - 136); g.player.yaw = 0; g.player.pitch = 0.12; });
-      await sleep(1500); const cue = await page.$eval('#cue', e => e.textContent.trim()); await shot('gate');
-      await page.keyboard.press('KeyE'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }); await sleep(2600); await shot('inside');
+      // walk straight into the gate: no prompt, it takes you in
+      await page.keyboard.down('KeyW'); await sleep(2500); await page.keyboard.up('KeyW'); const cue = 'castle';
+      await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.player.pos.y < -50 || window.__garden.camera.position.y < -50, { timeout: 20000, polling: 300 }).catch(() => {});
+      await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }); await sleep(2600); await shot('inside');
+      const inside = await page.evaluate(() => window.__garden.camera.position.y < -50); if (!inside) errors.push('walking into the gate did not take you inside');
       await page.evaluate(() => { const g = window.__garden; g.player.yaw = 0.6; g.player.pitch = 0.12; }); await sleep(1000); await shot('inside2');
       await page.evaluate(() => { const g = window.__garden; g.player.yaw = -0.7; g.player.pitch = 0.1; }); await sleep(1000); await shot('inside3');
       for (const k of ['teacups', 'drop', 'balloons', 'train', 'bumper']) {
@@ -287,8 +290,8 @@ async function main() {
         await page.click('#ride-off'); await sleep(700);
       }
       await page.evaluate(() => { const g = window.__garden, p = g.worlds.sun.arrive.pos; }); 
-      await page.evaluate(() => window.__garden.late.leaveHall()); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }); await sleep(2600); await shot('out');
-      console.log(`  gate cue "${cue}", rides all started; back out: ${await page.evaluate(() => window.__garden.state.world)}`);
+      await page.evaluate(() => { const g = window.__garden, p = g.camera.position; g.player.pos.set(p.x, 0, p.z + 49); g.player.yaw = Math.PI; }); await sleep(300); await page.keyboard.down('KeyW'); await sleep(1500); await page.keyboard.up('KeyW'); await sleep(2500); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }); await sleep(2600); await shot('out');
+      const outside = await page.evaluate(() => window.__garden.camera.position.y > -20); console.log(`  walked in, rides all started; walked back out: ${outside}`); if (!outside) errors.push('walking to the door did not take you out');
       if (!/castle/i.test(cue)) errors.push('no castle cue at the gate');
     }
     else if (FLOW === 'secret') { // the map's secret garden goes straight to the Sunflower Garden

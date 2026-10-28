@@ -105,7 +105,7 @@ addEventListener('keydown', e => {
 function enterHall() {
   if (state.world !== 'sun' || state.mode !== 'walk') return;
   cross('Through the castle doors…', () => { showHall(true); place(hallArrive.pos, hallArrive.yaw); },
-    () => showRegion({ name: 'The Starlit Hall', sub: 'Teacups, a drop tower, balloons, a little train and bumper cars. Mimi the cat says hello.' }));
+    () => showRegion({ name: 'The Hall of Mirrors', sub: 'Teacups, a drop tower, balloons, a royal train and bumper cars. The door at the far end leads out.' }));
 }
 function leaveHall() {
   if (state.mode !== 'walk') return;
