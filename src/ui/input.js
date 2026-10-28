@@ -35,12 +35,16 @@ addEventListener('keydown', e => {
   if (e.code === 'Escape') { if (state.mode === 'focus') late.closeReader(); else if (state.mode === 'writing') late.closeEditor(); late.closePops(); return; }
   if (state.mode === 'focus' && !state.reflection) { if (e.code === 'ArrowLeft') { late.stepPoem(-1); return; } if (e.code === 'ArrowRight') { late.stepPoem(1); return; } }
   if ((e.key === '?' || e.code === 'KeyH') && !e.repeat && (state.mode === 'walk' || state.mode === 'swing')) { late.openHelp(); return; }
-  if (e.code === 'KeyM' && !e.repeat && (state.mode === 'walk' || state.mode === 'swing') && state.world !== 'sun') { late.toggleMap(); return; }
+  if (e.code === 'KeyM' && !e.repeat && (state.mode === 'walk' || state.mode === 'swing')) { late.toggleMap(); return; }
   if (e.code === 'KeyV' && !e.repeat && (state.mode === 'walk' || state.mode === 'swing')) { late.toggleView(); return; }
   if (e.code === 'KeyE' && state.mode === 'walk' && late.cueTarget) { e.preventDefault(); interact(late.cueTarget); return; }
   if (/^(Key[WASDQ]|Arrow|Shift|Space)/.test(e.code)) { keys.add(e.code); if ((e.code.startsWith('Arrow') || e.code === 'Space') && (state.mode === 'walk' || state.mode === 'swing')) e.preventDefault(); }
 });
 // a focused button would otherwise 'click' on Space keyup while it pumps the swing
+// a quick tap of Shift (pressed and let go, nothing else pressed meanwhile) switches between walking and running
+let shiftAt = 0, shiftClean = false;
+addEventListener('keydown', e => { if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') { if (!e.repeat) { shiftAt = performance.now(); shiftClean = true; } } else shiftClean = false; }, true);
+addEventListener('keyup', e => { if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && shiftClean && performance.now() - shiftAt < 280 && !isTyping(e) && late.toggleRun) late.toggleRun(); });
 addEventListener('keyup', e => { keys.delete(e.code); if (state.mode === 'swing' && e.code === 'Space' && !isTyping(e)) e.preventDefault(); });
 addEventListener('blur', () => keys.clear());
 
@@ -115,17 +119,17 @@ export function interact(t) {
   else if (t.kind === 'thing') t.it.act(t.point);
   else late.openEditor(null);
 }
-export const joy = $('#joy'), knob = $('#knob'), jv = { x: 0, y: 0 }; let joyId = null;
+export const joy = $('#joy'), knob = $('#knob'), jv = { x: 0, y: 0, n: 0 }; let joyId = null;
 function updJoy(e) {
   const r = joy.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, m = r.width / 2 - 14;
   let dx = e.clientX - cx, dy = e.clientY - cy; const l = Math.hypot(dx, dy); if (l > m) { dx *= m / l; dy *= m / l; }
   knob.style.transform = `translate(${dx}px,${dy}px)`;
   // a small dead zone, then a gentle curve: easier to stroll slowly, still full speed at the edge
   const n = Math.min(1, Math.hypot(dx, dy) / m), k = n < 0.12 ? 0 : Math.pow((n - 0.12) / 0.88, 1.35) / (n || 1);
-  jv.x = dx / m * k; jv.y = -dy / m * k;
+  jv.x = dx / m * k; jv.y = -dy / m * k; jv.n = n;
 }
 joy.addEventListener('pointerdown', e => { joyId = e.pointerId; try { joy.setPointerCapture(e.pointerId); } catch (_) {} updJoy(e); e.preventDefault(); });
 joy.addEventListener('pointermove', e => { if (e.pointerId === joyId) updJoy(e); });
-const joyEnd = e => { if (e.pointerId !== joyId) return; joyId = null; jv.x = jv.y = 0; knob.style.transform = ''; };
+const joyEnd = e => { if (e.pointerId !== joyId) return; joyId = null; jv.x = jv.y = jv.n = 0; knob.style.transform = ''; };
 joy.addEventListener('pointerup', joyEnd); joy.addEventListener('pointercancel', joyEnd);
 

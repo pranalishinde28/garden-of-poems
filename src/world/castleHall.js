@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { C, V3, rng, smooth } from '../core/util.js';
+import { C, V3, rng, siteURL, smooth } from '../core/util.js';
 import { T, state } from '../core/state.js';
 import { canvasTex } from './textures.js';
 import { GEO, Merge } from './geometry.js';
@@ -21,7 +21,7 @@ import { CASTLE, FAIR_RIDES, O, rides, sunH, sunScene } from './sunWorld.js';
 // inside; you walk in through the castle's gate and out through the gallery's door, no prompts.
 
 const R = rng(9191);
-export const HALL = { x: 420, z: -60, y: -90, hw: 22, hl: 88, wall: 17, vault: 22, rise: 0.62, bay: 8 };
+export const HALL = { x: 420, z: -60, y: -90, hw: 32, hl: 88, wall: 17, vault: 32, rise: 0.5, bay: 8 };
 const hall = new THREE.Group(); hall.position.set(O.x + HALL.x, O.y + HALL.y, O.z + HALL.z); hall.visible = false; sunScene.add(hall);
 const W = (x, z) => new V3(O.x + HALL.x + x, O.y + HALL.y, O.z + HALL.z + z);
 const gilt = new THREE.MeshPhongMaterial({ vertexColors: true, color: '#d8c49a', specular: '#8a6a2a', shininess: 40, emissive: '#2a1c08', emissiveIntensity: 0.6, fog: false });
@@ -156,50 +156,129 @@ const marbleTex = canvasTex(128, 512, (g, w, h) => {
   hall.add(new THREE.Mesh(pil.build(), new THREE.MeshPhongMaterial({ map: marbleTex, shininess: 70, specular: '#3a2a2a', emissive: '#2a0e0c', emissiveIntensity: 0.6, fog: false })));
 }
 
-/* ---------- the vault: a painted baroque sky in gilded frames ---------- */
-const vaultTex = canvasTex(1024, 2048, (g, w, h) => {
-  // gilded stucco ground, then one great painting framed down the middle, a second below, medallions beside
-  const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#b88a2a'); gr.addColorStop(0.5, '#d9b04a'); gr.addColorStop(1, '#b88a2a'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
-  const RS = rng(5); g.strokeStyle = 'rgba(255,230,150,.6)'; g.lineWidth = 4; for (let k = 0; k < 60; k++) { const x = RS() * w, y = RS() * h; g.beginPath(); g.arc(x, y, 8 + RS() * 18, RS() * 6, RS() * 6 + 3.5); g.stroke(); }
-  baroque(g, 150, 120, w - 300, 1180, 21); frame(g, 150, 120, w - 300, 1180, 26);
-  baroque(g, 230, 1420, 560, 520, 22); frame(g, 230, 1420, 560, 520, 20);
-  for (const x of [20, w - 120]) { g.save(); g.beginPath(); g.ellipse(x + 50, 1680, 50, 120, 0, 0, 7); g.clip(); baroque(g, x, 1560, 100, 240, 23 + x); g.restore(); g.strokeStyle = '#e8c25a'; g.lineWidth = 8; g.beginPath(); g.ellipse(x + 50, 1680, 50, 120, 0, 0, 7); g.stroke(); }
+/* ---------- the real paintings: photographs of Le Brun's ceiling (public/art, CC0; see CREDITS.md) ---------- */
+// Loaded only when you first go in. Until they arrive the vault shows a painted stand-in, then each canvas
+// is redrawn with the photographs.
+const ART = { sky: 'le-brun-sky.jpg', victory: 'le-brun-victory.jpg', peace: 'le-brun-peace.jpg', sun: 'le-brun-sun.jpg' }, img = {};
+const artWaiting = [];
+let artAsked = false;
+function loadArt() {
+  if (artAsked) return; artAsked = true;
+  let n = 0; const keys = Object.keys(ART);
+  keys.forEach(k => { const im = new Image(); im.decoding = 'async'; im.onload = () => { img[k] = im; if (++n === keys.length) artWaiting.forEach(f => f()); }; im.onerror = () => { ++n; }; im.src = siteURL() + 'art/' + ART[k]; });
+}
+// draw an image to fill a rectangle, cropped (not squashed) to its shape
+function cover(g, im, x, y, w, h) { const s = Math.max(w / im.width, h / im.height), sw = w / s, sh = h / s; g.drawImage(im, (im.width - sw) / 2, (im.height - sh) / 2, sw, sh, x, y, w, h); }
+// a canvas texture painted now (stand-in) and again with the photographs once they load
+function artTex(w, h, stand, real, repeat) {
+  const t = canvasTex(w, h, stand, repeat);
+  artWaiting.push(() => { const g = t.image.getContext('2d'); real(g, w, h); t.needsUpdate = true; });
+  return t;
+}
+const gildGround = (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#b88a2a'); gr.addColorStop(0.5, '#d9b04a'); gr.addColorStop(1, '#b88a2a'); g.fillStyle = gr; g.fillRect(0, 0, w, h); const RS = rng(5); g.strokeStyle = 'rgba(255,230,150,.6)'; g.lineWidth = 4; for (let k = 0; k < 80; k++) { const x = RS() * w, y = RS() * h; g.beginPath(); g.arc(x, y, 8 + RS() * 18, RS() * 6, RS() * 6 + 3.5); g.stroke(); } };
+
+/* ---------- the vault: Le Brun's painted ceiling in gilded frames ---------- */
+// across the vault (the canvas's width) runs one great sky panel, then a row of three: Peace, Victory, the Sun
+const vaultTex = artTex(2048, 2048, (g, w, h) => {
+  gildGround(g, w, h);
+  baroque(g, 160, 70, w - 320, 1100, 21); frame(g, 160, 70, w - 320, 1100, 30);
+  baroque(g, 560, 1260, 928, 720, 22); frame(g, 560, 1260, 928, 720, 24);
+}, (g, w, h) => {
+  gildGround(g, w, h);
+  cover(g, img.sky, 160, 70, w - 320, 1100); frame(g, 160, 70, w - 320, 1100, 30);
+  cover(g, img.victory, 560, 1260, 928, 720); frame(g, 560, 1260, 928, 720, 24);
+  cover(g, img.peace, 90, 1260, 400, 720); frame(g, 90, 1260, 400, 720, 20);
+  cover(g, img.sun, w - 490, 1260, 400, 720); frame(g, w - 490, 1260, 400, 720, 20);
 }, true);
 {
   const reps = 4;
   vaultTex.repeat.set(1, reps);
-  const vg = new THREE.CylinderGeometry(HALL.vault, HALL.vault, HALL.hl * 2, 48, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2);
-  const vmat = new THREE.MeshLambertMaterial({ map: vaultTex, emissive: '#ffffff', emissiveMap: vaultTex, emissiveIntensity: 0.42, color: '#d8ccb4', side: THREE.DoubleSide, fog: false });
+  const vg = new THREE.CylinderGeometry(HALL.vault, HALL.vault, HALL.hl * 2, 64, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2);
+  const vmat = new THREE.MeshLambertMaterial({ map: vaultTex, emissive: '#ffffff', emissiveMap: vaultTex, emissiveIntensity: 0.5, color: '#d8ccb4', side: THREE.DoubleSide, fog: false });
   const vault = new THREE.Mesh(vg, vmat); vault.position.y = HALL.wall; vault.scale.set(HALL.hw / HALL.vault, HALL.rise, 1); hall.add(vault);
   // gilded ribs across the vault between the paintings
   const ribs = new Merge();
-  for (let k = 0; k <= reps; k++) ribs.add(new THREE.TorusGeometry(HALL.vault - 0.3, 0.45, 6, 40, Math.PI), new V3(0, 0, -HALL.hl + k * HALL.hl * 2 / reps), new V3(1, 1, 1), GOLD);
+  for (let k = 0; k <= reps; k++) ribs.add(new THREE.TorusGeometry(HALL.vault - 0.3, 0.55, 6, 48, Math.PI), new V3(0, 0, -HALL.hl + k * HALL.hl * 2 / reps), new V3(1, 1, 1), GOLD);
   const rm = new THREE.Mesh(ribs.build(), gilt); rm.position.y = HALL.wall; rm.scale.set(HALL.hw / HALL.vault, HALL.rise, 1); hall.add(rm);
-  // the lunettes at either end, each a painting of its own
+  // the lunettes at either end: the great sky panel again
   for (const e of [-1, 1]) {
-    const lt = canvasTex(1024, 512, g => { g.fillStyle = '#c99a32'; g.fillRect(0, 0, 1024, 512); baroque(g, 60, 40, 904, 480, 40 + e); frame(g, 60, 40, 904, 480, 18); });
-    const lun = new THREE.Mesh(new THREE.CircleGeometry(HALL.vault, 48, 0, Math.PI), new THREE.MeshLambertMaterial({ map: lt, emissive: '#ffffff', emissiveMap: lt, emissiveIntensity: 0.42, color: '#d8ccb4', side: THREE.DoubleSide, fog: false }));
+    const lt = artTex(1024, 512, g => { g.fillStyle = '#c99a32'; g.fillRect(0, 0, 1024, 512); baroque(g, 60, 40, 904, 480, 40 + e); frame(g, 60, 40, 904, 480, 18); },
+      g => { g.fillStyle = '#c99a32'; g.fillRect(0, 0, 1024, 512); cover(g, e < 0 ? img.sky : img.victory, 60, 40, 904, 480); frame(g, 60, 40, 904, 480, 18); });
+    const lun = new THREE.Mesh(new THREE.CircleGeometry(HALL.vault, 64, 0, Math.PI), new THREE.MeshLambertMaterial({ map: lt, emissive: '#ffffff', emissiveMap: lt, emissiveIntensity: 0.45, color: '#d8ccb4', side: THREE.DoubleSide, fog: false }));
     lun.position.set(0, HALL.wall, e * (HALL.hl - 0.05)); lun.scale.set(HALL.hw / HALL.vault, HALL.rise, 1); hall.add(lun);
   }
 }
 
+/* ---------- famous poems, framed on the walls: each with its poet and its year ---------- */
+// all in the public domain
+const POEMS = [
+  ['Sonnet 18', 'William Shakespeare', 1609, "Shall I compare thee to a summer's day?\nThou art more lovely and more temperate:\nRough winds do shake the darling buds of May,\nAnd summer's lease hath all too short a date;\n…\nSo long as men can breathe or eyes can see,\nSo long lives this, and this gives life to thee."],
+  ['I Wandered Lonely as a Cloud', 'William Wordsworth', 1807, "I wandered lonely as a cloud\nThat floats on high o'er vales and hills,\nWhen all at once I saw a crowd,\nA host, of golden daffodils;\nBeside the lake, beneath the trees,\nFluttering and dancing in the breeze."],
+  ['"Hope" is the thing with feathers', 'Emily Dickinson', 1891, "“Hope” is the thing with feathers –\nThat perches in the soul –\nAnd sings the tune without the words –\nAnd never stops – at all –"],
+  ['Endymion', 'John Keats', 1818, "A thing of beauty is a joy for ever:\nIts loveliness increases; it will never\nPass into nothingness; but still will keep\nA bower quiet for us, and a sleep\nFull of sweet dreams, and health, and quiet breathing."],
+  ['Auguries of Innocence', 'William Blake', 1863, "To see a World in a Grain of Sand\nAnd a Heaven in a Wild Flower,\nHold Infinity in the palm of your hand\nAnd Eternity in an hour."],
+  ['Ozymandias', 'Percy Bysshe Shelley', 1818, "And on the pedestal, these words appear:\nMy name is Ozymandias, King of Kings;\nLook on my Works, ye Mighty, and despair!\nNothing beside remains. Round the decay\nOf that colossal Wreck, boundless and bare\nThe lone and level sands stretch far away."],
+  ['Where the Mind is Without Fear', 'Rabindranath Tagore', 1912, "Where the mind is without fear\nand the head is held high;\nWhere knowledge is free;\n…\nInto that heaven of freedom, my Father,\nlet my country awake."],
+  ['Stopping by Woods on a Snowy Evening', 'Robert Frost', 1923, "The woods are lovely, dark and deep,\nBut I have promises to keep,\nAnd miles to go before I sleep,\nAnd miles to go before I sleep."],
+  ['Who Has Seen the Wind?', 'Christina Rossetti', 1872, "Who has seen the wind?\nNeither I nor you:\nBut when the leaves hang trembling,\nThe wind is passing through.\n\nWho has seen the wind?\nNeither you nor I:\nBut when the trees bow down their heads,\nThe wind is passing by."],
+  ['The Old Pond', 'Matsuo Bashō (tr. Lafcadio Hearn, 1898)', 1686, "Old pond —\nfrogs jumped in —\nsound of water."],
+  ['A Dream Within a Dream', 'Edgar Allan Poe', 1849, "Take this kiss upon the brow!\nAnd, in parting from you now,\nThus much let me avow —\nYou are not wrong, who deem\nThat my days have been a dream;\n…\nAll that we see or seem\nIs but a dream within a dream."],
+  ['There Will Come Soft Rains', 'Sara Teasdale', 1918, "There will come soft rains and the smell of the ground,\nAnd swallows circling with their shimmering sound;\n\nAnd frogs in the pools singing at night,\nAnd wild plum trees in tremulous white."],
+];
+function poemTex([title, poet, year, text]) {
+  return canvasTex(768, 1024, (g, w, h) => {
+    const pg = g.createLinearGradient(0, 0, 0, h); pg.addColorStop(0, '#fbf3df'); pg.addColorStop(1, '#efe0bf'); g.fillStyle = pg; g.fillRect(0, 0, w, h);
+    const vg = g.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, h * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(120,80,30,.22)'); g.fillStyle = vg; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#b8902e'; g.lineWidth = 3; g.strokeRect(34, 34, w - 68, h - 68); g.lineWidth = 1.5; g.strokeRect(44, 44, w - 88, h - 88);
+    g.textAlign = 'center'; g.fillStyle = '#1a0e04';
+    const font = (wt, px, it = '') => `${it}${wt} ${px}px "Cormorant Garamond", Georgia, serif`;
+    let px = 58; g.font = font(700, px); while (g.measureText(title).width > w - 140 && px > 34) { px -= 2; g.font = font(700, px); }
+    g.fillText(title, w / 2, 128);
+    g.fillStyle = '#b8902e'; g.fillRect(w / 2 - 90, 152, 180, 3);
+    // the lines, as large as fit the page
+    const lines = text.split('\n'); let lp = 46;
+    const wrapAll = () => { g.font = font(700, lp); const out = []; lines.forEach(l => { const words = l.split(' '); let cur = ''; words.forEach(wd => { const t = cur ? cur + ' ' + wd : wd; if (g.measureText(t).width > w - 140 && cur) { out.push(cur); cur = wd; } else cur = t; }); out.push(cur); }); return out; };
+    let wrapped = wrapAll(); while (wrapped.length * lp * 1.32 > h - 380 && lp > 26) { lp -= 2; wrapped = wrapAll(); }
+    g.fillStyle = '#1a0e04'; let y = 230 + Math.max(0, (h - 380 - wrapped.length * lp * 1.32) / 2);
+    wrapped.forEach(l => { g.fillText(l, w / 2, y); y += lp * 1.32; });
+    g.font = font(700, 40, 'italic '); g.fillStyle = '#3a2208'; let pp = 40; while (g.measureText(poet).width > w - 140 && pp > 24) { pp -= 2; g.font = font(600, pp, 'italic '); }
+    g.fillText(poet, w / 2, h - 132);
+    g.font = font(700, 38); g.fillStyle = '#6a4a10'; g.fillText(String(year), w / 2, h - 84);
+  });
+}
+{
+  const m = new Merge(), bays = Math.round(HALL.hl * 2 / HALL.bay), spots = [];
+  for (const side of [-1, 1]) for (let i = 2; i < bays; i += 4) spots.push({ side, z: -HALL.hl + i * HALL.bay + HALL.bay / 2 });
+  spots.forEach((sp, k) => {
+    const P = POEMS[k % POEMS.length], t = poemTex(P), pw = 4.4, ph = 5.9, x = sp.side * (HALL.hw - 0.45), y = 4.9;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshBasicMaterial({ map: t, color: '#c9bca2', fog: false }));
+    mesh.position.set(x, y, sp.z); mesh.rotation.y = -sp.side * Math.PI / 2; hall.add(mesh);
+    // a deep gilded frame, and a little lamp over it
+    const fx = sp.side * (HALL.hw - 0.38);
+    for (const [fz, fy, fw, fh] of [[sp.z, y + ph / 2 + 0.22, pw + 0.9, 0.44], [sp.z, y - ph / 2 - 0.22, pw + 0.9, 0.44], [sp.z - pw / 2 - 0.22, y, 0.44, ph], [sp.z + pw / 2 + 0.22, y, 0.44, ph]]) m.add(GEO.box, new V3(fx, fy, fz), new V3(0.3, fh, fw), GOLD);
+    m.limb(new V3(sp.side * (HALL.hw - 0.3), y + ph / 2 + 0.7, sp.z), new V3(sp.side * (HALL.hw - 1.0), y + ph / 2 + 0.55, sp.z), 0.05, 0.05, GOLD);
+    bulb(sp.side * (HALL.hw - 1.05), y + ph / 2 + 0.45, sp.z, '#fff0c8');
+  });
+  hall.add(new THREE.Mesh(m.build(), gilt));
+}
+
 /* ---------- the end walls: great paintings in gilded frames; the door out at the south end ---------- */
 {
-  const art = (seed, w, h) => canvasTex(1024, Math.round(1024 * h / w), (g, cw, ch) => { baroque(g, 0, 0, cw, ch, seed); frame(g, 14, 14, cw - 28, ch - 28, 14); });
   const end = canvasTex(512, 512, (g, w, h) => { g.fillStyle = '#ece2cc'; g.fillRect(0, 0, w, h); g.fillStyle = '#5a7a62'; g.fillRect(40, h - 90, w - 80, 60); }, true);
-  end.repeat.set(4, 1);
+  end.repeat.set(6, 1);
   const m = new Merge();
   for (const e of [-1, 1]) {
     const wall = new THREE.Mesh(new THREE.PlaneGeometry(HALL.hw * 2, HALL.wall), new THREE.MeshLambertMaterial({ map: end, emissive: '#ffffff', emissiveMap: end, emissiveIntensity: 0.3, color: '#d8ccb4', fog: false }));
     wall.position.set(0, HALL.wall / 2, e * HALL.hl); wall.rotation.y = e > 0 ? Math.PI : 0; hall.add(wall);
-    const put = (x, y, w, h, seed) => {
-      const t = art(seed, w, h), p = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: t, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: 0.35, color: '#e0d4bc', fog: false }));
+    const put = (x, y, w, h, seed, photo) => {
+      const t = artTex(1024, Math.round(1024 * h / w), (g, cw, ch) => { baroque(g, 0, 0, cw, ch, seed); }, (g, cw, ch) => { cover(g, img[photo], 0, 0, cw, ch); });
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: t, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: 0.45, color: '#e0d4bc', fog: false }));
       p.position.set(x, y, e * (HALL.hl - 0.12)); p.rotation.y = e > 0 ? Math.PI : 0; hall.add(p);
       // a deep gilded frame round it
-      for (const [fx, fy, fw, fh] of [[x, y + h / 2 + 0.25, w + 1, 0.5], [x, y - h / 2 - 0.25, w + 1, 0.5], [x - w / 2 - 0.25, y, 0.5, h], [x + w / 2 + 0.25, y, 0.5, h]]) m.add(GEO.box, new V3(fx, fy, e * (HALL.hl - 0.2)), new V3(fw, fh, 0.3), GOLD);
+      for (const [fx, fy, fw, fh] of [[x, y + h / 2 + 0.3, w + 1.2, 0.6], [x, y - h / 2 - 0.3, w + 1.2, 0.6], [x - w / 2 - 0.3, y, 0.6, h], [x + w / 2 + 0.3, y, 0.6, h]]) m.add(GEO.box, new V3(fx, fy, e * (HALL.hl - 0.2)), new V3(fw, fh, 0.35), GOLD);
     };
-    if (e < 0) put(0, 8.5, 22, 12, 61);
-    else { put(-12, 9, 9, 11, 62); put(12, 9, 9, 11, 63); }
+    if (e < 0) { put(0, 8.6, 24, 12, 61, 'sky'); put(-21, 8.6, 8, 11, 64, 'peace'); put(21, 8.6, 8, 11, 65, 'peace'); }
+    else { put(-16, 9, 13, 9, 62, 'victory'); put(16, 9, 13, 9, 63, 'sky'); }
   }
   // the door at the south end: tall, white and gold under a gilded arch
   m.add(GEO.box, new V3(0, 3.6, HALL.hl - 0.2), new V3(6, 7.2, 0.3), IVORY);
@@ -227,7 +306,7 @@ const vaultTex = canvasTex(1024, 2048, (g, w, h) => {
   pt.repeat.set(HALL.hw / 4, HALL.hl / 4);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(HALL.hw * 2, HALL.hl * 2).rotateX(-Math.PI / 2), new THREE.MeshPhongMaterial({ map: pt, color: '#c8a888', shininess: 80, specular: '#4a3a28', emissive: '#100a04', fog: false }));
   hall.add(floor);
-  for (let z = -72; z <= 72; z += 24) { const l = new THREE.PointLight('#ffe6c0', 0.5, 60, 1.5); l.position.set(0, 14, z); hall.add(l); }
+  for (let z = -72; z <= 72; z += 24) for (const x of [-14, 14]) { const l = new THREE.PointLight('#ffe6c0', 0.4, 60, 1.5); l.position.set(x, 14, z); hall.add(l); }
 }
 
 /* ---------- chandeliers: one great one in the middle, a row of lesser ones; candelabra, busts, benches ---------- */
@@ -263,7 +342,7 @@ const vaultTex = canvasTex(1024, 2048, (g, w, h) => {
     m.limb(new V3(x, 4.2, z), new V3(x, 5.0, z), 0.08, 0.08, GOLD);
     for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, r = k % 2 ? 0.7 : 0.45, cy = 5.0 + (k % 2 ? 0 : 0.35); m.limb(new V3(x, 5.0, z), new V3(x + Math.cos(a) * r, cy, z + Math.sin(a) * r), 0.04, 0.04, GOLD); m.limb(new V3(x + Math.cos(a) * r, cy, z + Math.sin(a) * r), new V3(x + Math.cos(a) * r, cy + 0.35, z + Math.sin(a) * r), 0.05, 0.05, C('#fffaf0')); bulb(x + Math.cos(a) * r, cy + 0.5, z + Math.sin(a) * r, '#ffcf80'); }
     // busts of white marble on columns between the candelabra, and a crimson bench by every other one
-    if (i < bays) {
+    if (i < bays && (i - 2) % 4 !== 0) {
       const zb = z + HALL.bay / 2, xb = s * (HALL.hw - 2.2);
       m.add(new THREE.CylinderGeometry(0.4, 0.45, 1.6, 12), new V3(xb, 0.8, zb), new V3(1, 1, 1), C('#e8e2d8'));
       m.add(GEO.sph, new V3(xb, 1.95, zb), new V3(0.42, 0.32, 0.3), C('#f2eee6'));
@@ -306,7 +385,7 @@ addTick(() => {
 }, true);
 export const hallArrive = { pos: W(0, HALL.hl - 9), yaw: 0 };
 export const castleFront = { pos: O.clone().add(new V3(CASTLE.x, 0, CASTLE.z + 17)), yaw: 0 };
-export function showHall(on) { hall.visible = on; }
+export function showHall(on) { hall.visible = on; if (on) loadArt(); }
 export const inHall = (x, z) => Math.abs(x - (O.x + HALL.x)) < HALL.hw + 4 && Math.abs(z - (O.z + HALL.z)) < HALL.hl + 4;
 
 /* ================= out at the fair: the teacups and a great drop tower ================= */

@@ -814,3 +814,6 @@ worlds.sun = {
   openDoor,
   announce: null,
 };
+
+// the layout, for the secret world's map (ui/sunMap.js)
+export const SUN_PLAN = { LAKE, FIELD, ARCH_Z, PLAZA, CAROUSEL, LAGOON, BRIDGE, CASTLE, WHEEL, CANAL, CANAL_PTS, SWING, KIOSK, DOOR, FAIR_RIDES, pathX, track: track.getSpacedPoints(120) };

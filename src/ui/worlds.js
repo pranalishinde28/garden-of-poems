@@ -11,7 +11,7 @@ import { moveFigureTo } from '../player/figure.js';
 import { setCue, showRegion, toast } from './helpers.js';
 import { late, provide } from '../core/late.js';
 
-provide({ get enterHall() { return enterHall; }, get leaveHall() { return leaveHall; }, get startRide() { return startRide; }, get enterSunWorld() { return enterSunWorld; }, get leaveSunWorld() { return leaveSunWorld; }, get setVeil() { return setVeil; } });
+provide({ get hopTo() { return hopTo; }, get enterHallFromMap() { return enterHallFromMap; }, get enterHall() { return enterHall; }, get leaveHall() { return leaveHall; }, get startRide() { return startRide; }, get enterSunWorld() { return enterSunWorld; }, get leaveSunWorld() { return leaveSunWorld; }, get setVeil() { return setVeil; } });
 
 /* ================= between worlds ================= */
 // Rowing into the light at the end of the cave behind Manai Falls carries you to the Sunflower Garden;
@@ -111,3 +111,12 @@ function leaveHall() {
   if (state.mode !== 'walk') return;
   cross('Back out under the sky…', () => { showHall(false); place(castleFront.pos, castleFront.yaw); });
 }
+
+/* ================= from the secret world's map: a quick fade to the chosen place ================= */
+function hopTo(pos, yaw, name) {
+  if (state.world !== 'sun') return;
+  state.mode = 'cinematic'; setCue(null); veil.querySelector('.t').textContent = name || ''; veil.hidden = false;
+  requestAnimationFrame(() => veil.classList.add('on'));
+  setTimeout(() => { showHall(false); place(pos, yaw); state.mode = 'walk'; setTimeout(() => { veil.classList.remove('on'); setTimeout(() => { if (!veil.classList.contains('on')) veil.hidden = true; }, 1800); }, 300); }, 1300);
+}
+function enterHallFromMap() { if (state.world !== 'sun') return; state.mode = 'walk'; enterHall(); }

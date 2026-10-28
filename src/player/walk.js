@@ -14,11 +14,14 @@ import { board } from '../settings/customize.js';
 import { tmpV } from '../world/atmosphere.js';
 import { fireFlurry } from '../world/particles.js';
 import { T } from '../core/state.js';
-import { things } from '../core/things.js';
+import { addTick, things } from '../core/things.js';
 import { getAvatar } from './figure.js';
 import { figureMetrics } from './avatar.js';
 import { clamp, isTouch } from '../core/util.js';
 import { state } from '../core/state.js';
+import { $ } from '../core/util.js';
+import { provide } from '../core/late.js';
+import { toast } from '../ui/helpers.js';
 
 // a bird takes off on one press of Space (or the touch button) and lands on the next
 export function toggleFlight() { player.upAt = T; if (!player.flying) { player.flying = true; player.cruise = Math.max(player.alt, 6); } else player.flying = false; }
@@ -26,6 +29,19 @@ addEventListener('keydown', e => { if (e.code === 'Space' && !e.repeat && state.
 // the touch button for flying or pouncing holds this, like Space
 export let flyHeld = false;
 export const setFlyHeld = v => { flyHeld = v; };
+/* running: a toggle, so you need not hold a key. Tap Shift, or press the Run button (bottom left); on a
+   phone, pushing the joystick right to its edge runs too. Holding Shift while walking still runs. */
+state.run = false;
+const runBtn = $('#run-btn');
+export function toggleRun(on = !state.run) {
+  state.run = on; runBtn.setAttribute('aria-pressed', String(on)); runBtn.querySelector('.t').textContent = on ? 'Running' : 'Walking';
+  try { if (!localStorage.getItem('garden-of-poems:ran')) { localStorage.setItem('garden-of-poems:ran', '1'); toast(on ? 'Running. Tap Shift again, or the button, to walk.' : 'Walking.', 3200); } } catch (e) { /* storage may be off */ }
+}
+runBtn.onclick = () => { toggleRun(); runBtn.blur(); };
+provide({ get toggleRun() { return toggleRun; } });
+// the button shows only while you are walking about
+let wasWalking = null;
+addTick(() => { const w = state.mode === 'walk'; if (w !== wasWalking) { wasWalking = w; document.body.classList.toggle('walking', w); } }, true);
 export function walk(dt) {
   let ix = 0, iz = 0;
   if (keys.has('KeyW') || keys.has('ArrowUp')) iz += 1;
@@ -36,7 +52,7 @@ export function walk(dt) {
   const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
   // each kind moves as it would: a cat is quick and can pounce (Space); a bird hops on the ground and
   // flies while Space is held, gliding down when it is let go, over hedges and roofs
-  const av = getAvatar(), kind = av.kind, fast = keys.has('ShiftLeft') || keys.has('ShiftRight');
+  const av = getAvatar(), kind = av.kind, fast = keys.has('ShiftLeft') || keys.has('ShiftRight') || state.run || jv.n > 0.94;
   player.alt = player.alt || 0; player.vy = player.vy || 0;
   const up = keys.has('Space') || flyHeld;
   if (kind === 'bird') {

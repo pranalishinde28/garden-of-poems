@@ -708,7 +708,7 @@ body.panel-open #visitbar{opacity:0;pointer-events:none}
 #spray{position:fixed;inset:0;z-index:8;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.55),rgba(236,246,248,.92));transition:opacity .15s}
 #boatui .sw-hint,#rideui .sw-hint{opacity:.8}
 @media (max-width:1100px){#boatui .sw-hint,#rideui .sw-hint{display:none}}
-body.otherworld #h-write,body.otherworld #h-gardens,body.otherworld #h-home,body.otherworld #h-map,body.otherworld #minimap-btn,body.otherworld #minimap-show,body.otherworld #minimap-hide,body.otherworld #h-view-horizon,body.otherworld #h-home-garden{display:none!important}
+body.otherworld #h-write,body.otherworld #h-gardens,body.otherworld #h-home,body.otherworld #minimap-btn,body.otherworld #minimap-show,body.otherworld #minimap-hide,body.otherworld #h-view-horizon,body.otherworld #h-home-garden{display:none!important}
 
 /* the guide: tabs, then grids of cards and keys */
 #helpsheet{width:min(900px,94vw)}
@@ -747,3 +747,32 @@ body.otherworld #h-write,body.otherworld #h-gardens,body.otherworld #h-home,body
 #intro .alt{display:block;font-size:clamp(.95rem,3.6vw,1.3rem);padding:.4rem 1rem .5rem;margin-top:.7rem;text-decoration:none}
 #intro .enter:hover,#intro .alt:hover{background:rgba(34,48,38,.85);color:#fffaf0}
 @media (pointer:coarse){#intro .alt,#intro .enter{min-height:44px;padding-top:.45rem;padding-bottom:.5rem}}
+
+/* walk or run: a pill at the bottom left (above the joystick on touch screens) */
+#run-btn{position:fixed;left:calc(env(safe-area-inset-left,0px) + 18px);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);z-index:9;display:none;align-items:center;gap:.5rem;padding:.45rem .9rem .5rem .7rem;border-radius:999px;background:var(--paper);color:var(--ink);border:1px solid rgba(120,92,60,.4);font-size:1.05rem;font-weight:600;box-shadow:var(--shadow);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);cursor:pointer}
+#run-btn svg{width:1.3rem;height:1.3rem;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#run-btn kbd{font-family:var(--serif);font-size:.82rem;border:1px solid var(--line);border-radius:5px;padding:0 .35rem;opacity:.75}
+#run-btn[aria-pressed="true"]{background:#2f5a3a;color:#fffaf0;border-color:#2f5a3a}
+#run-btn[aria-pressed="true"] kbd{border-color:rgba(255,250,240,.5)}
+body.walking #run-btn{display:inline-flex}
+body.panel-open #run-btn{opacity:0;pointer-events:none}
+@media (pointer:coarse){#run-btn{bottom:calc(env(safe-area-inset-bottom,0px) + 160px);left:calc(env(safe-area-inset-left,0px) + 30px)}}
+/* the secret world's map */
+#sunmap{left:50%;top:50%;width:min(720px,94vw);max-height:92vh;overflow:auto;transform:translate(-50%,-47%);border-radius:6px;padding:1.4rem 1.6rem 1.2rem}
+#sunmap.open{transform:translate(-50%,-50%)}
+#sunmap h2{margin:0;font-style:italic;font-weight:600;font-size:1.9rem}
+#sunmap .sm-sub{margin:.2rem 0 .8rem;color:var(--ink-soft);font-style:italic}
+.sm-stage{position:relative;width:100%;aspect-ratio:800/1040;max-height:72vh;margin:0 auto}
+.sm-stage canvas{width:100%;height:100%;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(120,92,60,.3)}
+#sm-marks{position:absolute;inset:0}
+.sm-place{position:absolute;transform:translate(-12px,-50%);display:flex;align-items:center;gap:.35rem;background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.sm-place .dot{width:18px;height:18px;border-radius:50%;background:#2f5a3a;border:3px solid #fffaf0;box-shadow:0 2px 6px rgba(0,0,0,.35);flex:0 0 auto}
+.sm-place .t{background:rgba(255,250,240,.92);border:1px solid rgba(120,92,60,.35);border-radius:8px;padding:.1rem .45rem .15rem;line-height:1.15;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.sm-place em{display:block;font-style:normal;font-weight:700;font-size:.98rem;color:#2a1a0c;white-space:nowrap}
+.sm-place small{display:block;font-style:italic;font-size:.8rem;color:#6a5a44;white-space:nowrap}
+.sm-place:hover .dot,.sm-place:focus-visible .dot{background:#a8232e}
+.sm-me{position:absolute;color:#a8232e;font-size:1.4rem;text-shadow:0 0 4px #fff;pointer-events:none}
+@media (max-width:640px){.sm-place small{display:none}.sm-place em{font-size:.85rem}}
+.sm-place.side-l{flex-direction:row-reverse;transform:translate(calc(-100% + 12px),-50%);text-align:right}
+.sm-place.side-b{flex-direction:column;transform:translate(-50%,-12px);text-align:center}
+.sm-place.side-t{flex-direction:column-reverse;transform:translate(-50%,calc(-100% + 12px));text-align:center}

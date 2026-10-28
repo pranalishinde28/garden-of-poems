@@ -292,6 +292,8 @@ async function main() {
       await page.evaluate(() => { const g = window.__garden, p = g.worlds.sun.arrive.pos; }); 
       await page.evaluate(() => { const g = window.__garden; g.player.yaw = 0; g.player.pitch = 1.0; }); await sleep(1200); await shot('vault');
       await page.evaluate(() => { const g = window.__garden; g.player.yaw = -1.2; g.player.pitch = 0.1; }); await sleep(1000); await shot('mirrors');
+      await page.evaluate(() => { const g = window.__garden, p = g.camera.position; g.player.pos.set(p.x - 24, 0, p.z - 19); g.player.yaw = Math.PI / 2; g.player.pitch = 0.08; }); await sleep(1500); await shot('poem');
+      await page.evaluate(() => { const g = window.__garden, p = g.camera.position; g.player.pos.set(p.x + 24, 0, p.z + 19); }); await sleep(800);
       await page.evaluate(() => { const g = window.__garden, p = g.camera.position; g.player.pos.set(p.x, 0, p.z - 70); g.player.yaw = 0; g.player.pitch = 0.05; }); await sleep(1200); await shot('north');
       await page.evaluate(() => { const g = window.__garden, p = g.camera.position; g.player.pos.set(p.x, 0, p.z + 119); g.player.yaw = Math.PI; }); await sleep(300); await page.keyboard.down('KeyW'); await sleep(1500); await page.keyboard.up('KeyW'); await sleep(2500); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }); await sleep(2600); await shot('out');
       const outside = await page.evaluate(() => window.__garden.camera.position.y > -20);
@@ -305,6 +307,26 @@ async function main() {
         if (k !== 'drop' || wait === 3000) { await page.click('#ride-off'); await sleep(700); }
       } console.log(`  walked in, rides all started; walked back out: ${outside}`); if (!outside) errors.push('walking to the door did not take you out');
       if (!/castle/i.test(cue)) errors.push('no castle cue at the gate');
+    }
+    else if (FLOW === 'sunmap') { // the secret world's map: open with M, go to the drop tower, then the Hall of Mirrors; and running
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); });
+      // running: tap Shift, walk, compare speed
+      const speed = async () => { const a = await page.evaluate(() => ({ x: window.__garden.player.pos.x, z: window.__garden.player.pos.z })); await page.keyboard.down('KeyW'); await sleep(1500); await page.keyboard.up('KeyW'); const b = await page.evaluate(() => ({ x: window.__garden.player.pos.x, z: window.__garden.player.pos.z })); return Math.hypot(b.x - a.x, b.z - a.z); };
+      const walked = await speed(); await page.keyboard.press('ShiftLeft'); await sleep(300); const ran = await speed();
+      const runOn = await page.evaluate(() => window.__garden.state.run); await page.screenshot({ path: join(root, 'dev/shots/run-btn.png') });
+      console.log(`  walked ${walked.toFixed(1)} m, ran ${ran.toFixed(1)} m in the same time; run is ${runOn}`); if (!runOn || ran < walked * 1.4) errors.push('tapping Shift did not make you run');
+      await page.keyboard.press('ShiftLeft'); await sleep(300);
+      await page.evaluate(() => window.__garden.late.enterSunWorld()); await page.waitForFunction(() => window.__garden.state.world === 'sun' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 }); await sleep(2500);
+      await page.keyboard.press('KeyM'); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/sunmap.png') });
+      const n = await page.$$eval('#sm-marks .sm-place', b => b.length); if (n < 10) errors.push('the secret map has too few places: ' + n);
+      await page.evaluate(() => [...document.querySelectorAll('#sm-marks .sm-place')].find(b => /drop tower/i.test(b.textContent)).click());
+      await sleep(3500); await page.screenshot({ path: join(root, 'dev/shots/sunmap-went.png') });
+      const cue = await page.$eval('#cue', e => e.textContent.trim()); if (!/drop tower/i.test(cue)) errors.push('the map did not take you to the drop tower: ' + cue);
+      await page.keyboard.press('KeyM'); await sleep(1200);
+      await page.evaluate(() => [...document.querySelectorAll('#sm-marks .sm-place')].find(b => /Hall of Mirrors/i.test(b.textContent)).click());
+      await sleep(4500); const inside = await page.evaluate(() => window.__garden.camera.position.y < -50);
+      console.log(`  map places: ${n}; at the tower the cue says "${cue}"; Hall of Mirrors from the map: ${inside}`); if (!inside) errors.push('the map did not take you into the hall');
     }
     else if (FLOW === 'secret') { // the map's secret garden goes straight to the Sunflower Garden
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });

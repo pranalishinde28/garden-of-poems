@@ -226,7 +226,8 @@ export function closeMap(restore = true) {
   if (restore && state.mode === 'map') state.mode = prevMode;
   if (restore && openedFrom && openedFrom.focus) openedFrom.focus({ preventScroll: true });
 }
-export const toggleMap = () => view.hidden ? openMap() : closeMap();
+// in the secret world the map is that world's own (ui/sunMap.js)
+export const toggleMap = () => state.world === 'sun' ? late.toggleSunMap && late.toggleSunMap() : view.hidden ? openMap() : closeMap();
 provide({ get toggleMap() { return toggleMap; } });
 
 // ---- gliding to a place: lift, drift, settle ----
