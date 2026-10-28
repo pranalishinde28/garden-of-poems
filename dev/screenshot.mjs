@@ -97,6 +97,8 @@ const VIEWS = {
   'gorge-walk': { pos: [58, 2.1, 7], look: [110, -2, 13.2], season: 'spring' },
   'gorge-sunset': { pos: [62, 2.6, 8], look: [140, 14, 16], season: 'spring', light: 'sunset' },
   'gorge-mid': { pos: [66, 2.2, 6], look: [140, 14, 18], season: 'spring' },
+  'sign-big': { pos: [90, 6, -0.5], look: [102.6, 9, 0.2], season: 'spring' },
+  'sign-mid': { pos: [62, 4, 2], look: [102.6, 8, 0.2], season: 'spring' },
   'gorge-far2': { pos: [45, 2.1, 2], look: [110, 0, 13.2], season: 'spring' },
   'gorge-far3': { pos: [40, 2.1, 20], look: [110, 0, 10], season: 'spring' },
   'edge-night': { pos: [20, 14, 20], look: [-30, 0, -40], season: 'spring', light: 'night' },
@@ -265,6 +267,82 @@ async function main() {
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(900); await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await page.keyboard.press('KeyH'); await sleep(1200);
       for (const t of ['move', 'do', 'keys', 'read']) { await page.click('#ht-' + t); await sleep(500); await page.screenshot({ path: join(root, `dev/shots/help-${t}.png`) }); }
+    }
+    else if (FLOW === 'castle') { // the secret world, the castle's gate, the hall inside, every ride, and out again
+      const shot = async n => { await sleep(400); await page.screenshot({ path: join(root, `dev/shots/castle-${n}.png`) }); };
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); window.__garden.late.enterSunWorld(); });
+      await page.waitForFunction(() => window.__garden.state.world === 'sun' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 });
+      await sleep(2500);
+      await page.evaluate(() => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + 1, 0, O.z - 34.8 - 136); g.player.yaw = 0; g.player.pitch = 0.12; });
+      // walk straight into the gate: no prompt, it takes you in
+      await page.keyboard.down('KeyW'); await sleep(2500); await page.keyboard.up('KeyW'); const cue = 'castle';
+      await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.player.pos.y < -50 || window.__garden.camera.position.y < -50, { timeout: 20000, polling: 300 }).catch(() => {});
+      await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }); await sleep(2600); await shot('inside');
+      const inside = await page.evaluate(() => window.__garden.camera.position.y < -50); if (!inside) errors.push('walking into the gate did not take you inside');
+      await page.evaluate(() => { const g = window.__garden; g.player.yaw = 0.6; g.player.pitch = 0.12; }); await sleep(1000); await shot('inside2');
+      await page.evaluate(() => { const g = window.__garden; g.player.yaw = -0.7; g.player.pitch = 0.1; }); await sleep(1000); await shot('inside3');
+      for (const k of []) {
+        await page.evaluate(k => { const g = window.__garden, r = g.rides.find(r => r.key === k); g.late.startRide(r); }, k);
+        if (k === 'bumper') { await page.keyboard.down('KeyW'); await sleep(2500); await page.keyboard.up('KeyW'); } else await sleep(k === 'drop' ? 6000 : 2500);
+        await page.screenshot({ path: join(root, `dev/shots/castle-ride-${k}.png`) });
+        const m = await page.evaluate(() => window.__garden.state.mode); if (m !== 'ride') errors.push('ride ' + k + ' did not start');
+        await page.click('#ride-off'); await sleep(700);
+      }
+      await page.evaluate(() => { const g = window.__garden, p = g.worlds.sun.arrive.pos; }); 
+      await page.evaluate(() => { const g = window.__garden; g.player.yaw = 0; g.player.pitch = 1.0; }); await sleep(1200); await shot('vault');
+      await page.evaluate(() => { const g = window.__garden; g.player.yaw = -1.2; g.player.pitch = 0.1; }); await sleep(1000); await shot('mirrors');
+      // a poem on the wall, from the middle of the hall and close up; the curtains between them; reading one
+      const back = await page.evaluate(() => { const p = window.__garden.player.pos; return { x: p.x, z: p.z }; });
+      const sp = await page.evaluate(() => window.__garden.POEM_SPOTS);
+      if (sp.length < 22) errors.push('only ' + sp.length + ' poems on the walls');
+      const s0 = sp.find(s => s.k === 9) || sp[0], cx = (sp[0].x + sp[sp.length - 1].x) / 2;
+      await page.evaluate((x, z) => { const g = window.__garden; g.player.pos.set(x, 0, z); g.player.yaw = Math.PI / 2; g.player.pitch = 0.1; }, cx, s0.z); await sleep(1500); await shot('poem-far');
+      await page.evaluate((x, z) => { const g = window.__garden; g.player.pos.set(x, 0, z); g.player.yaw = Math.PI / 2; g.player.pitch = 0.12; }, cx - (cx - s0.x) * 0.1, s0.z + 8); await sleep(1500); await shot('curtains');
+      await page.evaluate((x, z) => { const g = window.__garden; g.player.pos.set(x, 0, z); g.player.yaw = Math.PI / 2; g.player.pitch = 0.22; }, (s0.x + cx) / 2, s0.z); await sleep(1500); await shot('poem'); await page.evaluate((x, z) => { window.__garden.player.pos.set(x, 0, z); }, s0.x, s0.z); await sleep(900);
+      const pcue = await page.$eval('#cue', e => e.textContent.trim()); await page.keyboard.press('KeyE'); await sleep(1200); await shot('poem-read');
+      const ptitle = await page.$eval('#wp-title', e => e.textContent); await page.keyboard.press('ArrowRight'); await sleep(300); const ptitle2 = await page.$eval('#wp-title', e => e.textContent);
+      console.log(`  poem cue "${pcue}"; reads "${ptitle}", then "${ptitle2}"`); if (!/read/i.test(pcue) || !ptitle || ptitle === ptitle2) errors.push('reading a wall poem did not work');
+      await page.keyboard.press('Escape'); await sleep(900);
+      await page.evaluate(b => { const g = window.__garden; g.player.pos.set(b.x, 0, b.z); g.player.yaw = 0; }, back); await sleep(800);
+      await page.evaluate(() => { const g = window.__garden, p = g.camera.position; g.player.pos.set(p.x, 0, p.z - 70); g.player.yaw = 0; g.player.pitch = 0.05; }); await sleep(1200); await shot('north');
+      await page.evaluate(() => { const g = window.__garden, p = g.camera.position; g.player.pos.set(p.x, 0, p.z + 119); g.player.yaw = Math.PI; }); await sleep(300); await page.keyboard.down('KeyW'); await sleep(1500); await page.keyboard.up('KeyW'); await sleep(2500); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }); await sleep(2600); await shot('out');
+      const outside = await page.evaluate(() => window.__garden.camera.position.y > -20);
+      // out at the fair: the drop tower and the teacups, seen and ridden
+      const lookAt = async (n, x, z, yaw, pitch) => { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + x, 0, O.z - 34.8 + z); g.player.yaw = yaw; g.player.pitch = pitch; }, x, z, yaw, pitch); await sleep(1500); await shot(n); };
+      await lookAt('tower', -2, -50, -1.03, 0.32); await lookAt('teacups', -18, -40, 1.6, 0.05);
+      await lookAt('carousel', 0, -49.5, 0, 0.12); await lookAt('carousel-near', 7.5, -55.5, 0.8, 0.18); await lookAt('wheel', 0, -64, 0.6, 0.25);
+      await page.evaluate(() => { const g = window.__garden; g.late.startRide(g.rides.find(r => r.key === 'carousel')); }); await sleep(3500); await page.screenshot({ path: join(root, 'dev/shots/castle-ride-carousel.png') }); await page.click('#ride-off'); await sleep(700);
+      for (const [k, wait] of [['teacups', 2500], ['drop', 17500], ['drop', 3000]]) {
+        if (!(k === 'drop' && wait === 3000)) { await page.evaluate(k => { const g = window.__garden, r = g.rides.find(r => r.key === k); g.late.startRide(r); }, k); }
+        await sleep(wait); await page.screenshot({ path: join(root, `dev/shots/castle-ride-${k}${wait === 3000 ? '-fall' : ''}.png`) });
+        if (await page.evaluate(() => window.__garden.state.mode) !== 'ride') errors.push('ride ' + k + ' did not start');
+        if (k !== 'drop' || wait === 3000) { await page.click('#ride-off'); await sleep(700); }
+      } console.log(`  walked in, rides all started; walked back out: ${outside}`); if (!outside) errors.push('walking to the door did not take you out');
+      if (!/castle/i.test(cue)) errors.push('no castle cue at the gate');
+    }
+    else if (FLOW === 'sunmap') { // the secret world's map: open with M, go to the drop tower, then the Hall of Mirrors; and running
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); });
+      // running: tap Shift, walk, compare speed
+      const speed = async () => { const a = await page.evaluate(() => ({ x: window.__garden.player.pos.x, z: window.__garden.player.pos.z })); await page.keyboard.down('KeyW'); await sleep(1500); await page.keyboard.up('KeyW'); const b = await page.evaluate(() => ({ x: window.__garden.player.pos.x, z: window.__garden.player.pos.z })); return Math.hypot(b.x - a.x, b.z - a.z); };
+      const walked = await speed(); await page.keyboard.press('ShiftLeft'); await sleep(300); const ran = await speed();
+      const runOn = await page.evaluate(() => window.__garden.state.run); await page.screenshot({ path: join(root, 'dev/shots/run-btn.png') });
+      console.log(`  walked ${walked.toFixed(1)} m, ran ${ran.toFixed(1)} m in the same time; run is ${runOn}`); if (!runOn || ran < walked * 1.4) errors.push('tapping Shift did not make you run');
+      await page.keyboard.press('ShiftLeft'); await sleep(300); const sprinted = await speed(); const pace = await page.evaluate(() => window.__garden.state.pace);
+      await page.screenshot({ path: join(root, 'dev/shots/sprint-btn.png') });
+      console.log(`  sprinted ${sprinted.toFixed(1)} m; pace ${pace}`); if (pace !== 2 || sprinted < ran * 1.4) errors.push('a second tap of Shift did not sprint');
+      await page.keyboard.press('ShiftLeft'); await sleep(300); if (await page.evaluate(() => window.__garden.state.pace) !== 0) errors.push('a third tap of Shift did not go back to walking');
+      await page.evaluate(() => window.__garden.late.enterSunWorld()); await page.waitForFunction(() => window.__garden.state.world === 'sun' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 }); await sleep(2500);
+      await page.keyboard.press('KeyM'); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/sunmap.png') });
+      const n = await page.$$eval('#sm-marks .sm-place', b => b.length); if (n < 10) errors.push('the secret map has too few places: ' + n);
+      await page.evaluate(() => [...document.querySelectorAll('#sm-marks .sm-place')].find(b => /drop tower/i.test(b.textContent)).click());
+      await sleep(3500); await page.screenshot({ path: join(root, 'dev/shots/sunmap-went.png') });
+      const cue = await page.$eval('#cue', e => e.textContent.trim()); if (!/drop tower/i.test(cue)) errors.push('the map did not take you to the drop tower: ' + cue);
+      await page.keyboard.press('KeyM'); await sleep(1200);
+      await page.evaluate(() => [...document.querySelectorAll('#sm-marks .sm-place')].find(b => /Hall of Mirrors/i.test(b.textContent)).click());
+      await sleep(4500); const inside = await page.evaluate(() => window.__garden.camera.position.y < -50);
+      console.log(`  map places: ${n}; at the tower the cue says "${cue}"; Hall of Mirrors from the map: ${inside}`); if (!inside) errors.push('the map did not take you into the hall');
     }
     else if (FLOW === 'secret') { // the map's secret garden goes straight to the Sunflower Garden
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });

@@ -1,6 +1,7 @@
 import { $, V3 } from '../core/util.js';
 import { addTick } from '../core/things.js';
-import { isTyping } from './input.js';
+import { isTyping, jv, keys } from './input.js';
+import { castleFront, hallArrive, showHall } from '../world/castleHall.js';
 import { state } from '../core/state.js';
 import { camera, renderer, scene, view } from '../world/renderer.js';
 import { worlds } from '../core/worlds.js';
@@ -10,7 +11,7 @@ import { moveFigureTo } from '../player/figure.js';
 import { setCue, showRegion, toast } from './helpers.js';
 import { late, provide } from '../core/late.js';
 
-provide({ get startRide() { return startRide; }, get enterSunWorld() { return enterSunWorld; }, get leaveSunWorld() { return leaveSunWorld; }, get setVeil() { return setVeil; } });
+provide({ get hopTo() { return hopTo; }, get enterHallFromMap() { return enterHallFromMap; }, get enterHall() { return enterHall; }, get leaveHall() { return leaveHall; }, get startRide() { return startRide; }, get enterSunWorld() { return enterSunWorld; }, get leaveSunWorld() { return leaveSunWorld; }, get setVeil() { return setVeil; } });
 
 /* ================= between worlds ================= */
 // Rowing into the light at the end of the cave behind Manai Falls carries you to the Sunflower Garden;
@@ -35,7 +36,7 @@ function cross(words, swap, after) {
   }, 2000);
 }
 
-worlds.sun.announce = () => showRegion({ name: 'The Starlight Fair', sub: 'Ride the wheel, the carousel, the coaster, the swings and the storybook boats. Fireworks at the striped kiosk.' });
+worlds.sun.announce = () => showRegion({ name: 'The Starlight Fair', sub: 'The wheel, the carousel, the coaster, the swings, the teacups, the drop tower and the storybook boats. Fireworks at the striped kiosk.' });
 function enterSunWorld() {
   cross('The light beyond the falls…', () => {
     late.mooreBoat && late.mooreBoat(); setVeil(0);
@@ -49,7 +50,7 @@ function leaveSunWorld() {
   if (state.world !== 'sun' || state.mode !== 'walk') return;
   state.mode = 'cinematic'; setCue(null); worlds.sun.openDoor();
   setTimeout(() => cross('Home again…', () => {
-    worlds.sun.leave(); view.scene = scene; state.world = 'garden'; document.body.classList.remove('otherworld');
+    worlds.sun.leave(); showHall(false); view.scene = scene; state.world = 'garden'; document.body.classList.remove('otherworld');
     moveFigureTo(scene); renderer.setClearColor(scene.fog.color);
     // at the lookout, facing back into the garden
     place(LOOKOUT, Math.atan2(LOOKOUT.x, LOOKOUT.z));
@@ -75,11 +76,13 @@ function startRide(r) {
 function stopRide() {
   if (state.mode !== 'ride' || !ride) return;
   rideUI.classList.remove('show'); setTimeout(() => { if (!rideUI.classList.contains('show')) rideUI.hidden = true; }, 500);
-  const e = ride.exit, c = new V3(); ride.seat(c);
+  const e = ride.exit, c = new V3(); ride.seat(c); ride.leave && ride.leave();
   place(e, Math.atan2(e.x - c.x, e.z - c.z)); ride = null; state.mode = 'walk';
 }
 addTick(dt => {
   if (state.mode !== 'ride' || !ride) return;
+  // a ride you drive (the bumper cars) reads the keys or the joystick
+  if (ride.drive) { let ix = jv.x, iz = jv.y; if (keys.has('KeyW') || keys.has('ArrowUp')) iz += 1; if (keys.has('KeyS') || keys.has('ArrowDown')) iz -= 1; if (keys.has('KeyA') || keys.has('ArrowLeft')) ix -= 1; if (keys.has('KeyD') || keys.has('ArrowRight')) ix += 1; ride.ix = Math.max(-1, Math.min(1, ix)); ride.iz = Math.max(-1, Math.min(1, iz)); }
   ride.seat(seat); camera.position.copy(seat);
   if (ride.fwd) { ride.fwd(fwd); curLook.copy(seat).addScaledVector(fwd, 10); curLook.y -= 0.35; camera.lookAt(curLook); }
   else {
@@ -97,3 +100,23 @@ addEventListener('keydown', e => {
   if (state.mode !== 'ride' || isTyping(e)) return;
   if (e.code === 'Escape' || e.code === 'KeyE') { e.preventDefault(); e.stopImmediatePropagation(); stopRide(); }
 }, true);
+
+/* ================= into the castle and out again ================= */
+function enterHall() {
+  if (state.world !== 'sun' || state.mode !== 'walk') return;
+  cross('Through the castle doors…', () => { showHall(true); place(hallArrive.pos, hallArrive.yaw); },
+    () => showRegion({ name: 'The Hall of Mirrors', sub: 'Walk the gallery. The door at the far end leads back out to the fair.' }));
+}
+function leaveHall() {
+  if (state.mode !== 'walk') return;
+  cross('Back out under the sky…', () => { showHall(false); place(castleFront.pos, castleFront.yaw); });
+}
+
+/* ================= from the secret world's map: a quick fade to the chosen place ================= */
+function hopTo(pos, yaw, name) {
+  if (state.world !== 'sun') return;
+  state.mode = 'cinematic'; setCue(null); veil.querySelector('.t').textContent = name || ''; veil.hidden = false;
+  requestAnimationFrame(() => veil.classList.add('on'));
+  setTimeout(() => { showHall(false); place(pos, yaw); state.mode = 'walk'; setTimeout(() => { veil.classList.remove('on'); setTimeout(() => { if (!veil.classList.contains('on')) veil.hidden = true; }, 1800); }, 300); }, 1300);
+}
+function enterHallFromMap() { if (state.world !== 'sun') return; state.mode = 'walk'; enterHall(); }

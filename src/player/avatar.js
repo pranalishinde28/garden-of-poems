@@ -299,7 +299,7 @@ function applyPose(fig) {
 // ease the figure toward a pose; speed is in m/s for the walk cycle
 export function animateAvatar(fig, kind, dt, t, a = {}) {
   if (fig.creature) { animateCreature(fig, kind, dt, t, a); return; }
-  if (kind === 'walk') { fig.phase += dt * a.speed / 0.4; if (a.speed < 0.25) kind = 'idle'; } // short legs, quicker steps
+  if (kind === 'walk') { fig.phase += dt * (a.speed > 5.2 ? 5.2 + (a.speed - 5.2) * 0.45 : a.speed) / 0.4; if (a.speed < 0.25) kind = 'idle'; } // short legs, quicker steps
   const tp = target(fig, kind, t, a), k = 1 - Math.exp(-dt * (kind === 'walk' || kind === 'swing' ? 14 : 6));
   for (const key in tp) fig.pose[key] += (tp[key] - fig.pose[key]) * k;
   applyPose(fig);

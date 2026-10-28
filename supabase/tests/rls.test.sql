@@ -120,7 +120,8 @@ select is((select likes from poem_likes_for('00000000-0000-0000-0000-0000000000a
 select is((select mine from poem_likes_for('00000000-0000-0000-0000-0000000000a1') where poem_id = 'open'), true, 'and says whether one is yours');
 select is((select count(*) from public.poem_likes), 1::bigint, 'a visitor sees only their own hearts in the table');
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
-select throws_ok($$insert into public.poem_likes (garden_owner, poem_id, liker) values ('00000000-0000-0000-0000-0000000000a1', 'open', '00000000-0000-0000-0000-0000000000a1')$$, '42501', null, 'no hearts on your own poem');
+select lives_ok($$insert into public.poem_likes (garden_owner, poem_id, liker) values ('00000000-0000-0000-0000-0000000000a1', 'open', '00000000-0000-0000-0000-0000000000a1')$$, 'a poet may heart their own poem');
+select lives_ok($$delete from public.poem_likes where garden_owner = auth.uid() and liker = auth.uid()$$, 'and take that heart back');
 select is((select count(*) from public.poem_likes where garden_owner = auth.uid()), 2::bigint, 'the poet sees who hearted their poems');
 select pg_temp.as_anon();
 select is((select likes from poem_likes_for('00000000-0000-0000-0000-0000000000a1') where poem_id = 'open'), 2, 'anonymous visitors see the count');

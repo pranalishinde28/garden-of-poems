@@ -196,8 +196,13 @@ await step('Ada sees the hearts and notes on her poem', async () => { if (LEGACY
   const said = await pa.$eval('#r-likes', e => e.textContent), notes = await pa.$$eval('#r-notes-list .n-row', r => r.length);
   if (!/1 person/.test(said)) throw new Error('said: ' + said);
   await pa.screenshot({ path: join(root, 'dev/shots/card-poet.png') });
+  // the poet can heart her own poem too
+  await pa.click('#r-heart'); await sleep(2000);
+  const own = await pa.$eval('#r-likes', e => e.textContent);
+  if (!/You and 1 other/.test(own)) throw new Error('after hearting her own poem: ' + own);
+  await pa.click('#r-heart'); await sleep(1500);
   await pa.evaluate(() => document.querySelector('#r-close')?.click()); await sleep(900);
-  return `"${said}", ${notes} notes shown`;
+  return `"${said}", ${notes} notes shown; hearting her own: "${own}"`;
 });
 await step('Ada hides a note from visitors', async () => { if (LEGACY) return skip();
   await pa.evaluate(id => { const g = window.__garden; g.openPoem(g.plants.get(id)); }, p2); await sleep(2500);
