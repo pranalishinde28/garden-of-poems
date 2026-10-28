@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { C, V3, clamp, rng, smooth } from '../core/util.js';
+import { C, V3, rng, smooth } from '../core/util.js';
 import { T, state } from '../core/state.js';
 import { canvasTex } from './textures.js';
 import { GEO, Merge } from './geometry.js';
@@ -7,328 +7,284 @@ import { worlds } from '../core/worlds.js';
 import { addTick, regThing } from '../core/things.js';
 import { late } from '../core/late.js';
 import { player } from '../player/camera.js';
-import { CASTLE, O, rides, sunScene } from './sunWorld.js';
+import { CASTLE, FAIR_RIDES, O, rides, sunH, sunScene } from './sunWorld.js';
 
-/* ================= the Hall of Mirrors, inside the castle ================= */
-// Walk through the castle's gate and you are inside: a long gilded gallery after the Hall of Mirrors at
-// Versailles. Arched mirrors face arched windows between rose-marble pilasters, a gold cornice carries a
-// painted barrel vault framed in gold, crystal chandeliers hang down the middle and golden candelabra stand
-// along the walls, over a parquet floor. Down the gallery are rides you can take, in gold, ivory, crimson and
-// royal blue: teacups, a drop tower, a balloon carousel, a royal train round the hall, and bumper cars you
-// drive. It is part of the secret world's scene, far below and away from the fair, shown only while you are
+/* ================= the Hall of Mirrors, inside the castle; and two rides out at the fair ================= */
+// Walk through the castle's gate and you are inside a great gilded gallery after the Hall of Mirrors at
+// Versailles: arched mirrors (west) face arched windows (east) between pilasters of red-veined marble with
+// gilded capitals, each arch framed in gold under a gilded trophy; a gilded cornice carries a barrel vault
+// painted as a baroque sky, golden light breaking through clouds and figures in rose, blue and gold drapery;
+// crystal chandeliers hang down the middle round one great chandelier; gilded candelabra, marble busts and
+// framed paintings stand along the walls over a parquet floor. Nothing to ride in here: it is a place to walk.
+// The teacups and the drop tower stand outside at the fair (the end of this file).
+// The hall is part of the secret world's scene, far below and away from the fair, shown only while you are
 // inside; you walk in through the castle's gate and out through the gallery's door, no prompts.
 
 const R = rng(9191);
-export const HALL = { x: 420, z: -60, y: -90, hw: 16, hl: 60, wall: 13, vault: 16 };
+export const HALL = { x: 420, z: -60, y: -90, hw: 22, hl: 88, wall: 17, vault: 22, rise: 0.62, bay: 8 };
 const hall = new THREE.Group(); hall.position.set(O.x + HALL.x, O.y + HALL.y, O.z + HALL.z); hall.visible = false; sunScene.add(hall);
 const W = (x, z) => new V3(O.x + HALL.x + x, O.y + HALL.y, O.z + HALL.z + z);
-const gold = new THREE.MeshLambertMaterial({ vertexColors: true, color: '#d8c8a8', emissive: '#2a1e0c', emissiveIntensity: 0.5 });
-const toy = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: '#3a3028', emissiveIntensity: 0.4 });
+const gilt = new THREE.MeshPhongMaterial({ vertexColors: true, color: '#d8c49a', specular: '#8a6a2a', shininess: 40, emissive: '#2a1c08', emissiveIntensity: 0.6, fog: false });
 const bulbs = [];
 const bulb = (x, y, z, col) => { const c = new THREE.Color(col); bulbs.push(x, y, z, c.r, c.g, c.b); };
+const GOLD = C('#d4a63a'), GOLD2 = C('#e8c25a'), IVORY = C('#efe6d2');
 
-/* ---------- the gallery: walls of mirrors and windows, a painted vault, a parquet floor ---------- */
-// one bay of wall, painted: a tall arch (a mirror of small panes on one side, a bright window on the other)
-// between rose-marble pilasters with gilded capitals, a gold trophy above, a gilded cornice
+/* ---------- painting: a baroque sky with figures, drawn on a canvas ---------- */
+// golden light breaking through the middle, banks of cloud round it, and figures borne on the clouds in
+// rose, blue, crimson, green and gold drapery, some winged, some with trumpets or staffs; softly painted
+function baroque(g, x0, y0, w, h, seed) {
+  const RS = rng(seed), cx = x0 + w / 2, cy = y0 + h / 2, M = Math.min(w, h), rr = Math.max(w, h) * 0.62;
+  g.save(); g.beginPath(); g.rect(x0, y0, w, h); g.clip();
+  // the sky: golden light at the heart, deepening to blue, darker at the rim
+  const sky = g.createRadialGradient(cx, cy, 0, cx, cy, rr);
+  sky.addColorStop(0, '#fff8e0'); sky.addColorStop(0.16, '#f8e2a8'); sky.addColorStop(0.38, '#b9d0e8'); sky.addColorStop(0.7, '#7d9cc8'); sky.addColorStop(1, '#5a5266');
+  g.fillStyle = sky; g.fillRect(x0, y0, w, h);
+  // rays of light from the heart
+  g.globalCompositeOperation = 'lighter';
+  for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2 + RS() * 0.2; g.fillStyle = 'rgba(255,235,180,.05)'; g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, rr, a, a + 0.08); g.closePath(); g.fill(); }
+  g.globalCompositeOperation = 'source-over';
+  // a cloud: many soft puffs, lit warm from the heart, shadowed blue-grey away from it
+  const cloud = (x, y, r, n) => {
+    for (let k = 0; k < n; k++) {
+      const px = x + (RS() - 0.5) * r * 1.8, py = y + (RS() - 0.5) * r * 0.8, pr = r * (0.35 + RS() * 0.45), toward = Math.atan2(cy - py, cx - px);
+      const gr = g.createRadialGradient(px + Math.cos(toward) * pr * 0.35, py + Math.sin(toward) * pr * 0.35, pr * 0.1, px, py, pr);
+      gr.addColorStop(0, 'rgba(255,246,228,.95)'); gr.addColorStop(0.55, 'rgba(226,214,206,.8)'); gr.addColorStop(1, 'rgba(120,118,140,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(px, py, pr, 0, 7); g.fill();
+    }
+  };
+  // a figure: a shaded swirl of drapery, skin with light and shade, hair, an arm reaching; sometimes wings,
+  // a trumpet or a staff. s is its size in pixels
+  const DRAPE = [['#e7a0b4', '#a8506a'], ['#7fa6dc', '#2e4c88'], ['#d8443e', '#7a1a22'], ['#f2d27a', '#a87a22'], ['#86b07a', '#3e623a'], ['#c09ad8', '#5a3a7a']];
+  const figure = (x, y, s, rot) => {
+    g.save(); g.translate(x, y); g.rotate(rot); g.scale(s / 60, s / 60);
+    if (RS() < 0.35) for (const sd of [-1, 1]) { const wg = g.createLinearGradient(0, -10, sd * 46, -30); wg.addColorStop(0, '#fffaf0'); wg.addColorStop(1, RS() < 0.5 ? '#d8d0c8' : '#8a7a7a'); g.fillStyle = wg; g.beginPath(); g.moveTo(0, -12); g.bezierCurveTo(sd * 20, -48, sd * 52, -40, sd * 54, -10); g.bezierCurveTo(sd * 36, -18, sd * 18, -8, 0, -2); g.fill(); }
+    const [lite, dark] = DRAPE[(RS() * DRAPE.length) | 0], dg = g.createLinearGradient(-24, -10, 26, 40); dg.addColorStop(0, lite); dg.addColorStop(1, dark);
+    g.fillStyle = dg; g.beginPath(); g.moveTo(-14, -8); g.bezierCurveTo(-40, 6, -30, 44, 2, 50); g.bezierCurveTo(30, 52, 44, 22, 18, -6); g.bezierCurveTo(10, -14, -6, -14, -14, -8); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(-8, 0); g.bezierCurveTo(-20, 16, -14, 34, 0, 40); g.stroke();
+    g.strokeStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.moveTo(10, 4); g.bezierCurveTo(20, 18, 16, 34, 6, 42); g.stroke();
+    const sk = g.createLinearGradient(-8, -30, 8, -2); sk.addColorStop(0, '#fbe2cc'); sk.addColorStop(1, '#d8a888');
+    g.fillStyle = sk; g.beginPath(); g.ellipse(0, -10, 9, 12, 0.1, 0, 7); g.fill(); g.beginPath(); g.arc(1, -27, 7.5, 0, 7); g.fill();
+    g.fillStyle = ['#5a3a1e', '#a8783a', '#e0c070'][(RS() * 3) | 0]; g.beginPath(); g.arc(0, -29.5, 7.8, Math.PI * 1.05, Math.PI * 1.95); g.fill();
+    g.strokeStyle = '#e8bc9c'; g.lineWidth = 5; g.lineCap = 'round'; g.beginPath(); g.moveTo(6, -14); g.quadraticCurveTo(18, -24, 26 + RS() * 8, -34 - RS() * 8); g.stroke();
+    if (RS() < 0.3) { g.strokeStyle = '#e8c25a'; g.lineWidth = 3.5; g.beginPath(); g.moveTo(26, -34); g.lineTo(46, -56); g.stroke(); g.fillStyle = '#e8c25a'; g.beginPath(); g.arc(47, -57, 5, 0, 7); g.fill(); }
+    g.restore();
+  };
+  // great banks of cloud round the light, with figures gathered on them in groups
+  const groups = 5 + ((RS() * 3) | 0);
+  for (let k = 0; k < groups; k++) {
+    const a = k / groups * Math.PI * 2 + RS() * 0.6, d = M * (0.24 + RS() * 0.12), gx = cx + Math.cos(a) * d * (w > h ? w / h * 0.85 : 1), gy = cy + Math.sin(a) * d * (h > w ? h / w * 0.85 : 1);
+    cloud(gx, gy + M * 0.04, M * 0.11, 22);
+    const n = 3 + ((RS() * 3) | 0);
+    for (let f = 0; f < n; f++) figure(gx + (RS() - 0.5) * M * 0.16, gy + (RS() - 0.5) * M * 0.08 - M * 0.02, M * (0.07 + RS() * 0.04), a + Math.PI / 2 + (RS() - 0.5) * 0.8);
+    cloud(gx + (RS() - 0.5) * M * 0.1, gy + M * 0.08, M * 0.07, 10);
+  }
+  // a radiant figure in gold at the heart of the light
+  g.save(); g.globalAlpha = 0.9; figure(cx, cy, M * 0.09, RS() * 0.4 - 0.2); g.restore();
+  const glow = g.createRadialGradient(cx, cy, 0, cx, cy, M * 0.12); glow.addColorStop(0, 'rgba(255,240,190,.55)'); glow.addColorStop(1, 'rgba(255,240,190,0)'); g.fillStyle = glow; g.fillRect(cx - M * 0.12, cy - M * 0.12, M * 0.24, M * 0.24);
+  // a warm varnish
+  const vg = g.createRadialGradient(cx, cy, rr * 0.25, cx, cy, rr); vg.addColorStop(0, 'rgba(255,230,180,0)'); vg.addColorStop(1, 'rgba(80,50,30,.4)'); g.fillStyle = vg; g.fillRect(x0, y0, w, h);
+  g.restore();
+}
+// a gilded frame drawn round a painting
+function frame(g, x, y, w, h, t) {
+  for (let k = 0; k < t; k += 2) { const c = 0.65 + 0.35 * Math.sin(k / t * Math.PI); g.strokeStyle = `rgb(${215 * c | 0},${168 * c | 0},${62 * c | 0})`; g.lineWidth = 2; g.strokeRect(x - k, y - k, w + 2 * k, h + 2 * k); }
+}
+
+/* ---------- the walls: painted arches behind 3D pilasters, arch frames, trophies and cornice ---------- */
+// one bay painted: a cream marble field round a tall arch; in the arch, mirror panes (west) or a window (east)
 function bayTex(mirror) {
   return canvasTex(512, 1024, (g, w, h) => {
     const RS = rng(mirror ? 11 : 12);
-    g.fillStyle = '#efe4cc'; g.fillRect(0, 0, w, h);
-    for (const x0 of [0, w - 70]) {
-      const gr = g.createLinearGradient(x0, 0, x0 + 70, 0); gr.addColorStop(0, '#b77a78'); gr.addColorStop(0.5, '#d9a3a0'); gr.addColorStop(1, '#a8706e'); g.fillStyle = gr; g.fillRect(x0, 120, 70, h - 200);
-      g.strokeStyle = 'rgba(255,240,235,.35)'; g.lineWidth = 2; for (let k = 0; k < 8; k++) { g.beginPath(); let y = 140 + RS() * (h - 260); g.moveTo(x0 + RS() * 70, y); for (let s = 0; s < 6; s++) { y += 20 + RS() * 30; g.lineTo(x0 + RS() * 70, y); } g.stroke(); }
-      g.fillStyle = '#d6aa3e'; g.fillRect(x0 - 6, 90, 82, 40); g.fillRect(x0 - 6, h - 90, 82, 50);
-      for (let k = 0; k < 4; k++) { g.beginPath(); g.arc(x0 + 12 + k * 16, 96, 9, Math.PI, 0); g.fill(); }
-    }
-    const ax = 100, aw = w - 200, top = 200, bot = h - 110, r = aw / 2;
-    const arch = () => { g.beginPath(); g.moveTo(ax, bot); g.lineTo(ax, top + r); g.arc(ax + r, top + r, r, Math.PI, 0); g.lineTo(ax + aw, bot); g.closePath(); };
-    g.save(); arch(); g.lineWidth = 26; g.strokeStyle = '#c99a32'; g.stroke(); g.lineWidth = 8; g.strokeStyle = '#f2d37a'; g.stroke(); g.clip();
+    g.fillStyle = '#ece2cc'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(160,140,110,.18)'; g.lineWidth = 1.5; for (let k = 0; k < 30; k++) { g.beginPath(); let x = RS() * w, y = RS() * h; g.moveTo(x, y); for (let s = 0; s < 5; s++) { x += (RS() - 0.5) * 60; y += 20 + RS() * 40; g.lineTo(x, y); } g.stroke(); }
+    // green marble panels low down
+    g.fillStyle = '#5a7a62'; g.fillRect(70, h - 150, w - 140, 90); g.strokeStyle = '#d4a63a'; g.lineWidth = 6; g.strokeRect(70, h - 150, w - 140, 90);
+    const ax = 96, aw = w - 192, top = 150, bot = h - 170, r = aw / 2;
+    g.save(); g.beginPath(); g.moveTo(ax, bot); g.lineTo(ax, top + r); g.arc(ax + r, top + r, r, Math.PI, 0); g.lineTo(ax + aw, bot); g.closePath(); g.clip();
     if (mirror) {
-      // aged mirror glass in small panes, faintly catching the chandeliers' light
-      const gr = g.createLinearGradient(0, top, 0, bot); gr.addColorStop(0, '#b9b8ae'); gr.addColorStop(0.5, '#8a8a82'); gr.addColorStop(1, '#a8a498'); g.fillStyle = gr; g.fillRect(ax, top, aw, bot - top);
-      for (let k = 0; k < 9; k++) { const x = ax + RS() * aw, y = top + RS() * (bot - top) * 0.6; const rg = g.createRadialGradient(x, y, 0, x, y, 40); rg.addColorStop(0, 'rgba(255,220,150,.85)'); rg.addColorStop(1, 'rgba(255,220,150,0)'); g.fillStyle = rg; g.fillRect(x - 40, y - 40, 80, 80); }
-      g.strokeStyle = 'rgba(200,160,70,.85)'; g.lineWidth = 4; for (let x = ax; x <= ax + aw; x += aw / 3) { g.beginPath(); g.moveTo(x, top); g.lineTo(x, bot); g.stroke(); } for (let y = top + r; y < bot; y += 80) { g.beginPath(); g.moveTo(ax, y); g.lineTo(ax + aw, y); g.stroke(); }
+      // old mirror glass: a dim silvered field reflecting the gallery's gold and candlelight, in 21 bevelled panes
+      const gr = g.createLinearGradient(0, top, 0, bot); gr.addColorStop(0, '#8a8478'); gr.addColorStop(0.45, '#6e6a62'); gr.addColorStop(1, '#8a8070'); g.fillStyle = gr; g.fillRect(ax, top, aw, bot - top);
+      for (let k = 0; k < 14; k++) { const x = ax + RS() * aw, y = top + RS() * (bot - top) * 0.7, rad = 18 + RS() * 30; const rg = g.createRadialGradient(x, y, 0, x, y, rad); rg.addColorStop(0, 'rgba(255,225,160,.9)'); rg.addColorStop(1, 'rgba(255,225,160,0)'); g.fillStyle = rg; g.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
+      g.fillStyle = 'rgba(212,166,58,.35)'; g.fillRect(ax, top + (bot - top) * 0.55, aw, (bot - top) * 0.12);
+      const cols = 3, rows = 7, pw = aw / cols, ph = (bot - top) / rows;
+      for (let i = 0; i <= cols; i++) { g.fillStyle = '#c99a32'; g.fillRect(ax + i * pw - 3, top, 6, bot - top); }
+      for (let j = 0; j <= rows; j++) { g.fillStyle = '#c99a32'; g.fillRect(ax, top + j * ph - 3, aw, 6); }
+      g.strokeStyle = 'rgba(255,255,255,.18)'; g.lineWidth = 2; for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) g.strokeRect(ax + i * pw + 6, top + j * ph + 6, pw - 12, ph - 12);
     } else {
-      // a tall window onto a bright garden sky
-      const gr = g.createLinearGradient(0, top, 0, bot); gr.addColorStop(0, '#e9f2fa'); gr.addColorStop(0.7, '#cfe2ee'); gr.addColorStop(1, '#a9c49a'); g.fillStyle = gr; g.fillRect(ax, top, aw, bot - top);
-      g.strokeStyle = '#d9c28a'; g.lineWidth = 5; for (let x = ax; x <= ax + aw; x += aw / 3) { g.beginPath(); g.moveTo(x, top); g.lineTo(x, bot); g.stroke(); } for (let y = top + r; y < bot; y += 70) { g.beginPath(); g.moveTo(ax, y); g.lineTo(ax + aw, y); g.stroke(); }
+      // a tall window onto the garden: sky, a line of trees, the light pouring in
+      const gr = g.createLinearGradient(0, top, 0, bot); gr.addColorStop(0, '#dfeaf4'); gr.addColorStop(0.62, '#c9dcea'); gr.addColorStop(0.7, '#8aa880'); gr.addColorStop(1, '#6a8a5a'); g.fillStyle = gr; g.fillRect(ax, top, aw, bot - top);
+      for (let k = 0; k < 8; k++) { g.fillStyle = 'rgba(70,100,60,.7)'; g.beginPath(); g.ellipse(ax + RS() * aw, top + (bot - top) * 0.66, 20 + RS() * 20, 30 + RS() * 20, 0, 0, 7); g.fill(); }
+      g.fillStyle = '#e8dcc0'; const cols = 3, rows = 8, pw = aw / cols, ph = (bot - top) / rows;
+      for (let i = 0; i <= cols; i++) g.fillRect(ax + i * pw - 4, top, 8, bot - top); for (let j = 0; j <= rows; j++) g.fillRect(ax, top + j * ph - 3, aw, 6);
     }
     g.restore();
-    g.fillStyle = '#d6aa3e'; g.beginPath(); g.ellipse(w / 2, 120, 60, 40, 0, 0, 7); g.fill(); g.fillStyle = '#f2d37a'; g.beginPath(); g.ellipse(w / 2, 120, 34, 22, 0, 0, 7); g.fill();
-    for (const s of [-1, 1]) { g.fillStyle = '#c99a32'; g.beginPath(); g.moveTo(w / 2 + s * 50, 120); g.quadraticCurveTo(w / 2 + s * 130, 70, w / 2 + s * 160, 130); g.quadraticCurveTo(w / 2 + s * 110, 110, w / 2 + s * 50, 140); g.fill(); }
-    const cg = g.createLinearGradient(0, 0, 0, 60); cg.addColorStop(0, '#f2d37a'); cg.addColorStop(1, '#a87a22'); g.fillStyle = cg; g.fillRect(0, 0, w, 60);
-    g.fillStyle = '#8a6a2a'; for (let x = 0; x < w; x += 20) g.fillRect(x, 56, 10, 10);
-    g.fillStyle = '#e8dcc0'; g.fillRect(0, h - 40, w, 40); g.fillStyle = '#c99a32'; g.fillRect(0, h - 44, w, 6);
   }, true);
 }
-// the vault: painted panels in gold frames, sky and figures in rich reds, blues and gold
-const vaultTex = canvasTex(1024, 1024, (g, w, h) => {
-  const RS = rng(31);
-  g.fillStyle = '#c99a32'; g.fillRect(0, 0, w, h);
-  const panel = (x, y, pw, ph, oval) => {
-    const shape = () => { g.beginPath(); if (oval) g.ellipse(x + pw / 2, y + ph / 2, pw / 2, ph / 2, 0, 0, 7); else g.rect(x, y, pw, ph); };
-    g.save(); shape(); g.clip();
-    const gr = g.createLinearGradient(x, y, x, y + ph); gr.addColorStop(0, '#9cb8d6'); gr.addColorStop(0.6, '#e8d8b8'); gr.addColorStop(1, '#c9a07a'); g.fillStyle = gr; g.fillRect(x, y, pw, ph);
-    for (let k = 0; k < 10; k++) { const cx = x + RS() * pw, cy = y + RS() * ph, rr = 20 + RS() * 50; g.fillStyle = 'rgba(255,250,240,.55)'; g.beginPath(); g.ellipse(cx, cy, rr * 1.6, rr, 0, 0, 7); g.fill(); }
-    for (let k = 0; k < 7; k++) { const cx = x + 20 + RS() * (pw - 40), cy = y + 20 + RS() * (ph - 40); g.fillStyle = ['#a8232e', '#1f3f8a', '#e0bc5a', '#f0c8b0', '#6a2a5a'][k % 5]; g.beginPath(); g.ellipse(cx, cy, 18 + RS() * 26, 10 + RS() * 14, RS() * 3, 0, 7); g.fill(); g.fillStyle = '#f0c8b0'; g.beginPath(); g.arc(cx + 8, cy - 14, 7, 0, 7); g.fill(); }
-    g.restore();
-    shape(); g.lineWidth = 14; g.strokeStyle = '#f2d37a'; g.stroke(); g.lineWidth = 4; g.strokeStyle = '#8a6420'; g.stroke();
-  };
-  panel(60, 60, w - 120, 520, false); panel(120, 640, 340, 320, true); panel(w - 460, 640, 340, 320, true);
-  g.strokeStyle = '#f2d37a'; g.lineWidth = 6; for (let k = 0; k < 12; k++) { const x = RS() * w, y = 600 + RS() * 400; g.beginPath(); g.arc(x, y, 14 + RS() * 14, RS() * 3, RS() * 3 + 4); g.stroke(); }
+// red-veined marble for the pilasters
+const marbleTex = canvasTex(128, 512, (g, w, h) => {
+  const RS = rng(77), gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#6e2c2a'); gr.addColorStop(0.5, '#93413c'); gr.addColorStop(1, '#6a2a28'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  for (let k = 0; k < 26; k++) { g.strokeStyle = `rgba(${230 + RS() * 25 | 0},${200 + RS() * 30 | 0},190,${0.25 + RS() * 0.35})`; g.lineWidth = 0.8 + RS() * 2; g.beginPath(); let x = RS() * w, y = RS() * h; g.moveTo(x, y); for (let s = 0; s < 8; s++) { x += (RS() - 0.5) * 40; y += 10 + RS() * 30; g.lineTo(x, y); } g.stroke(); }
 }, true);
 {
-  const bays = Math.round(HALL.hl * 2 / 6);
-  // the two long walls: mirrors on the west, windows on the east
+  const bays = Math.round(HALL.hl * 2 / HALL.bay), m = new Merge(), pil = new Merge();
   for (const [side, mirror] of [[-1, true], [1, false]]) {
     const t = bayTex(mirror); t.repeat.set(bays, 1);
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(HALL.hl * 2, HALL.wall), new THREE.MeshLambertMaterial({ map: t, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: 0.2, color: '#e0d6c4', fog: false }));
-    m.position.set(side * HALL.hw, HALL.wall / 2, 0); m.rotation.y = -side * Math.PI / 2; hall.add(m);
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(HALL.hl * 2, HALL.wall), new THREE.MeshLambertMaterial({ map: t, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: mirror ? 0.28 : 0.42, color: '#d8ccb4', fog: false }));
+    wall.position.set(side * HALL.hw, HALL.wall / 2, 0); wall.rotation.y = -side * Math.PI / 2; hall.add(wall);
+    const x = side * HALL.hw;
+    for (let i = 0; i <= bays; i++) {
+      const z = -HALL.hl + i * HALL.bay;
+      // a pilaster of red marble standing out from the wall: white marble base, gilded capital with volutes
+      pil.add(GEO.box, new V3(x - side * 0.28, HALL.wall / 2 - 0.3, z), new V3(0.56, HALL.wall - 2.4, 1.5), C('#ffffff'));
+      m.add(GEO.box, new V3(x - side * 0.34, 0.75, z), new V3(0.7, 1.5, 1.8), IVORY);
+      m.add(GEO.box, new V3(x - side * 0.36, HALL.wall - 1.7, z), new V3(0.72, 0.9, 1.9), GOLD);
+      for (const o of [-0.8, 0.8]) m.add(GEO.sph, new V3(x - side * 0.6, HALL.wall - 1.5, z + o), new V3(0.22, 0.28, 0.22), GOLD2);
+      if (i === bays) continue;
+      // the arch's gilded frame, a trophy of arms above it, and gilded leaves either side
+      const zc = z + HALL.bay / 2, ar = 2.7 * HALL.bay / 8, spring = HALL.wall * 0.62;
+      m.add(new THREE.TorusGeometry(ar, 0.16, 6, 28, Math.PI).rotateY(Math.PI / 2), new V3(x - side * 0.08, spring, zc), new V3(1, 1, 1), GOLD);
+      for (const o of [-ar, ar]) m.add(GEO.box, new V3(x - side * 0.08, (spring + 1.6) / 2, zc + o), new V3(0.16, spring - 1.6, 0.3), GOLD);
+      m.add(GEO.sph, new V3(x - side * 0.25, spring + ar + 1.0, zc), new V3(0.25, 0.75, 0.6), GOLD2);
+      for (const o of [-1, 1]) { m.add(GEO.box, new V3(x - side * 0.2, spring + ar + 0.9, zc + o * 0.9), new V3(0.18, 0.12, 1.1), GOLD, new THREE.Quaternion().setFromAxisAngle(new V3(1, 0, 0), o * 0.5)); for (let k = 0; k < 5; k++) m.add(GEO.sph, new V3(x - side * 0.2, spring + ar + 0.3 - k * 0.12, zc + o * (0.6 + k * 0.32)), new V3(0.12, 0.12, 0.12), GOLD2); }
+    }
+    // the gilded entablature and cornice the vault rests on, and a skirting of white marble
+    m.add(GEO.box, new V3(x - side * 0.45, HALL.wall - 0.8, 0), new V3(0.9, 0.9, HALL.hl * 2), GOLD);
+    m.add(GEO.box, new V3(x - side * 0.7, HALL.wall - 0.15, 0), new V3(1.4, 0.4, HALL.hl * 2), GOLD2);
+    m.add(GEO.box, new V3(x - side * 0.12, 0.3, 0), new V3(0.24, 0.6, HALL.hl * 2), IVORY);
   }
-  // the end walls
-  for (const s of [-1, 1]) {
-    const t = bayTex(s < 0); t.repeat.set(5, 1);
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(HALL.hw * 2, HALL.wall), new THREE.MeshLambertMaterial({ map: t, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: 0.2, color: '#e0d6c4', fog: false }));
-    m.position.set(0, HALL.wall / 2, s * HALL.hl); m.rotation.y = s > 0 ? Math.PI : 0; hall.add(m);
-  }
-  // the barrel vault (a half cylinder along the gallery, flattened a little), and gilded ribs across it
-  vaultTex.repeat.set(1, bays / 2);
-  const vg = new THREE.CylinderGeometry(HALL.vault, HALL.vault, HALL.hl * 2, 40, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2);
-  const vault = new THREE.Mesh(vg, new THREE.MeshLambertMaterial({ map: vaultTex, emissive: '#ffffff', emissiveMap: vaultTex, emissiveIntensity: 0.24, color: '#e0d6c4', side: THREE.DoubleSide, fog: false }));
-  vault.position.y = HALL.wall; vault.scale.set(HALL.hw / HALL.vault, 0.75, 1); hall.add(vault);
-  hall.userData.vault = vault;
-  // the vault's two ends: painted lunettes, so no sky shows through
-  for (const e of [-1, 1]) {
-    const lun = new THREE.Mesh(new THREE.CircleGeometry(HALL.vault, 40, 0, Math.PI), new THREE.MeshLambertMaterial({ map: vaultTex, emissive: '#ffffff', emissiveMap: vaultTex, emissiveIntensity: 0.24, color: '#e0d6c4', side: THREE.DoubleSide, fog: false }));
-    lun.position.set(0, HALL.wall, e * (HALL.hl - 0.05)); lun.scale.set(HALL.hw / HALL.vault, 0.75, 1); hall.add(lun);
-  }
+  hall.add(new THREE.Mesh(m.build(), gilt));
+  hall.add(new THREE.Mesh(pil.build(), new THREE.MeshPhongMaterial({ map: marbleTex, shininess: 70, specular: '#3a2a2a', emissive: '#2a0e0c', emissiveIntensity: 0.6, fog: false })));
+}
+
+/* ---------- the vault: a painted baroque sky in gilded frames ---------- */
+const vaultTex = canvasTex(1024, 2048, (g, w, h) => {
+  // gilded stucco ground, then one great painting framed down the middle, a second below, medallions beside
+  const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#b88a2a'); gr.addColorStop(0.5, '#d9b04a'); gr.addColorStop(1, '#b88a2a'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  const RS = rng(5); g.strokeStyle = 'rgba(255,230,150,.6)'; g.lineWidth = 4; for (let k = 0; k < 60; k++) { const x = RS() * w, y = RS() * h; g.beginPath(); g.arc(x, y, 8 + RS() * 18, RS() * 6, RS() * 6 + 3.5); g.stroke(); }
+  baroque(g, 150, 120, w - 300, 1180, 21); frame(g, 150, 120, w - 300, 1180, 26);
+  baroque(g, 230, 1420, 560, 520, 22); frame(g, 230, 1420, 560, 520, 20);
+  for (const x of [20, w - 120]) { g.save(); g.beginPath(); g.ellipse(x + 50, 1680, 50, 120, 0, 0, 7); g.clip(); baroque(g, x, 1560, 100, 240, 23 + x); g.restore(); g.strokeStyle = '#e8c25a'; g.lineWidth = 8; g.beginPath(); g.ellipse(x + 50, 1680, 50, 120, 0, 0, 7); g.stroke(); }
+}, true);
+{
+  const reps = 4;
+  vaultTex.repeat.set(1, reps);
+  const vg = new THREE.CylinderGeometry(HALL.vault, HALL.vault, HALL.hl * 2, 48, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2);
+  const vmat = new THREE.MeshLambertMaterial({ map: vaultTex, emissive: '#ffffff', emissiveMap: vaultTex, emissiveIntensity: 0.42, color: '#d8ccb4', side: THREE.DoubleSide, fog: false });
+  const vault = new THREE.Mesh(vg, vmat); vault.position.y = HALL.wall; vault.scale.set(HALL.hw / HALL.vault, HALL.rise, 1); hall.add(vault);
+  // gilded ribs across the vault between the paintings
   const ribs = new Merge();
-  for (let z = -HALL.hl; z <= HALL.hl; z += 12) ribs.add(new THREE.TorusGeometry(HALL.vault - 0.3, 0.35, 6, 32, Math.PI), new V3(0, 0, z), new V3(1, 1, 1), C('#d6aa3e'));
-  const rm = new THREE.Mesh(ribs.build(), gold); rm.position.y = HALL.wall; rm.scale.set(HALL.hw / HALL.vault, 0.75, 1); hall.add(rm);
-  // the gilded cornice along the top of both walls, a marble skirting below
-  const cor = new Merge();
-  for (const s of [-1, 1]) { cor.add(GEO.box, new V3(s * (HALL.hw - 0.3), HALL.wall, 0), new V3(0.8, 0.7, HALL.hl * 2), C('#d6aa3e')); cor.add(GEO.box, new V3(s * (HALL.hw - 0.15), 0.25, 0), new V3(0.4, 0.5, HALL.hl * 2), C('#e8dcc0')); }
-  hall.add(new THREE.Mesh(cor.build(), gold));
-  // the parquet: squares of oak laid in a lattice, polished
-  const pt = canvasTex(256, 256, (g, w, h) => {
-    const RS = rng(5); g.fillStyle = '#8a5a30'; g.fillRect(0, 0, w, h);
+  for (let k = 0; k <= reps; k++) ribs.add(new THREE.TorusGeometry(HALL.vault - 0.3, 0.45, 6, 40, Math.PI), new V3(0, 0, -HALL.hl + k * HALL.hl * 2 / reps), new V3(1, 1, 1), GOLD);
+  const rm = new THREE.Mesh(ribs.build(), gilt); rm.position.y = HALL.wall; rm.scale.set(HALL.hw / HALL.vault, HALL.rise, 1); hall.add(rm);
+  // the lunettes at either end, each a painting of its own
+  for (const e of [-1, 1]) {
+    const lt = canvasTex(1024, 512, g => { g.fillStyle = '#c99a32'; g.fillRect(0, 0, 1024, 512); baroque(g, 60, 40, 904, 480, 40 + e); frame(g, 60, 40, 904, 480, 18); });
+    const lun = new THREE.Mesh(new THREE.CircleGeometry(HALL.vault, 48, 0, Math.PI), new THREE.MeshLambertMaterial({ map: lt, emissive: '#ffffff', emissiveMap: lt, emissiveIntensity: 0.42, color: '#d8ccb4', side: THREE.DoubleSide, fog: false }));
+    lun.position.set(0, HALL.wall, e * (HALL.hl - 0.05)); lun.scale.set(HALL.hw / HALL.vault, HALL.rise, 1); hall.add(lun);
+  }
+}
+
+/* ---------- the end walls: great paintings in gilded frames; the door out at the south end ---------- */
+{
+  const art = (seed, w, h) => canvasTex(1024, Math.round(1024 * h / w), (g, cw, ch) => { baroque(g, 0, 0, cw, ch, seed); frame(g, 14, 14, cw - 28, ch - 28, 14); });
+  const end = canvasTex(512, 512, (g, w, h) => { g.fillStyle = '#ece2cc'; g.fillRect(0, 0, w, h); g.fillStyle = '#5a7a62'; g.fillRect(40, h - 90, w - 80, 60); }, true);
+  end.repeat.set(4, 1);
+  const m = new Merge();
+  for (const e of [-1, 1]) {
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(HALL.hw * 2, HALL.wall), new THREE.MeshLambertMaterial({ map: end, emissive: '#ffffff', emissiveMap: end, emissiveIntensity: 0.3, color: '#d8ccb4', fog: false }));
+    wall.position.set(0, HALL.wall / 2, e * HALL.hl); wall.rotation.y = e > 0 ? Math.PI : 0; hall.add(wall);
+    const put = (x, y, w, h, seed) => {
+      const t = art(seed, w, h), p = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: t, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: 0.35, color: '#e0d4bc', fog: false }));
+      p.position.set(x, y, e * (HALL.hl - 0.12)); p.rotation.y = e > 0 ? Math.PI : 0; hall.add(p);
+      // a deep gilded frame round it
+      for (const [fx, fy, fw, fh] of [[x, y + h / 2 + 0.25, w + 1, 0.5], [x, y - h / 2 - 0.25, w + 1, 0.5], [x - w / 2 - 0.25, y, 0.5, h], [x + w / 2 + 0.25, y, 0.5, h]]) m.add(GEO.box, new V3(fx, fy, e * (HALL.hl - 0.2)), new V3(fw, fh, 0.3), GOLD);
+    };
+    if (e < 0) put(0, 8.5, 22, 12, 61);
+    else { put(-12, 9, 9, 11, 62); put(12, 9, 9, 11, 63); }
+  }
+  // the door at the south end: tall, white and gold under a gilded arch
+  m.add(GEO.box, new V3(0, 3.6, HALL.hl - 0.2), new V3(6, 7.2, 0.3), IVORY);
+  m.add(GEO.box, new V3(0, 3.3, HALL.hl - 0.38), new V3(4.4, 6.4, 0.15), C('#e8dcc4'));
+  for (const o of [-1.1, 1.1]) for (const y of [1.8, 4.6]) m.add(GEO.box, new V3(o, y, HALL.hl - 0.46), new V3(1.6, 2.2, 0.06), GOLD);
+  m.add(new THREE.TorusGeometry(3.0, 0.35, 8, 28, Math.PI), new V3(0, 7.2, HALL.hl - 0.3), new V3(1, 1, 1), GOLD);
+  hall.add(new THREE.Mesh(m.build(), gilt));
+  for (let k = 0; k <= 14; k++) { const a = Math.PI * k / 14; bulb(Math.cos(a) * 3.4, 7.2 + Math.sin(a) * 3.4, HALL.hl - 0.6, '#ffe08a'); }
+}
+
+/* ---------- the floor: parquet de Versailles, squares of oak woven on the diagonal ---------- */
+{
+  const pt = canvasTex(512, 512, (g, w, h) => {
+    const RS = rng(5); g.fillStyle = '#4a3220'; g.fillRect(0, 0, w, h);
+    const plank = (x, y, a, l) => { const v = 110 + RS() * 45 | 0; g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = `rgb(${v},${v * 0.7 | 0},${v * 0.45 | 0})`; g.fillRect(-l / 2, -9, l, 18); g.strokeStyle = 'rgba(30,18,10,.6)'; g.lineWidth = 1.5; g.strokeRect(-l / 2, -9, l, 18); g.restore(); };
     for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) {
-      const x0 = x * 128, y0 = y * 128;
-      for (let k = 0; k < 6; k++) { const v = 150 + RS() * 40 | 0; g.fillStyle = `rgb(${v},${v * 0.66 | 0},${v * 0.38 | 0})`; if ((x + y) % 2) g.fillRect(x0 + 4, y0 + 4 + k * 20, 120, 18); else g.fillRect(x0 + 4 + k * 20, y0 + 4, 18, 120); }
-      g.strokeStyle = '#5a3a1e'; g.lineWidth = 3; g.strokeRect(x0 + 2, y0 + 2, 124, 124);
+      const cx = x * 256 + 128, cy = y * 256 + 128;
+      g.save(); g.beginPath(); g.rect(x * 256, y * 256, 256, 256); g.clip();
+      for (let k = -6; k <= 6; k++) { plank(cx + k * 19, cy + k * 19, -Math.PI / 4, 90); plank(cx + k * 19 + 30, cy - k * 19 + 30, Math.PI / 4, 90); }
+      g.restore();
+      g.strokeStyle = '#2a1a10'; g.lineWidth = 6; g.strokeRect(x * 256 + 3, y * 256 + 3, 250, 250);
     }
-    const sh = g.createLinearGradient(0, 0, w, h); sh.addColorStop(0, 'rgba(255,240,210,.18)'); sh.addColorStop(1, 'rgba(255,240,210,0)'); g.fillStyle = sh; g.fillRect(0, 0, w, h);
+    const sh = g.createLinearGradient(0, 0, w, h); sh.addColorStop(0, 'rgba(255,230,190,.14)'); sh.addColorStop(1, 'rgba(255,230,190,0)'); g.fillStyle = sh; g.fillRect(0, 0, w, h);
   }, true);
-  pt.repeat.set(HALL.hw / 2.5, HALL.hl / 2.5);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(HALL.hw * 2, HALL.hl * 2).rotateX(-Math.PI / 2), new THREE.MeshPhongMaterial({ map: pt, color: '#b89a80', shininess: 60, specular: '#3a2a18', emissive: '#100a04', fog: false }));
+  pt.repeat.set(HALL.hw / 4, HALL.hl / 4);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(HALL.hw * 2, HALL.hl * 2).rotateX(-Math.PI / 2), new THREE.MeshPhongMaterial({ map: pt, color: '#c8a888', shininess: 80, specular: '#4a3a28', emissive: '#100a04', fog: false }));
   hall.add(floor);
-  // warm light from the chandeliers
-  for (let z = -48; z <= 48; z += 24) { const l = new THREE.PointLight('#ffe8c0', 0.55, 50, 1.5); l.position.set(0, 11, z); hall.add(l); }
+  for (let z = -72; z <= 72; z += 24) { const l = new THREE.PointLight('#ffe6c0', 0.5, 60, 1.5); l.position.set(0, 14, z); hall.add(l); }
 }
 
-/* ---------- crystal chandeliers down the middle, golden candelabra along the walls ---------- */
+/* ---------- chandeliers: one great one in the middle, a row of lesser ones; candelabra, busts, benches ---------- */
 {
-  const m = new Merge(), G = C('#d6aa3e');
-  for (let z = -54; z <= 54; z += 9) {
-    // clear of the drop tower and the balloons
-    if (Math.abs(z - 14) < 6 || Math.abs(z + 12) < 7) continue;
-    const top = HALL.wall + HALL.vault * 0.75 - 0.5, y = 13.5;
-    m.limb(new V3(0, top, z), new V3(0, y + 2.6, z), 0.04, 0.04, G);
-    for (const [ty, tr] of [[y + 2.4, 0.5], [y + 1.6, 1.0], [y + 0.8, 1.35], [y, 0.9]]) {
-      m.add(new THREE.TorusGeometry(tr, 0.06, 6, 24).rotateX(Math.PI / 2), new V3(0, ty, z), new V3(1, 1, 1), G);
-      const n = Math.round(tr * 14); for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2; for (let d = 0; d < 3; d++) bulb(Math.cos(a) * tr, ty - 0.2 - d * 0.25, z + Math.sin(a) * tr, d ? '#e8f0ff' : '#fff2d0'); }
+  const m = new Merge(), top = HALL.wall + HALL.vault * HALL.rise - 0.4;
+  const chandelier = (z, S) => {
+    const y = 12.5 + (S > 2 ? -1 : 0);
+    m.limb(new V3(0, top, z), new V3(0, y + 3.4 * S, z), 0.05, 0.05, GOLD);
+    m.add(GEO.sph, new V3(0, y + 3.3 * S, z), new V3(0.35 * S, 0.35 * S, 0.35 * S), GOLD2);
+    for (const [ty, tr] of [[3.0, 0.45], [2.2, 0.85], [1.4, 1.2], [0.6, 1.0], [0, 0.55]]) {
+      const yy = y + ty * S, r = tr * S;
+      m.add(new THREE.TorusGeometry(r, 0.06 * S, 6, 32).rotateX(Math.PI / 2), new V3(0, yy, z), new V3(1, 1, 1), GOLD);
+      const n = Math.round(r * 16);
+      for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2; for (let d = 0; d < 4; d++) bulb(Math.cos(a) * r, yy - 0.15 - d * 0.22 * S, z + Math.sin(a) * r, d ? '#eef4ff' : '#fff2d0'); }
+      // candles on the widest tier
+      if (tr >= 1.2) for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; m.limb(new V3(Math.cos(a) * r, yy, z + Math.sin(a) * r), new V3(Math.cos(a) * r, yy + 0.35 * S, z + Math.sin(a) * r), 0.05 * S, 0.05 * S, C('#fffaf0')); bulb(Math.cos(a) * r, yy + 0.5 * S, z + Math.sin(a) * r, '#ffd890'); }
     }
-    for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2; m.limb(new V3(Math.cos(a) * 1.35, y + 0.8, z + Math.sin(a) * 1.35), new V3(Math.cos(a) * 1.35, y + 1.15, z + Math.sin(a) * 1.35), 0.05, 0.05, C('#fffaf0')); bulb(Math.cos(a) * 1.35, y + 1.3, z + Math.sin(a) * 1.35, '#ffd890'); }
-    m.add(GEO.cone, new V3(0, y - 0.6, z), new V3(0.4, 1.2, 0.4), C('#e8f0ff'), new THREE.Quaternion().setFromAxisAngle(new V3(1, 0, 0), Math.PI));
-  }
-  // candelabra: a gilded column on a pedestal holding a branch of candles, between every bay
-  for (let z = -57; z <= 57; z += 6) for (const s of [-1, 1]) {
-    const x = s * (HALL.hw - 1.4);
-    m.add(GEO.box, new V3(x, 0.6, z), new V3(0.8, 1.2, 0.8), C('#c99a32'));
-    m.limb(new V3(x, 1.2, z), new V3(x, 3.2, z), 0.22, 0.16, G);
-    m.add(GEO.sph, new V3(x, 3.4, z), new V3(0.25, 0.3, 0.25), G);
-    for (const o of [-0.6, 0, 0.6]) { m.limb(new V3(x, 3.4, z), new V3(x - s * 0.1, 4.2, z + o), 0.04, 0.04, G); m.limb(new V3(x - s * 0.1, 4.2, z + o), new V3(x - s * 0.1, 4.6, z + o), 0.05, 0.05, C('#fffaf0')); bulb(x - s * 0.1, 4.75, z + o, '#ffcf80'); }
-  }
-  // crimson benches along the walls
-  for (let z = -51; z <= 51; z += 12) for (const s of [-1, 1]) { m.add(GEO.box, new V3(s * (HALL.hw - 2.6), 0.45, z), new V3(0.7, 0.3, 1.8), C('#a8232e')); for (const o of [-0.7, 0.7]) m.limb(new V3(s * (HALL.hw - 2.6), 0, z + o), new V3(s * (HALL.hw - 2.6), 0.3, z + o), 0.05, 0.05, G); }
-  hall.add(new THREE.Mesh(m.build(), gold));
-  // the door at the south end, back out to the fair
-  const d = new Merge();
-  d.add(GEO.box, new V3(0, 3, HALL.hl - 0.15), new V3(5, 6, 0.3), C('#f4ecd8'));
-  d.add(GEO.box, new V3(0, 2.6, HALL.hl - 0.32), new V3(3.6, 5.2, 0.15), C('#5a2a1e'));
-  d.add(new THREE.TorusGeometry(2.4, 0.3, 8, 24, Math.PI), new V3(0, 5.6, HALL.hl - 0.3), new V3(1, 1, 1), C('#d6aa3e'));
-  hall.add(new THREE.Mesh(d.build(), gold));
-  for (let k = 0; k <= 12; k++) { const a = Math.PI * k / 12; bulb(Math.cos(a) * 2.8, 5.6 + Math.sin(a) * 2.8, HALL.hl - 0.6, '#ffe08a'); }
-}
-
-/* ---------- the rides ---------- */
-const hallRides = [];
-const exitAt = (x, z) => W(x, z);
-function ride(def, root, near) { hallRides.push(def); rides.push(def); regThing(root, def.label, () => late.startRide && late.startRide(def), near); }
-
-// the royal teacups: a turning floor, three smaller turntables, two gilded cups on each spinning on its own
-const TEA = { x: 0, z: -38, r: 8.5 }, teaTop = new THREE.Group(), teaSubs = [], cups = [];
-{
-  teaTop.position.set(TEA.x, 0, TEA.z); hall.add(teaTop);
-  const base = new Merge(); base.add(new THREE.CylinderGeometry(TEA.r, TEA.r + 0.3, 0.5, 48), new V3(0, 0.25, 0), new V3(1, 1, 1), C('#f4ecd8'));
-  for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2; base.add(GEO.box, new V3(Math.cos(a) * (TEA.r - 0.1), 0.52, Math.sin(a) * (TEA.r - 0.1)), new V3(2.2, 0.05, 0.4), C(k % 2 ? '#c9a23a' : '#1f3f8a'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), -a + Math.PI / 2)); }
-  teaTop.add(new THREE.Mesh(base.build(), toy));
-  const CUP = ['#f4ecd8', '#1f3f8a', '#a8232e', '#f4ecd8', '#1f3f8a', '#a8232e'];
-  for (let i = 0; i < 3; i++) {
-    const sub = new THREE.Group(), a = i / 3 * Math.PI * 2; sub.position.set(Math.cos(a) * 4.8, 0.5, Math.sin(a) * 4.8); teaTop.add(sub); teaSubs.push(sub);
-    const pm = new Merge(); pm.add(new THREE.CylinderGeometry(3.1, 3.1, 0.2, 32), new V3(0, 0.1, 0), new V3(1, 1, 1), C('#c9a23a')); sub.add(new THREE.Mesh(pm.build(), gold));
-    for (let j = 0; j < 2; j++) {
-      const cup = new THREE.Group(); cup.position.set(j ? 1.55 : -1.55, 0.2, 0); sub.add(cup);
-      const cm = new Merge(), c = C(CUP[(i * 2 + j) % 6]);
-      cm.add(new THREE.CylinderGeometry(1.2, 0.8, 1.3, 20, 1, true), new V3(0, 0.75, 0), new V3(1, 1, 1), c);
-      cm.add(new THREE.CylinderGeometry(0.8, 0.8, 0.1, 20), new V3(0, 0.12, 0), new V3(1, 1, 1), c);
-      cm.add(new THREE.TorusGeometry(1.2, 0.09, 6, 24).rotateX(Math.PI / 2), new V3(0, 1.4, 0), new V3(1, 1, 1), C('#d6aa3e'));
-      cm.add(new THREE.TorusGeometry(0.4, 0.1, 6, 12), new V3(1.3, 0.85, 0), new V3(1, 1, 1), C('#d6aa3e'));
-      cup.add(new THREE.Mesh(cm.build(), toy)); cups.push(cup);
+    // strings of crystal looping between the tiers, and a crystal drop at the bottom
+    for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; for (let t = 0; t <= 8; t++) { const f = t / 8, rr = (0.85 + 0.35 * Math.sin(f * Math.PI)) * S; bulb(Math.cos(a) * rr, y + (2.2 - f * 1.6) * S, z + Math.sin(a) * rr, '#f4f8ff'); } }
+    m.add(GEO.cone, new V3(0, y - 0.7 * S, z), new V3(0.35 * S, 1.2 * S, 0.35 * S), C('#eef4ff'), new THREE.Quaternion().setFromAxisAngle(new V3(1, 0, 0), Math.PI));
+  };
+  chandelier(0, 2.6);
+  for (let z = -80; z <= 80; z += 10) if (Math.abs(z) > 12) chandelier(z, 1.2);
+  // gilded candelabra on pedestals, between every bay on both sides, and white marble busts between them
+  const bays = Math.round(HALL.hl * 2 / HALL.bay);
+  for (let i = 0; i <= bays; i++) for (const s of [-1, 1]) {
+    const z = -HALL.hl + i * HALL.bay, x = s * (HALL.hw - 1.6);
+    m.add(GEO.box, new V3(x, 0.7, z), new V3(1.0, 1.4, 1.0), C('#5a7a62'));
+    m.add(GEO.box, new V3(x, 1.45, z), new V3(1.2, 0.12, 1.2), GOLD);
+    // a gilded figure, arms raised, holding a branch of eight candles
+    m.limb(new V3(x, 1.5, z), new V3(x, 3.3, z), 0.32, 0.22, GOLD); m.add(GEO.sph, new V3(x, 3.6, z), new V3(0.24, 0.3, 0.24), GOLD2);
+    for (const o of [-1, 1]) m.limb(new V3(x, 3.1, z + o * 0.18), new V3(x, 4.3, z + o * 0.55), 0.08, 0.06, GOLD);
+    m.limb(new V3(x, 4.2, z), new V3(x, 5.0, z), 0.08, 0.08, GOLD);
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, r = k % 2 ? 0.7 : 0.45, cy = 5.0 + (k % 2 ? 0 : 0.35); m.limb(new V3(x, 5.0, z), new V3(x + Math.cos(a) * r, cy, z + Math.sin(a) * r), 0.04, 0.04, GOLD); m.limb(new V3(x + Math.cos(a) * r, cy, z + Math.sin(a) * r), new V3(x + Math.cos(a) * r, cy + 0.35, z + Math.sin(a) * r), 0.05, 0.05, C('#fffaf0')); bulb(x + Math.cos(a) * r, cy + 0.5, z + Math.sin(a) * r, '#ffcf80'); }
+    // busts of white marble on columns between the candelabra, and a crimson bench by every other one
+    if (i < bays) {
+      const zb = z + HALL.bay / 2, xb = s * (HALL.hw - 2.2);
+      m.add(new THREE.CylinderGeometry(0.4, 0.45, 1.6, 12), new V3(xb, 0.8, zb), new V3(1, 1, 1), C('#e8e2d8'));
+      m.add(GEO.sph, new V3(xb, 1.95, zb), new V3(0.42, 0.32, 0.3), C('#f2eee6'));
+      m.add(GEO.sph, new V3(xb, 2.45, zb), new V3(0.22, 0.28, 0.24), C('#f2eee6'));
+      if (i % 2) m.add(GEO.box, new V3(s * (HALL.hw - 4.2), 0.45, zb), new V3(0.8, 0.35, 2.2), C('#a8232e'));
     }
   }
-  for (let k = 0; k < 40; k++) { const a = k / 40 * Math.PI * 2; bulb(TEA.x + Math.cos(a) * (TEA.r + 0.2), 0.7, TEA.z + Math.sin(a) * (TEA.r + 0.2), k % 2 ? '#fff2d0' : '#ffd890'); }
-  ride({ key: 'teacups', label: 'Ride the teacups', name: 'In a spinning teacup', follow: true, exit: exitAt(TEA.x + TEA.r + 1.8, TEA.z),
-    seat(v) { cups[0].getWorldPosition(v); v.y += 2.0; } }, teaTop, { x: W(TEA.x, TEA.z).x, z: W(TEA.x, TEA.z).z, r: TEA.r + 2.5 });
+  hall.add(new THREE.Mesh(m.build(), gilt));
 }
 
-// the drop tower: an ivory-and-gold column; the ring of seats climbs slowly, waits, and drops
-const TOWER = { x: 0, z: 14, h: 22 }, ringSeat = new THREE.Group();
-let dropY = 2;
-{
-  const m = new Merge();
-  m.add(new THREE.CylinderGeometry(3.4, 3.8, 0.8, 32), new V3(TOWER.x, 0.4, TOWER.z), new V3(1, 1, 1), C('#f4ecd8'));
-  for (let y = 0; y < TOWER.h; y += 2) m.add(new THREE.CylinderGeometry(0.9, 0.9, 2, 16), new V3(TOWER.x, y + 1, TOWER.z), new V3(1, 1, 1), C((y / 2) % 2 ? '#f4ecd8' : '#d6aa3e'));
-  m.add(GEO.cone, new V3(TOWER.x, TOWER.h, TOWER.z), new V3(1.6, 2.6, 1.6), C('#1f3f8a'));
-  m.add(GEO.sph, new V3(TOWER.x, TOWER.h + 2.8, TOWER.z), new V3(0.45, 0.45, 0.45), C('#d6aa3e'));
-  hall.add(new THREE.Mesh(m.build(), gold));
-  for (let y = 2; y < TOWER.h; y += 1.4) for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + y; bulb(TOWER.x + Math.cos(a) * 1, y, TOWER.z + Math.sin(a) * 1, '#fff2d0'); }
-  ringSeat.position.set(TOWER.x, dropY, TOWER.z); hall.add(ringSeat);
-  const r = new Merge(); r.add(new THREE.TorusGeometry(2.4, 0.35, 8, 32).rotateX(Math.PI / 2), new V3(0, 0, 0), new V3(1, 1, 1), C('#a8232e'));
-  for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; r.add(GEO.box, new V3(Math.cos(a) * 2.9, -0.2, Math.sin(a) * 2.9), new V3(0.9, 0.2, 0.8), C('#d6aa3e'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), -a)); r.add(GEO.box, new V3(Math.cos(a) * 2.5, 0.4, Math.sin(a) * 2.5), new V3(0.9, 1.1, 0.15), C('#a8232e'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), -a + Math.PI / 2)); }
-  ringSeat.add(new THREE.Mesh(r.build(), toy));
-  ride({ key: 'drop', label: 'Ride the drop tower', name: 'On the drop tower', exit: exitAt(TOWER.x - 5.5, TOWER.z + 2),
-    seat(v) { ringSeat.localToWorld(v.set(3.1, 0.95, 0)); }, fwd(v) { const a = ringSeat.rotation.y; v.set(Math.cos(a), -0.3, -Math.sin(a)); } }, ringSeat, { x: W(TOWER.x, TOWER.z).x, z: W(TOWER.x, TOWER.z).z, r: 6 });
-}
-
-// the balloon carousel: striped hot-air balloons on gilded arms, turning and rising and falling
-const BAL = { x: 0, z: -12 }, balTop = new THREE.Group(), balloons = [];
-{
-  const m = new Merge();
-  m.add(new THREE.CylinderGeometry(3, 3.4, 0.6, 32), new V3(BAL.x, 0.3, BAL.z), new V3(1, 1, 1), C('#f4ecd8'));
-  m.limb(new V3(BAL.x, 0, BAL.z), new V3(BAL.x, 10.5, BAL.z), 0.5, 0.4, C('#d6aa3e'));
-  m.add(GEO.cone, new V3(BAL.x, 11.5, BAL.z), new V3(2, 2, 2), C('#a8232e'));
-  hall.add(new THREE.Mesh(m.build(), gold));
-  balTop.position.set(BAL.x, 9.5, BAL.z); hall.add(balTop);
-  const ENV = ['#a8232e', '#1f3f8a', '#c9a23a', '#a8232e', '#1f3f8a', '#c9a23a'];
-  for (let k = 0; k < 6; k++) {
-    const arm = new THREE.Group(); arm.rotation.y = k / 6 * Math.PI * 2; balTop.add(arm);
-    const am = new Merge(); am.limb(new V3(0, 0, 0), new V3(6.2, 0, 0), 0.08, 0.08, C('#d6aa3e')); arm.add(new THREE.Mesh(am.build(), gold));
-    const b = new THREE.Group(); b.position.set(6.2, 0, 0); arm.add(b);
-    const bm = new Merge(), c = C(ENV[k]);
-    bm.add(GEO.sph, new V3(0, -1.8, 0), new V3(1.5, 1.8, 1.5), c);
-    for (let s = 0; s < 6; s++) { const a = s / 6 * Math.PI * 2; bm.add(GEO.box, new V3(Math.cos(a) * 1.46, -1.8, Math.sin(a) * 1.46), new V3(0.25, 3.2, 0.04), C('#f4ecd8'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), -a + Math.PI / 2)); }
-    for (const [x, z] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) bm.limb(new V3(x * 1.5, -3.2, z * 1.5), new V3(x, -4.3, z), 0.02, 0.02, C('#8a6a4c'));
-    bm.add(GEO.box, new V3(0, -4.7, 0), new V3(1.3, 0.8, 1.3), C('#c9a23a'));
-    b.add(new THREE.Mesh(bm.build(), toy)); balloons.push({ b, ph: k * 1.1 });
-  }
-  ride({ key: 'balloons', label: 'Ride a balloon', name: 'In a hot-air balloon', follow: true, exit: exitAt(BAL.x + 9, BAL.z),
-    seat(v) { balloons[0].b.localToWorld(v.set(0, -3.8, 0)); } }, balTop, { x: W(BAL.x, BAL.z).x, z: W(BAL.x, BAL.z).z, r: 8 });
-}
-
-// the royal train: crimson-and-gold carriages on a track down the gallery and round both ends
-const TR = { x: 11.5, z: 44 }, TRL = 4 * TR.z + 2 * Math.PI * TR.x, train = [];
-// a point at distance s along the track: up the west side, round the north end, down the east, round the south
-function trackAt(s) {
-  s = ((s % TRL) + TRL) % TRL; const L = 2 * TR.z, A = Math.PI * TR.x;
-  if (s < L) return [-TR.x, TR.z - s];
-  if ((s -= L) < A) { const a = Math.PI + s / TR.x; return [Math.cos(a) * TR.x, -TR.z + Math.sin(a) * TR.x]; }
-  if ((s -= A) < L) return [TR.x, -TR.z + s];
-  s -= L; const a = s / TR.x; return [Math.cos(a) * TR.x, TR.z + Math.sin(a) * TR.x];
-}
-{
-  const m = new Merge();
-  for (let s = 0; s < TRL; s += 1.5) { const [x, z] = trackAt(s), [x2, z2] = trackAt(s + 0.5), a = Math.atan2(x2 - x, z2 - z); m.add(GEO.box, new V3(x, 0.08, z), new V3(2.2, 0.12, 0.3), C('#5a3a1e'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), a)); for (const o of [-0.7, 0.7]) m.add(GEO.box, new V3(x + Math.cos(a) * o, 0.2, z - Math.sin(a) * o), new V3(0.08, 0.1, 1.55), C('#c9a23a'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), a)); }
-  hall.add(new THREE.Mesh(m.build(), toy));
-  const CAR = ['#7a1a2a', '#a8232e', '#1f3f8a', '#a8232e', '#1f3f8a'];
-  CAR.forEach((col, k) => {
-    const g = new THREE.Group(), cm = new Merge(), c = C(col), G = C('#d6aa3e');
-    if (k === 0) { cm.add(GEO.box, new V3(0, 1, 0), new V3(1.8, 1.4, 2.6), c); cm.add(new THREE.CylinderGeometry(0.7, 0.7, 2.2, 16).rotateX(Math.PI / 2), new V3(0, 1.3, 1.6), new V3(1, 1, 1), G); cm.add(GEO.cylB, new V3(0, 1.9, 2.2), new V3(0.25, 0.9, 0.25), C('#2a2228')); cm.add(GEO.box, new V3(0, 2.3, -0.6), new V3(1.9, 0.15, 1.6), G); }
-    else { cm.add(GEO.box, new V3(0, 0.75, 0), new V3(1.8, 0.9, 2.4), c); cm.add(GEO.box, new V3(0, 1.25, 0), new V3(1.9, 0.12, 2.5), G); }
-    for (const z of [-0.8, 0.8]) for (const s of [-1, 1]) cm.add(new THREE.CylinderGeometry(0.35, 0.35, 0.15, 12).rotateZ(Math.PI / 2), new V3(s * 0.95, 0.35, z), new V3(1, 1, 1), G);
-    g.add(new THREE.Mesh(cm.build(), toy)); hall.add(g); train.push(g);
-  });
-  ride({ key: 'train', label: 'Ride the royal train', name: 'On the royal train', follow: true, exit: exitAt(-TR.x + 2.5, 30),
-    seat(v) { train[2].localToWorld(v.set(0, 2.1, 0)); } }, train[0], { x: W(-TR.x, 30).x, z: W(-TR.x, 30).z, r: 4 });
-}
-
-// bumper cars: a royal-blue arena with a gilded rail; your own car (car 0) you drive while riding
-const ARENA = { x: 0, z: 36, hw: 8, hd: 5.5 }, cars = [];
-let driving = false;
-{
-  const m = new Merge();
-  m.add(GEO.box, new V3(ARENA.x, 0.1, ARENA.z), new V3(ARENA.hw * 2 + 1, 0.2, ARENA.hd * 2 + 1), C('#1f2f6a'));
-  for (const [x, z, w, d] of [[0, -ARENA.hd - 0.4, ARENA.hw * 2 + 1.6, 0.6], [0, ARENA.hd + 0.4, ARENA.hw * 2 + 1.6, 0.6], [-ARENA.hw - 0.4, 0, 0.6, ARENA.hd * 2 + 1.6], [ARENA.hw + 0.4, 0, 0.6, ARENA.hd * 2 + 1.6]]) m.add(GEO.box, new V3(ARENA.x + x, 0.5, ARENA.z + z), new V3(w, 0.8, d), C('#d6aa3e'));
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) m.limb(new V3(ARENA.x + sx * (ARENA.hw + 0.4), 0, ARENA.z + sz * (ARENA.hd + 0.4)), new V3(ARENA.x + sx * (ARENA.hw + 0.4), 6, ARENA.z + sz * (ARENA.hd + 0.4)), 0.15, 0.15, C('#d6aa3e'));
-  m.add(GEO.box, new V3(ARENA.x, 6.1, ARENA.z), new V3(ARENA.hw * 2 + 1.4, 0.3, ARENA.hd * 2 + 1.4), C('#1f2f6a'));
-  hall.add(new THREE.Mesh(m.build(), gold));
-  for (let x = -ARENA.hw; x <= ARENA.hw; x += 1.2) for (const z of [-ARENA.hd - 0.4, ARENA.hd + 0.4]) bulb(ARENA.x + x, 6.4, ARENA.z + z, '#ffd890');
-  for (let x = -ARENA.hw + 1; x < ARENA.hw; x += 2) for (let z = -ARENA.hd + 1; z < ARENA.hd; z += 2) bulb(ARENA.x + x, 5.9, ARENA.z + z, '#fff6d0');
-  const COL = ['#a8232e', '#1f3f8a', '#c9a23a', '#f4ecd8', '#7a1a2a', '#2f6a45', '#a8232e'];
-  COL.forEach(col => {
-    const g = new THREE.Group(), cm = new Merge(), c = C(col);
-    cm.add(new THREE.CylinderGeometry(1.15, 1.2, 0.5, 20), new V3(0, 0.45, 0), new V3(1.2, 1, 1.45), C('#2c2c2c'));
-    cm.add(GEO.box, new V3(0, 0.85, -0.1), new V3(1.8, 0.5, 2.2), c);
-    cm.add(GEO.box, new V3(0, 1.3, -0.75), new V3(1.6, 0.6, 0.3), c);
-    cm.limb(new V3(0, 1.0, -0.6), new V3(0, 5.9, -0.6), 0.03, 0.03, C('#c9c3b5'));
-    cm.add(new THREE.TorusGeometry(0.28, 0.05, 6, 16).rotateX(-0.9), new V3(0, 1.35, 0.4), new V3(1, 1, 1), C('#2c2c2c'));
-    g.add(new THREE.Mesh(cm.build(), toy)); hall.add(g);
-    cars.push({ g, x: ARENA.x + (R() - 0.5) * ARENA.hw * 1.6, z: ARENA.z + (R() - 0.5) * ARENA.hd * 1.6, h: R() * 6.28, v: 2 + R() * 1.5, turn: 0 });
-  });
-  ride({ key: 'bumper', label: 'Drive a bumper car', name: 'Bumper cars: W to drive, A D to steer', exit: exitAt(ARENA.x + ARENA.hw + 2.2, ARENA.z),
-    board() { driving = true; cars[0].v = 0; }, leave() { driving = false; },
-    seat(v) { cars[0].g.localToWorld(v.set(0, 1.75, 0.35)); }, fwd(v) { v.set(Math.sin(cars[0].h), 0, Math.cos(cars[0].h)); },
-    drive(dt, ix, iz) { const c = cars[0]; c.v += (iz * 5 - c.v) * Math.min(1, dt * 2.2); c.h -= ix * dt * 2.2 * (0.4 + Math.min(1, Math.abs(c.v) / 3)); } },
-    cars[0].g, { x: W(ARENA.x + ARENA.hw + 1.5, ARENA.z).x, z: W(ARENA.x + ARENA.hw + 1.5, ARENA.z).z, r: 3.4 });
-}
-
-// every light in the gallery: candles and crystals, gently flickering
+// every light in the gallery: crystals and candles, gently flickering
 {
   const n = bulbs.length / 6, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), ph = new Float32Array(n);
   for (let i = 0; i < n; i++) { pos.set(bulbs.slice(i * 6, i * 6 + 3), i * 3); col.set(bulbs.slice(i * 6 + 3, i * 6 + 6), i * 3); ph[i] = R() * 100; }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('aPh', new THREE.BufferAttribute(ph, 1));
   const pts = new THREE.Points(g, new THREE.ShaderMaterial({ uniforms: { uTime: { value: 0 } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true, fog: false,
-    vertexShader: 'uniform float uTime;attribute float aPh;varying vec3 vC;void main(){vC=color*(.8+.2*sin(uTime*3.+aPh));vec4 mv=modelViewMatrix*vec4(position,1.);gl_PointSize=clamp(240./-mv.z,2.,16.);gl_Position=projectionMatrix*mv;}',
-    fragmentShader: 'varying vec3 vC;void main(){float d=length(gl_PointCoord-.5);float a=smoothstep(.5,.0,d)*.55+smoothstep(.16,.0,d);gl_FragColor=vec4(vC*a,a);}' }));
+    vertexShader: 'uniform float uTime;attribute float aPh;varying vec3 vC;void main(){vC=color*(.75+.25*sin(uTime*3.+aPh));vec4 mv=modelViewMatrix*vec4(position,1.);gl_PointSize=clamp(200./-mv.z,1.5,14.);gl_Position=projectionMatrix*mv;}',
+    fragmentShader: 'varying vec3 vC;void main(){float d=length(gl_PointCoord-.5);float a=smoothstep(.5,.0,d)*.5+smoothstep(.15,.0,d);gl_FragColor=vec4(vC*a,a);}' }));
   hall.add(pts); hall.userData.pts = pts;
 }
-
-/* ---------- every frame while you are inside ---------- */
-addTick(dt => {
-  if (!hall.visible) return;
-  hall.userData.pts.material.uniforms.uTime.value = T;
-  teaTop.rotation.y = T * 0.35; teaSubs.forEach((s, i) => { s.rotation.y = -T * 0.9 + i; }); cups.forEach((c, i) => { c.rotation.y = T * (1.4 + (i % 3) * 0.3); });
-  // the drop tower: up slowly for 9 s, a breath at the top, a sudden fall, bounce, rest
-  { const t = T % 18; dropY = t < 9 ? 2 + smooth(0, 9, t) * 16 : t < 11 ? 18 : t < 12 ? 18 - 16 * Math.pow(t - 11, 2) : 2 + Math.abs(Math.sin((t - 12) * 6)) * Math.exp(-(t - 12) * 2.5) * 1.5; ringSeat.position.y = dropY; ringSeat.rotation.y = T * 0.1; }
-  balTop.rotation.y = T * 0.45; balloons.forEach(b => { b.b.position.y = Math.sin(T * 0.8 + b.ph) * 1.4; });
-  train.forEach((c, k) => { const s = T * 4.2 - k * 2.9, [x, z] = trackAt(s), [x2, z2] = trackAt(s + 0.4); c.position.set(x, 0, z); c.rotation.y = Math.atan2(x2 - x, z2 - z); });
-  // bumper cars: the others wander, everyone bounces off the rail and off each other
-  cars.forEach((c, k) => {
-    if (!(k === 0 && driving)) { c.turn += (R() - 0.5) * dt * 3; c.turn = clamp(c.turn, -1, 1); c.h += c.turn * dt * 1.2; c.v += (2.6 - c.v) * dt; }
-    // your car: ui/worlds.js puts the keys (or joystick) on the ride as ix, iz
-    if (k === 0 && driving) { const d = hallRides.find(r => r.key === 'bumper'); d.drive(dt, d.ix || 0, d.iz || 0); }
-    c.x += Math.sin(c.h) * c.v * dt; c.z += Math.cos(c.h) * c.v * dt;
-    if (c.x < ARENA.x - ARENA.hw + 1.2) { c.x = ARENA.x - ARENA.hw + 1.2; c.h = -c.h; c.v *= 0.6; }
-    if (c.x > ARENA.x + ARENA.hw - 1.2) { c.x = ARENA.x + ARENA.hw - 1.2; c.h = -c.h; c.v *= 0.6; }
-    if (c.z < ARENA.z - ARENA.hd + 1.2) { c.z = ARENA.z - ARENA.hd + 1.2; c.h = Math.PI - c.h; c.v *= 0.6; }
-    if (c.z > ARENA.z + ARENA.hd - 1.2) { c.z = ARENA.z + ARENA.hd - 1.2; c.h = Math.PI - c.h; c.v *= 0.6; }
-  });
-  for (let i = 0; i < cars.length; i++) for (let j = i + 1; j < cars.length; j++) {
-    const a = cars[i], b = cars[j], dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
-    if (d < 2.4 && d > 0.01) { const push = (2.4 - d) / 2, nx = dx / d, nz = dz / d; a.x -= nx * push; a.z -= nz * push; b.x += nx * push; b.z += nz * push; a.h += Math.PI * 0.6; b.h -= Math.PI * 0.6; a.v *= 0.5; b.v *= 0.5; }
-  }
-  cars.forEach(c => { c.g.position.set(c.x, 0, c.z); c.g.rotation.y = c.h; });
-});
+addTick(() => { if (hall.visible) hall.userData.pts.material.uniforms.uTime.value = T; }, true);
 
 /* ---------- going in and out: just walk ---------- */
 // a soft golden shimmer fills the castle's gate; walking into it takes you inside, and walking to the
@@ -346,22 +302,113 @@ addTick(() => {
   if (state.world !== 'sun' || state.mode !== 'walk') return;
   const lx = player.pos.x - O.x, lz = player.pos.z - O.z;
   if (!hall.visible) { if (Math.abs(lx - CASTLE.x) < 2.6 && lz < CASTLE.z + 13.2 && lz > CASTLE.z + 8) late.enterHall && late.enterHall(); }
-  else if (Math.abs(lx - HALL.x) < 2.6 && lz - HALL.z > HALL.hl - 3.6) late.leaveHall && late.leaveHall();
+  else if (Math.abs(lx - HALL.x) < 3 && lz - HALL.z > HALL.hl - 4) late.leaveHall && late.leaveHall();
 }, true);
-export const hallArrive = { pos: W(0, HALL.hl - 7), yaw: 0 };
+export const hallArrive = { pos: W(0, HALL.hl - 9), yaw: 0 };
 export const castleFront = { pos: O.clone().add(new V3(CASTLE.x, 0, CASTLE.z + 17)), yaw: 0 };
 export function showHall(on) { hall.visible = on; }
 export const inHall = (x, z) => Math.abs(x - (O.x + HALL.x)) < HALL.hw + 4 && Math.abs(z - (O.z + HALL.z)) < HALL.hl + 4;
-// standing and walking inside: the floor is level; the walls, the candelabra and the rides stop you
+
+/* ================= out at the fair: the teacups and a great drop tower ================= */
+const fair = new THREE.Group(); fair.position.copy(O); sunScene.add(fair);
+const toy = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: '#3a3028', emissiveIntensity: 0.3 });
+const fb = [];
+const fbulb = (x, y, z, col) => { const c = new THREE.Color(col); fb.push(x, y, z, c.r, c.g, c.b); };
+const exitAt = (x, z) => O.clone().add(new V3(x, 0, z));
+function ride(def, root, near) { rides.push(def); regThing(root, def.label, () => late.startRide && late.startRide(def), near); }
+
+// the teacups: a turning floor, three smaller turntables, two cups on each spinning on its own, under a canopy
+const TEA = FAIR_RIDES.tea, teaTop = new THREE.Group(), teaSubs = [], cups = [];
+{
+  const gy = sunH(TEA.x, TEA.z);
+  teaTop.position.set(TEA.x, gy, TEA.z); fair.add(teaTop);
+  const base = new Merge(); base.add(new THREE.CylinderGeometry(TEA.r, TEA.r + 0.3, 0.5, 48), new V3(0, 0.25, 0), new V3(1, 1, 1), C('#f4ecd8'));
+  for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2; base.add(GEO.box, new V3(Math.cos(a) * (TEA.r - 0.1), 0.52, Math.sin(a) * (TEA.r - 0.1)), new V3(2.2, 0.05, 0.4), C(k % 2 ? '#d4a63a' : '#3b78d0'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), -a + Math.PI / 2)); }
+  teaTop.add(new THREE.Mesh(base.build(), toy));
+  const CUP = ['#f7b9cd', '#3b78d0', '#e8463a', '#fde59a', '#4fb35a', '#b48ae0'];
+  for (let i = 0; i < 3; i++) {
+    const sub = new THREE.Group(), a = i / 3 * Math.PI * 2; sub.position.set(Math.cos(a) * 4.8, 0.5, Math.sin(a) * 4.8); teaTop.add(sub); teaSubs.push(sub);
+    const pm = new Merge(); pm.add(new THREE.CylinderGeometry(3.1, 3.1, 0.2, 32), new V3(0, 0.1, 0), new V3(1, 1, 1), C('#d4a63a')); sub.add(new THREE.Mesh(pm.build(), toy));
+    for (let j = 0; j < 2; j++) {
+      const cup = new THREE.Group(); cup.position.set(j ? 1.55 : -1.55, 0.2, 0); sub.add(cup);
+      const cm = new Merge(), c = C(CUP[(i * 2 + j) % 6]);
+      cm.add(new THREE.CylinderGeometry(1.2, 0.8, 1.3, 20, 1, true), new V3(0, 0.75, 0), new V3(1, 1, 1), c);
+      cm.add(new THREE.CylinderGeometry(0.8, 0.8, 0.1, 20), new V3(0, 0.12, 0), new V3(1, 1, 1), c);
+      cm.add(new THREE.TorusGeometry(1.2, 0.09, 6, 24).rotateX(Math.PI / 2), new V3(0, 1.4, 0), new V3(1, 1, 1), C('#ffffff'));
+      cm.add(new THREE.TorusGeometry(0.4, 0.1, 6, 12), new V3(1.3, 0.85, 0), new V3(1, 1, 1), c);
+      cup.add(new THREE.Mesh(cm.build(), toy)); cups.push(cup);
+    }
+  }
+  // a striped canopy over it on four gilded posts, with lights round its rim
+  const can = new Merge();
+  for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + Math.PI / 4; can.limb(new V3(TEA.x + Math.cos(a) * (TEA.r + 0.6), gy, TEA.z + Math.sin(a) * (TEA.r + 0.6)), new V3(TEA.x + Math.cos(a) * (TEA.r + 0.6), gy + 6.5, TEA.z + Math.sin(a) * (TEA.r + 0.6)), 0.16, 0.14, C('#d4a63a')); }
+  const stripes = canvasTex(512, 64, (g, w, h) => { for (let i = 0; i < 24; i++) { g.fillStyle = i % 2 ? '#f8f1e0' : '#e8508a'; g.fillRect(i * w / 24, 0, w / 24, h); } });
+  const canopy = new THREE.Mesh(new THREE.ConeGeometry(TEA.r + 1.4, 3, 24, 1, true), new THREE.MeshLambertMaterial({ map: stripes, side: THREE.DoubleSide, emissive: '#3a2a2a', emissiveIntensity: 0.4 }));
+  canopy.position.set(TEA.x, gy + 8, TEA.z); fair.add(canopy, new THREE.Mesh(can.build(), toy));
+  for (let k = 0; k < 48; k++) { const a = k / 48 * Math.PI * 2; fbulb(TEA.x + Math.cos(a) * (TEA.r + 1.3), gy + 6.55, TEA.z + Math.sin(a) * (TEA.r + 1.3), k % 2 ? '#ffd0e0' : '#ffe8a0'); }
+  ride({ key: 'teacups', label: 'Ride the teacups', name: 'In a spinning teacup', follow: true, exit: exitAt(TEA.x + TEA.r + 2.2, TEA.z),
+    seat(v) { cups[0].getWorldPosition(v); v.y += 2.0; } }, teaTop, { x: O.x + TEA.x, z: O.z + TEA.z, r: TEA.r + 2.6 });
+}
+
+// the drop tower: 56 metres, the tallest thing at the fair. The ring of seats creeps up for fifteen seconds,
+// hangs at the top over the whole secret garden, then falls freely for nearly three seconds before the brakes catch it
+const TOW = FAIR_RIDES.drop, H = 56, ringSeat = new THREE.Group();
+let dropY = 3;
+{
+  const gy = sunH(TOW.x, TOW.z), m = new Merge();
+  m.add(new THREE.CylinderGeometry(4.2, 4.8, 1, 32), new V3(TOW.x, gy + 0.5, TOW.z), new V3(1, 1, 1), C('#efe6d2'));
+  for (let y = 0; y < H; y += 3) m.add(new THREE.CylinderGeometry(1.25, 1.25, 3, 16), new V3(TOW.x, gy + y + 1.5, TOW.z), new V3(1, 1, 1), C((y / 3) % 2 ? '#e8463a' : '#f4ecd8'));
+  // four rails up its sides, and a crown at the top with a beacon
+  for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2; m.limb(new V3(TOW.x + Math.cos(a) * 1.45, gy, TOW.z + Math.sin(a) * 1.45), new V3(TOW.x + Math.cos(a) * 1.45, gy + H, TOW.z + Math.sin(a) * 1.45), 0.12, 0.12, C('#c9c3b5')); }
+  m.add(new THREE.CylinderGeometry(3, 2, 2.4, 24), new V3(TOW.x, gy + H + 1.2, TOW.z), new V3(1, 1, 1), C('#3b78d0'));
+  m.add(GEO.cone, new V3(TOW.x, gy + H + 2.4, TOW.z), new V3(2.2, 4, 2.2), C('#d4a63a'));
+  m.add(GEO.sph, new V3(TOW.x, gy + H + 6.6, TOW.z), new V3(0.6, 0.6, 0.6), C('#ff5a4a'));
+  fair.add(new THREE.Mesh(m.build(), toy));
+  for (let y = 3; y < H; y += 1.5) for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + 0.785; fbulb(TOW.x + Math.cos(a) * 1.35, gy + y, TOW.z + Math.sin(a) * 1.35, y % 6 < 3 ? '#ffe8a0' : '#ff8a6a'); }
+  for (let k = 0; k < 36; k++) { const a = k / 36 * Math.PI * 2; fbulb(TOW.x + Math.cos(a) * 3.05, gy + H + 2.3, TOW.z + Math.sin(a) * 3.05, '#fff2c0'); }
+  fbulb(TOW.x, gy + H + 6.6, TOW.z, '#ff3a2a');
+  ringSeat.position.set(TOW.x, gy + dropY, TOW.z); fair.add(ringSeat);
+  const r = new Merge(); r.add(new THREE.TorusGeometry(2.6, 0.4, 8, 32).rotateX(Math.PI / 2), new V3(0, 0, 0), new V3(1, 1, 1), C('#d4a63a'));
+  for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2; r.add(GEO.box, new V3(Math.cos(a) * 3.2, -0.25, Math.sin(a) * 3.2), new V3(0.9, 0.2, 0.8), C('#3b78d0'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), -a)); r.add(GEO.box, new V3(Math.cos(a) * 2.8, 0.45, Math.sin(a) * 2.8), new V3(0.9, 1.3, 0.15), C('#3b78d0'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), -a + Math.PI / 2)); r.limb(new V3(Math.cos(a) * 2.75, 1.1, Math.sin(a) * 2.75), new V3(Math.cos(a) * 3.35, 0.2, Math.sin(a) * 3.35), 0.05, 0.05, C('#f2c12e')); }
+  ringSeat.add(new THREE.Mesh(r.build(), toy));
+  ride({ key: 'drop', label: 'Ride the drop tower', name: 'On the drop tower: hold on!', exit: exitAt(TOW.x - 6.5, TOW.z + 2),
+    seat(v) { ringSeat.localToWorld(v.set(3.4, 1.05, 0)); }, fwd(v) { const a = ringSeat.rotation.y; v.set(Math.cos(a), dropY > 40 ? -0.55 : -0.25, -Math.sin(a)); } }, ringSeat, { x: O.x + TOW.x, z: O.z + TOW.z, r: 7 });
+}
+// all the rides' bulbs: dim by day, bright after dark
+const fairGlow = { value: 0.15 };
+{
+  const n = fb.length / 6, pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { pos.set(fb.slice(i * 6, i * 6 + 3), i * 3); col.set(fb.slice(i * 6 + 3, i * 6 + 6), i * 3); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  fair.add(new THREE.Points(g, new THREE.ShaderMaterial({ uniforms: { uGlow: fairGlow }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
+    vertexShader: 'varying vec3 vC;void main(){vC=color;vec4 mv=modelViewMatrix*vec4(position,1.);gl_PointSize=clamp(320./-mv.z,2.,20.);gl_Position=projectionMatrix*mv;}',
+    fragmentShader: 'uniform float uGlow;varying vec3 vC;void main(){float d=length(gl_PointCoord-.5);float a=(smoothstep(.5,.0,d)*.6+smoothstep(.18,.0,d))*uGlow;gl_FragColor=vec4(vC*a,a);}' })));
+}
+addTick(() => {
+  if (state.world !== 'sun') return;
+  fairGlow.value = Math.max(state.night, (state.dusk || 0) * 0.6, 0.18);
+  teaTop.rotation.y = T * 0.35; teaSubs.forEach((s, i) => { s.rotation.y = -T * 0.9 + i; }); cups.forEach((c, i) => { c.rotation.y = T * (1.4 + (i % 3) * 0.3); });
+  // a 26-second cycle: creep up to the top (15 s), hang there (4 s), free fall (2.6 s), brake and bounce, rest
+  const t = T % 26, top = H - 6;
+  if (t < 15) dropY = 3 + smooth(0, 15, t) * (top - 3);
+  else if (t < 19) dropY = top + Math.sin((t - 15) * 3) * 0.05;
+  else if (t < 21.6) { const f = t - 19; dropY = Math.max(10, top - 0.5 * 9.8 * f * f); }
+  else if (t < 23) { const f = (t - 21.6) / 1.4; dropY = 10 - 7 * smooth(0, 1, f) + Math.sin(f * 9) * (1 - f) * 0.6; }
+  else dropY = 3;
+  ringSeat.position.y = sunH(TOW.x, TOW.z) + dropY; if (t < 19) ringSeat.rotation.y = T * 0.12;
+});
+
+// standing and walking: the hall's floor is level and its walls stop you; at the fair, the two rides do
 {
   const f = worlds.sun.floorH, b = worlds.sun.blocked;
   worlds.sun.floorH = (x, z) => inHall(x, z) ? O.y + HALL.y : f(x, z);
   worlds.sun.blocked = (x, z) => {
-    if (!inHall(x, z)) return b(x, z);
+    if (!inHall(x, z)) {
+      const lx = x - O.x, lz = z - O.z;
+      if (Math.hypot(lx - TEA.x, lz - TEA.z) < TEA.r + 1.2 || Math.hypot(lx - TOW.x, lz - TOW.z) < 5.2) return true;
+      return b(x, z);
+    }
     const lx = x - O.x - HALL.x, lz = z - O.z - HALL.z;
-    if (Math.abs(lx) > HALL.hw - 2.1 || Math.abs(lz) > HALL.hl - 1.2) return true;
-    if (Math.hypot(lx - TEA.x, lz - TEA.z) < TEA.r + 0.5 || Math.hypot(lx - TOWER.x, lz - TOWER.z) < 4.2 || Math.hypot(lx - BAL.x, lz - BAL.z) < 8) return true;
-    if (Math.abs(lx - ARENA.x) < ARENA.hw + 0.8 && Math.abs(lz - ARENA.z) < ARENA.hd + 0.8) return true;
-    return false;
+    return Math.abs(lx) > HALL.hw - 2.9 || Math.abs(lz) > HALL.hl - 1.4;
   };
 }

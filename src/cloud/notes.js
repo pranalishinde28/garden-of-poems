@@ -20,18 +20,21 @@ provide({
 let cur = null; // { p, owner, poemId, visiting, hearts: { likes, mine } | null }
 const heartBtn = $('#r-heart'), talkBtn = $('#r-talk'), likesEl = $('#r-likes'), notesBox = $('#r-notes');
 const isPublic = () => !!state.visiting || !!(Cloud.user && Cloud.garden && Cloud.garden.is_public);
-const canHeart = () => !!(cur && cur.visiting && cur.hearts && !heartBtn.hidden);
+const canHeart = () => !!(cur && cur.hearts && !heartBtn.hidden);
 function setPoet(name) { const n = $('#r-poet'); n.textContent = name; $('#r-av').textContent = (name.trim()[0] || '·').toUpperCase(); }
 
 async function loadSocial(p) {
   cur = null; heartBtn.hidden = talkBtn.hidden = likesEl.hidden = notesBox.hidden = true;
   notesBox.classList.remove('all'); talkBtn.setAttribute('aria-expanded', 'false');
   if (!state.visiting && Cloud.user && Cloud.profile) setPoet(Cloud.profile.display_name || Cloud.profile.username || 'Your garden');
-  if (!Cloud.ready || !isPublic()) return;
+  if (!Cloud.ready) return;
+  // hearts: on any poem in a public garden, and always on your own (signed in, even while private);
+  // notes only where the garden is public
+  const pub = isPublic(), own = !state.visiting && !!Cloud.user;
+  if (!pub && !own) return;
   const visiting = !!state.visiting, owner = visiting ? state.visiting.owner : Cloud.user.id, poemId = visiting ? p._oid : String(p.id);
   const c = cur = { p, owner, poemId, visiting, hearts: null };
-  talkBtn.hidden = false;
-  loadNotes();
+  if (pub) { talkBtn.hidden = false; loadNotes(); }
   try {
     const all = await heartsFor(owner);
     if (cur !== c || !all) return;
@@ -40,18 +43,18 @@ async function loadSocial(p) {
 }
 
 function showHearts() {
-  const h = cur.hearts, own = !cur.visiting;
+  const h = cur.hearts;
   heartBtn.hidden = false; likesEl.hidden = false;
-  heartBtn.setAttribute('aria-pressed', String(!!h.mine)); heartBtn.setAttribute('aria-disabled', String(own));
-  heartBtn.setAttribute('aria-label', own ? 'Hearts from visitors' : h.mine ? 'Take back your heart (J)' : 'Love this poem (J)');
-  likesEl.textContent = h.likes === 0 ? (own ? 'No hearts yet' : 'Be the first to love this')
+  heartBtn.setAttribute('aria-pressed', String(!!h.mine)); heartBtn.setAttribute('aria-disabled', 'false');
+  heartBtn.setAttribute('aria-label', h.mine ? 'Take back your heart (J)' : 'Love this poem (J)');
+  likesEl.textContent = h.likes === 0 ? 'Be the first to love this'
     : h.mine ? (h.likes === 1 ? 'You loved this' : `You and ${h.likes - 1} other${h.likes === 2 ? '' : 's'} loved this`)
     : `${h.likes} ${h.likes === 1 ? 'person' : 'people'} loved this`;
 }
 const replay = (node, cls) => { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); };
 // a double tap only ever gives a heart; the button or J toggles it
 async function heartPoem(fromDouble) {
-  if (!cur || !cur.hearts || !cur.visiting) return;
+  if (!cur || !cur.hearts) return;
   if (!Cloud.user) { toast('Sign in to leave a heart for the poet.'); return; }
   const c = cur, h = c.hearts, on = fromDouble ? true : !h.mine;
   if (fromDouble) replay($('#r-bigheart'), 'beat'); // not 'pop': that is the menus' class

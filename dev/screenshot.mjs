@@ -282,7 +282,7 @@ async function main() {
       const inside = await page.evaluate(() => window.__garden.camera.position.y < -50); if (!inside) errors.push('walking into the gate did not take you inside');
       await page.evaluate(() => { const g = window.__garden; g.player.yaw = 0.6; g.player.pitch = 0.12; }); await sleep(1000); await shot('inside2');
       await page.evaluate(() => { const g = window.__garden; g.player.yaw = -0.7; g.player.pitch = 0.1; }); await sleep(1000); await shot('inside3');
-      for (const k of ['teacups', 'drop', 'balloons', 'train', 'bumper']) {
+      for (const k of []) {
         await page.evaluate(k => { const g = window.__garden, r = g.rides.find(r => r.key === k); g.late.startRide(r); }, k);
         if (k === 'bumper') { await page.keyboard.down('KeyW'); await sleep(2500); await page.keyboard.up('KeyW'); } else await sleep(k === 'drop' ? 6000 : 2500);
         await page.screenshot({ path: join(root, `dev/shots/castle-ride-${k}.png`) });
@@ -290,8 +290,20 @@ async function main() {
         await page.click('#ride-off'); await sleep(700);
       }
       await page.evaluate(() => { const g = window.__garden, p = g.worlds.sun.arrive.pos; }); 
-      await page.evaluate(() => { const g = window.__garden, p = g.camera.position; g.player.pos.set(p.x, 0, p.z + 49); g.player.yaw = Math.PI; }); await sleep(300); await page.keyboard.down('KeyW'); await sleep(1500); await page.keyboard.up('KeyW'); await sleep(2500); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }); await sleep(2600); await shot('out');
-      const outside = await page.evaluate(() => window.__garden.camera.position.y > -20); console.log(`  walked in, rides all started; walked back out: ${outside}`); if (!outside) errors.push('walking to the door did not take you out');
+      await page.evaluate(() => { const g = window.__garden; g.player.yaw = 0; g.player.pitch = 1.0; }); await sleep(1200); await shot('vault');
+      await page.evaluate(() => { const g = window.__garden; g.player.yaw = -1.2; g.player.pitch = 0.1; }); await sleep(1000); await shot('mirrors');
+      await page.evaluate(() => { const g = window.__garden, p = g.camera.position; g.player.pos.set(p.x, 0, p.z - 70); g.player.yaw = 0; g.player.pitch = 0.05; }); await sleep(1200); await shot('north');
+      await page.evaluate(() => { const g = window.__garden, p = g.camera.position; g.player.pos.set(p.x, 0, p.z + 119); g.player.yaw = Math.PI; }); await sleep(300); await page.keyboard.down('KeyW'); await sleep(1500); await page.keyboard.up('KeyW'); await sleep(2500); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }); await sleep(2600); await shot('out');
+      const outside = await page.evaluate(() => window.__garden.camera.position.y > -20);
+      // out at the fair: the drop tower and the teacups, seen and ridden
+      const lookAt = async (n, x, z, yaw, pitch) => { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + x, 0, O.z - 34.8 + z); g.player.yaw = yaw; g.player.pitch = pitch; }, x, z, yaw, pitch); await sleep(1500); await shot(n); };
+      await lookAt('tower', -2, -50, -1.03, 0.32); await lookAt('teacups', -18, -40, 1.6, 0.05);
+      for (const [k, wait] of [['teacups', 2500], ['drop', 17500], ['drop', 3000]]) {
+        if (!(k === 'drop' && wait === 3000)) { await page.evaluate(k => { const g = window.__garden, r = g.rides.find(r => r.key === k); g.late.startRide(r); }, k); }
+        await sleep(wait); await page.screenshot({ path: join(root, `dev/shots/castle-ride-${k}${wait === 3000 ? '-fall' : ''}.png`) });
+        if (await page.evaluate(() => window.__garden.state.mode) !== 'ride') errors.push('ride ' + k + ' did not start');
+        if (k !== 'drop' || wait === 3000) { await page.click('#ride-off'); await sleep(700); }
+      } console.log(`  walked in, rides all started; walked back out: ${outside}`); if (!outside) errors.push('walking to the door did not take you out');
       if (!/castle/i.test(cue)) errors.push('no castle cue at the gate');
     }
     else if (FLOW === 'secret') { // the map's secret garden goes straight to the Sunflower Garden

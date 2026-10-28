@@ -36,7 +36,7 @@ function cross(words, swap, after) {
   }, 2000);
 }
 
-worlds.sun.announce = () => showRegion({ name: 'The Starlight Fair', sub: 'Ride the wheel, the carousel, the coaster, the swings and the storybook boats. Fireworks at the striped kiosk.' });
+worlds.sun.announce = () => showRegion({ name: 'The Starlight Fair', sub: 'The wheel, the carousel, the coaster, the swings, the teacups, the drop tower and the storybook boats. Fireworks at the striped kiosk.' });
 function enterSunWorld() {
   cross('The light beyond the falls…', () => {
     late.mooreBoat && late.mooreBoat(); setVeil(0);
@@ -105,7 +105,7 @@ addEventListener('keydown', e => {
 function enterHall() {
   if (state.world !== 'sun' || state.mode !== 'walk') return;
   cross('Through the castle doors…', () => { showHall(true); place(hallArrive.pos, hallArrive.yaw); },
-    () => showRegion({ name: 'The Hall of Mirrors', sub: 'Teacups, a drop tower, balloons, a royal train and bumper cars. The door at the far end leads out.' }));
+    () => showRegion({ name: 'The Hall of Mirrors', sub: 'Walk the gallery. The door at the far end leads back out to the fair.' }));
 }
 function leaveHall() {
   if (state.mode !== 'walk') return;

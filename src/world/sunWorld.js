@@ -35,6 +35,8 @@ const LAKE = { x: 0, z: 48, rx: 24, rz: 10, y: -0.15 };
 const FIELD = { z0: 31, z1: -38 }, ARCH_Z = -41, PLAZA = { x: 0, z: -64, r: 23 }, CAROUSEL = { x: 0, z: -64, r: 7.6 };
 const LAGOON = { x: 0, z: -104, rx: 62, rz: 14 }, BRIDGE = { half: 2.4 };
 export const CASTLE = { x: 0, z: -152 };
+// two rides stand out at the fair (built in castleHall.js): the teacups by the canal, a great drop tower by the swings
+export const FAIR_RIDES = { tea: { x: -36, z: -44, r: 8.5 }, drop: { x: 40, z: -88 } };
 const WHEEL = { x: -40, z: -134, hub: 18.5, r: 15 };
 // the storybook canal (west of the plaza) and the swing ride (east)
 const CANAL = { x: -56, z: -66, rx: 15, rz: 10, half: 2.4 }, SWING = { x: 42, z: -62, r: 10 }, KIOSK = { x: 12, z: -47 };
@@ -220,7 +222,7 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
   const spots = [];
   for (let z = FIELD.z0; z > FIELD.z1; z -= 0.55) for (let x = -34; x < 34; x += 0.55) {
     const px = x + (R() - 0.5) * 0.35, pz = z + (R() - 0.5) * 0.35;
-    if (Math.abs(px - pathX(pz)) < 1.8 || lakeE(px, pz) < 1.35 || Math.hypot(px - DOOR.x, pz - DOOR.z) < 3.4 || (pz < DOOR.z + 1.2 && pz > DOOR.z - 1.2 && px > DOOR.x && px < pathX(pz))) continue;
+    if (Math.abs(px - pathX(pz)) < 1.8 || lakeE(px, pz) < 1.35 || Math.hypot(px - FAIR_RIDES.tea.x, pz - FAIR_RIDES.tea.z) < FAIR_RIDES.tea.r + 3 || Math.hypot(px - DOOR.x, pz - DOOR.z) < 3.4 || (pz < DOOR.z + 1.2 && pz > DOOR.z - 1.2 && px > DOOR.x && px < pathX(pz))) continue;
     // shorter beside the path, so the field rises away from you
     const d = Math.abs(px - pathX(pz));
     spots.push([px, pz, 1.1 + Math.min(1, d / 6) * 0.7 + R() * 0.6]);
