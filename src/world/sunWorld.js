@@ -21,7 +21,8 @@ import { makeBoat } from './gorge.js';
 // at the plaza's edge leads home. The garden's light setting (day, sunset, night) holds here too.
 // It sits 3 km from the garden so nothing of either world is found from the other.
 
-const R = rng(7171), O = new V3(0, 0, 3000);
+const R = rng(7171);
+export const O = new V3(0, 0, 3000);
 export const sunScene = new THREE.Scene();
 sunScene.background = new THREE.Color('#9cc8ee');
 sunScene.fog = new THREE.Fog('#d4e6f4', 170, 1150);
@@ -32,7 +33,8 @@ const at = (x, z, y = 0) => new V3(x, y, z);
 /* ---------- the layout ---------- */
 const LAKE = { x: 0, z: 48, rx: 24, rz: 10, y: -0.15 };
 const FIELD = { z0: 31, z1: -38 }, ARCH_Z = -41, PLAZA = { x: 0, z: -64, r: 23 }, CAROUSEL = { x: 0, z: -64, r: 7.6 };
-const LAGOON = { x: 0, z: -104, rx: 62, rz: 14 }, BRIDGE = { half: 2.4 }, CASTLE = { x: 0, z: -152 };
+const LAGOON = { x: 0, z: -104, rx: 62, rz: 14 }, BRIDGE = { half: 2.4 };
+export const CASTLE = { x: 0, z: -152 };
 const WHEEL = { x: -40, z: -134, hub: 18.5, r: 15 };
 // the storybook canal (west of the plaza) and the swing ride (east)
 const CANAL = { x: -56, z: -66, rx: 15, rz: 10, half: 2.4 }, SWING = { x: 42, z: -62, r: 10 }, KIOSK = { x: 12, z: -47 };

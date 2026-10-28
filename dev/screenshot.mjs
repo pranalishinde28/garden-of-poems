@@ -268,6 +268,29 @@ async function main() {
       await sleep(900); await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await page.keyboard.press('KeyH'); await sleep(1200);
       for (const t of ['move', 'do', 'keys', 'read']) { await page.click('#ht-' + t); await sleep(500); await page.screenshot({ path: join(root, `dev/shots/help-${t}.png`) }); }
     }
+    else if (FLOW === 'castle') { // the secret world, the castle's gate, the hall inside, every ride, and out again
+      const shot = async n => { await sleep(400); await page.screenshot({ path: join(root, `dev/shots/castle-${n}.png`) }); };
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); window.__garden.late.enterSunWorld(); });
+      await page.waitForFunction(() => window.__garden.state.world === 'sun' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 });
+      await sleep(2500);
+      await page.evaluate(() => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + 1, 0, O.z - 34.8 - 136); g.player.yaw = 0; g.player.pitch = 0.12; });
+      await sleep(1500); const cue = await page.$eval('#cue', e => e.textContent.trim()); await shot('gate');
+      await page.keyboard.press('KeyE'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }); await sleep(2600); await shot('inside');
+      await page.evaluate(() => { const g = window.__garden; g.player.yaw = 0.6; g.player.pitch = 0.12; }); await sleep(1000); await shot('inside2');
+      await page.evaluate(() => { const g = window.__garden; g.player.yaw = -0.7; g.player.pitch = 0.1; }); await sleep(1000); await shot('inside3');
+      for (const k of ['teacups', 'drop', 'balloons', 'train', 'bumper']) {
+        await page.evaluate(k => { const g = window.__garden, r = g.rides.find(r => r.key === k); g.late.startRide(r); }, k);
+        if (k === 'bumper') { await page.keyboard.down('KeyW'); await sleep(2500); await page.keyboard.up('KeyW'); } else await sleep(k === 'drop' ? 6000 : 2500);
+        await page.screenshot({ path: join(root, `dev/shots/castle-ride-${k}.png`) });
+        const m = await page.evaluate(() => window.__garden.state.mode); if (m !== 'ride') errors.push('ride ' + k + ' did not start');
+        await page.click('#ride-off'); await sleep(700);
+      }
+      await page.evaluate(() => { const g = window.__garden, p = g.worlds.sun.arrive.pos; }); 
+      await page.evaluate(() => window.__garden.late.leaveHall()); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }); await sleep(2600); await shot('out');
+      console.log(`  gate cue "${cue}", rides all started; back out: ${await page.evaluate(() => window.__garden.state.world)}`);
+      if (!/castle/i.test(cue)) errors.push('no castle cue at the gate');
+    }
     else if (FLOW === 'secret') { // the map's secret garden goes straight to the Sunflower Garden
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(900); await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await page.keyboard.press('KeyM'); await sleep(1500);
