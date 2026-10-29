@@ -845,3 +845,6 @@ body.panel-open #run-btn{opacity:0;pointer-events:none}
 /* the same soft round frame on every box's close button */
 .panel .xc{width:40px;height:40px;border-radius:50%;color:#5a3418;background:rgba(255,246,224,.38);border:1px solid rgba(110,58,16,.35)}
 .panel .xc:hover{background:rgba(255,246,224,.75)}
+/* the heading stays on one line, sized to the page (the page stops growing at 780 px, the screen doesn't) */
+#editor .ask{white-space:nowrap;font-size:min(2.1rem,3.5vw)}
+@media (max-width:760px){#editor .ask{font-size:min(1.6rem,5.2vw);padding:0 50px}}
