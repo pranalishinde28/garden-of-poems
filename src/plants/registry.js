@@ -23,6 +23,8 @@ function addSeasonPatch(g, R, season, rad) {
 export function createPlant(p, { visible = true } = {}) {
   const type = p.plantType || plantTypeFor(p);
   const R = rng(hashStr(p.id + ':shape'));
+  // a garden you visit may have a tree where the bench or the swings stand now; it grows nearby instead
+  if (misplaced(p, type)) p.position = assignPosition(p, type);
   const root = new THREE.Group();
   root.position.set(p.position.x, groundH(p.position.x, p.position.z), p.position.z);
   const inner = new THREE.Group(); inner.rotation.y = R() * Math.PI * 2; root.add(inner);
@@ -79,7 +81,12 @@ export function preparePoem(p) {
   // a poem that was a flower or a bush before every poem became a tree is re-placed once, with room for its tree
   if (p.plantType !== t && p.position) p.position = null;
   p.plantType = t;
-  if (!p.position || riverDist(p.position.x, p.position.z) < 2.6 || decor.some(o => o.collide !== undefined && Math.hypot(o.x - p.position.x, o.z - p.position.z) < o.r + RAD[t] * 0.4)) p.position = assignPosition(p, t);
+  if (misplaced(p, t)) p.position = assignPosition(p, t);
+}
+// no room where it stands: by the river, on something built, or on the writing bench (which moved in round 36)
+function misplaced(p, t) {
+  const q = p.position; if (!q) return true;
+  return riverDist(q.x, q.z) < 2.6 || Math.hypot(q.x - BENCH.x, q.z - BENCH.z) < RAD[t] * 0.6 + 3 || decor.some(o => o.collide !== undefined && Math.hypot(o.x - q.x, o.z - q.z) < o.r + RAD[t] * 0.4);
 }
 
 export function setShadowDirty(v) { return (shadowDirty = v); }

@@ -86,7 +86,7 @@ function drawWorld(g, P, s, full) {
   // swings: white pergolas with a coral bench
   if (featOn('swings')) swings.forEach(sw => { const p = sw.g.position, [x, y] = at(p.x, p.z); g.save(); g.translate(x, y); g.rotate(-sw.g.rotation.y); const w = 2.9 * s, d = 2.3 * s; g.beginPath(); g.rect(-w / 2, -d / 2, w, d); fill('#fbf7ee'); ink(); g.fillStyle = '#d85a43'; g.fillRect(-w * 0.3, -d * 0.15, w * 0.6, d * 0.3); g.restore(); });
   // the writing bench in its mulch bed, the gate's blossom arch
-  { const [x, y] = at(BENCH.x, BENCH.z); g.save(); g.translate(x, y); g.rotate(-Math.atan2(-BENCH.x, -BENCH.z)); g.beginPath(); g.ellipse(0, -0.35 * s, 3 * s, 2.1 * s, 0, 0, 7); fill('#9a6b45'); ink(); g.beginPath(); g.rect(-1.1 * s, -0.35 * s, 2.2 * s, 0.7 * s); fill('#ffffff'); ink(lw * 0.6); g.restore(); }
+  { const [x, y] = at(BENCH.x, BENCH.z); g.save(); g.translate(x, y); g.rotate(-BENCH.face); g.beginPath(); g.ellipse(0, -0.35 * s, 3 * s, 2.1 * s, 0, 0, 7); fill('#9a6b45'); ink(); g.beginPath(); g.rect(-1.1 * s, -0.35 * s, 2.2 * s, 0.7 * s); fill('#ffffff'); ink(lw * 0.6); g.restore(); }
   { const [x, y] = at(0, 39.2); g.beginPath(); g.arc(x, y, 3.1 * s, Math.PI * 1.05, Math.PI * 1.95); g.strokeStyle = INKC; g.lineWidth = 1.5 * s; g.stroke(); g.strokeStyle = '#f2a8c2'; g.lineWidth = 1.1 * s; g.stroke(); }
   // the fountain: a stone octagon, water, a statue at the centre
   { const [x, y] = at(FOUNTAIN.x, FOUNTAIN.z); g.beginPath(); for (let k = 0; k < 8; k++) { const a = k / 8 * 6.28 + Math.PI / 8; g.lineTo(x + Math.cos(a) * 3.9 * s, y + Math.sin(a) * 3.9 * s); } g.closePath(); fill('#cbc3b0'); ink(); circle(x, y, 3 * s); fill('#6fa9c7'); ink(lw * 0.7); circle(x, y, 1.2 * s); fill('#e4ddcc'); ink(lw * 0.7); circle(x, y, 0.45 * s); fill('#8a8478'); }

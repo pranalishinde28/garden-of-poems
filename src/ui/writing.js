@@ -73,8 +73,12 @@ $('#e-fresh').onclick = () => { clearDraft(); eTitle.value = eBody.value = eThem
 export function openEditor(p) {
   if (state.visiting) { toast('You are visiting someone else\'s garden. Return home to write.'); return; }
   if (state.world === 'sun') { toast('Poems grow in your own garden. The white door leads home.'); return; }
+  // writing from a swing: get off it first, and put its poems away, so no other page stays open behind this one
+  if (state.swing) { late.closeSwingReader(); document.body.classList.remove('on-swing'); state.swing = null; }
   late.hideSwingUI();
   late.closePops(); setCue(null);
+  // a hint about where to write has said its piece once you are writing
+  if (/where poems begin/.test($('#toast').textContent)) $('#toast').classList.remove('show');
   state.editing = p ? p.id : null;
   eTitle.value = p ? p.title : ''; eBody.value = p ? p.content : ''; eTheme.value = p && p.theme ? p.theme : ''; eMatters.checked = !!(p && p.important); $('#e-private').checked = !!(p && p.private);
   eMood = p ? (p.mood || null) : null;
@@ -86,7 +90,7 @@ export function openEditor(p) {
   eGo.textContent = p ? 'Save changes' : 'Plant this poem'; eGo.disabled = !eBody.value.trim();
   editor.classList.remove('sowing');
   if (p) { closePanel(reader); state.mode = 'writing'; openPanel(editor); setTimeout(() => { autoGrow(); eBody.focus({ preventScroll: true }); }, 60); return; }
-  if (state.mode === 'focus') closePanel(reader);
+  if (state.mode === 'focus' || !reader.hidden) { closePanel(reader); state.reading = null; state.reflection = false; }
   state.mode = 'writing'; Music.ducked = true;
   const seat = benchSeat(), d = camera.position.distanceTo(seat.pos);
   camTween(seat.pos, seat.look, clamp(1 + d / 9, 1.2, 3.6), () => {
@@ -103,6 +107,7 @@ function closeEditor() {
   state.mode = 'walk'; Music.ducked = false; syncPlayerFromCamera();
 }
 $('#e-cancel').onclick = closeEditor;
+$('#e-close').onclick = closeEditor;
 eGo.onclick = () => {
   const content = eBody.value.replace(/\s+$/, ''); if (!content.trim()) return;
   if (!state.editing) clearDraft();

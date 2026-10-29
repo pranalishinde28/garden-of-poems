@@ -35,7 +35,7 @@ const VIEWS = {
   intro:   { intro: true },
   tunnel:  { pos: [0, 1.7, 35.5], look: [0, 1.5, 17] },
   pond:    { pos: [7, 2.2, 9], look: [0, -0.4, 0] },
-  bench:   { pos: [-6.5, 1.75, 9.5], look: [-19, 1.4, 22] },
+  bench:   { pos: [-11.0, 1.75, 3.5], look: [-28.5, 1.4, 5.8] },
   swings:  { pos: [-13.5, 1.7, 15.5], look: [-21, 1.5, 24.5] },
   overview: { pos: [6, 34, 48], look: [-12, 0, 14] },
   'autumn-tunnel': { pos: [0, 1.7, 35.5], look: [0, 1.5, 17], season: 'autumn' },
@@ -66,15 +66,15 @@ const VIEWS = {
   'sunset-gate': { pos: [0, 1.7, 49], look: [0, 1.6, 20], season: 'spring', light: 'sunset' },
   'day-high': { pos: [4, 14, 44], look: [-20, 10, -200], season: 'spring' },
   'sunset-high': { pos: [4, 14, 44], look: [-20, 10, -200], season: 'autumn', light: 'sunset' },
-  'swing-close': { pos: [-12.4, 1.7, 13.6], look: [-19, 1.4, 21] },
-  'swing-sunset': { pos: [-12.4, 1.7, 13.6], look: [-19, 1.4, 21], light: 'sunset' },
-  'swing-night': { pos: [-12.4, 1.7, 13.6], look: [-19, 1.4, 21], light: 'night' },
+  'swing-close': { pos: [-18.1, 1.7, 3.2], look: [-27.9, 1.4, 5.0] },
+  'swing-sunset': { pos: [-18.1, 1.7, 3.2], look: [-27.9, 1.4, 5.0], light: 'sunset' },
+  'swing-night': { pos: [-18.1, 1.7, 3.2], look: [-27.9, 1.4, 5.0], light: 'night' },
   'peacocks': { pos: [30, 1.8, 15], look: [25.5, 0.9, 21.5], fan: true },
   'trees-a': { pos: [14, 3.2, 20], look: [4, 2.6, 6], season: 'spring', samples: true },
   'trees-b': { pos: [-18, 3.5, -6], look: [-8, 2.5, -14], season: 'spring', samples: true },
   'trees-c': { pos: [20, 4, -2], look: [24, 2.5, -14], season: 'spring', samples: true },
   'trees-d': { pos: [-4, 3, 20], look: [-14, 2.5, 30], season: 'autumn', samples: true },
-  'bench-front': { pos: [-5.6, 1.7, 8.3], look: [-9.4, 1.0, 12.6] },
+  'bench-front': { pos: [-9.6, 1.7, 3.1], look: [-15.2, 1.0, 4.2] },
   'beach-castle': { pos: [27, 2.2, 74], look: [33, 0.2, 73], view: 'sea', season: 'spring' },
   'beach-wide': { pos: [-20, 3.5, -62], look: [-40, 0, -88], view: 'sea', season: 'spring' },
   'beach-sunset': { pos: [30, 2, 70], look: [60, 0.5, 70], view: 'sea', season: 'spring', light: 'sunset' },
@@ -87,6 +87,7 @@ const VIEWS = {
   'fest-night': { pos: [0, 1.7, 47], look: [0, 3.2, 22], season: 'spring', light: 'night' },
   'canopy-under': { pos: [3.5, 1.6, 34], look: [0, 4.6, 22], season: 'spring', light: 'sunset' },
   'canopy-night': { pos: [3.5, 1.6, 34], look: [0, 4.6, 22], season: 'spring', light: 'night' },
+  'canopy-above': { pos: [2, 22, 34], look: [0, 3, 23], season: 'spring', light: 'night' },
   'wall-night': { pos: [5.6, 1.8, 20.2], look: [11.6, 1.9, 20.2], season: 'spring', light: 'night', samples: true },
   'pond-night': { pos: [7, 2.4, 10], look: [0, -0.3, 0], season: 'spring', light: 'night', samples: true },
   'sky-night': { pos: [6, 2, 16], look: [-30, 30, -60], season: 'spring', light: 'night', samples: true },
@@ -652,7 +653,7 @@ async function avatarFlow(page) {
     await page.evaluate(() => { const p = window.__garden.player; p.pos.set(1.45, 0, 27); p.yaw = 0; p.pitch = -0.1; }); await sleep(2000); await shot('tunnel');
   });
   await step('sit at the bench to write', async () => {
-    await page.evaluate(() => { const p = window.__garden.player; p.pos.set(-7.2, 0, 11.6); }); await sleep(600);
+    await page.evaluate(() => { const p = window.__garden.player; p.pos.set(-12.8, 0, 4.7); }); await sleep(600);
     await page.keyboard.press('KeyE'); await page.waitForFunction(() => window.__garden.state.mode === 'writing', { timeout: 30000, polling: 200 }); await sleep(2500); await shot('bench');
     await page.keyboard.press('Escape'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 30000, polling: 200 });
   });
@@ -832,7 +833,7 @@ async function uxFlow(page) {
   await step('a draft survives closing the bench and reloading', async () => {
     await page.click('#h-write'); await page.waitForSelector('#editor.open', { timeout: 60000 }); await sleep(600);
     await page.type('#e-title', 'Unfinished'); await page.type('#e-body', 'The kettle sang\nbefore the house woke\nand I was alone with my grief and the tears of the morning\nmissing you, missing everything gone');
-    await sleep(900); const count = await page.$eval('#e-count', e => e.textContent), sug = await page.$eval('#e-suggest', e => e.hidden ? '(none)' : e.textContent); await shot('editor');
+    await sleep(900); const count = await page.$eval('#e-count', e => e.textContent), sug = await page.$eval('#e-suggest', e => e.hidden ? '(none)' : e.textContent); await shot('editor'); await page.$eval('#editor', e => { e.scrollTop = 1e5; }); await sleep(400); await shot('editor-foot'); await page.$eval('#editor', e => { e.scrollTop = 0; });
     await page.reload({ waitUntil: 'load' }); await page.waitForFunction(() => window.__garden && document.querySelector('#loading')?.classList.contains('done'), { timeout: 120000, polling: 500 });
     await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 500 });
     await page.click('#h-write'); await page.waitForSelector('#editor.open', { timeout: 60000 }); await sleep(600);

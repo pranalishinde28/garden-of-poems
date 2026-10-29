@@ -65,8 +65,12 @@ const parasolGeo = (() => { const g = new THREE.ConeGeometry(1, 0.32, 36, 1, tru
   const wires = new Merge(); for (let x = CAN.x0; x <= CAN.x1 + 0.01; x += 2.2) wires.limb(new V3(x, y, CAN.z0), new V3(x, y, CAN.z1), 0.012, 0.012, C('#3a3330')); for (let z = CAN.z0; z <= CAN.z1 + 0.01; z += 2.2) wires.limb(new V3(CAN.x0, y, z), new V3(CAN.x1, y, z), 0.012, 0.012, C('#3a3330'));
   // painted parasols, open and gently tilted, at different heights
   const pm = new THREE.InstancedMesh(parasolGeo, parasolMat, 26), d = new THREE.Object3D(); let n = 0;
-  for (let i = 0; i < 40 && n < 26; i++) {
-    const x = CAN.x0 + 1.2 + R() * (CAN.x1 - CAN.x0 - 2.4), z = CAN.z0 + 1 + R() * (CAN.z1 - CAN.z0 - 2), hy = y - 0.5 - R() * 1.1, s = 0.95 + R() * 0.55;
+  // each keeps clear of the others as seen from below (no two overlap), with a little sky between them
+  const placed = [];
+  for (let i = 0; i < 2000 && n < 26; i++) {
+    const s = 0.95 + R() * 0.55, x = CAN.x0 + 0.3 + s + R() * (CAN.x1 - CAN.x0 - 0.6 - 2 * s), z = CAN.z0 + 0.3 + s + R() * (CAN.z1 - CAN.z0 - 0.6 - 2 * s);
+    if (placed.some(p => Math.hypot(p.x - x, p.z - z) < (p.s + s) * 1.12)) continue;
+    placed.push({ x, z, s }); const hy = y - 0.5 - R() * 1.1;
     d.position.set(x, hy, z); d.rotation.set((R() - .5) * 0.35, R() * 6.28, (R() - .5) * 0.35); d.scale.set(s, s, s); d.updateMatrix(); pm.setMatrixAt(n++, d.matrix);
     cords.limb(new V3(x, hy, z), new V3(x, y, z), 0.006, 0.006, C('#2a2420'));
   }

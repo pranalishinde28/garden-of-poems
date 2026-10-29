@@ -8,7 +8,11 @@ import { groundMesh } from './ground.js';
 
 /* ================= paths ================= */
 export const stones = [];
-export const BENCH = { x: -9.4, z: 12.6 };
+// the writing bench and the swings stand round to the west of the pond, a little toward the gate (rounds 36
+// and 38): moved round the pond on their circles by SIDE_TURN, and facing the pond
+export const SIDE_TURN = -0.66;
+export const turnRound = (x, z) => { const c = Math.cos(SIDE_TURN), s = Math.sin(SIDE_TURN); return { x: x * c + z * s, z: -x * s + z * c }; };
+export const BENCH = (() => { const p = turnRound(-9.4, 12.6); return { ...p, face: Math.atan2(-p.x, -p.z) }; })();
 export const TULIPS = [{ x0: 2.7, x1: 8.2, z0: 16.5, z1: 31.5 }, { x0: -8.2, x1: -2.7, z0: 16.5, z1: 31.5 }, { x0: 24, x1: 38, z0: 40, z1: 52, field: true }, { x0: -38, x1: -24, z0: 40, z1: 52, field: true }];
 export const inTulip = (x, z, m) => TULIPS.some(t => x > t.x0 - m && x < t.x1 + m && z > t.z0 - m && z < t.z1 + m);
 function addPath(pts, spacing, R) {
@@ -25,7 +29,9 @@ function addPath(pts, spacing, R) {
 (function buildPaths() {
   const R = rng(11);
   addPath([[0, 41], [0.8, 33], [-0.6, 25], [0.5, 17.5], [0, 10.6]], 1.05, R);
-  addPath([[-0.6, 12.8], [-3.5, 13.8], [-6.6, 14], [-8.4, 13.4]], 1.0, R);
+  // a short spur from the pond's ring path to the front of the writing bench
+  { const u = Math.hypot(BENCH.x, BENCH.z), ux = BENCH.x / u, uz = BENCH.z / u, fx = BENCH.x + Math.sin(BENCH.face) * 1.3, fz = BENCH.z + Math.cos(BENCH.face) * 1.3;
+    addPath([[ux * 10.4, uz * 10.4], [(ux * 10.4 + fx) / 2, (uz * 10.4 + fz) / 2], [fx, fz]], 1.0, R); }
   const ring = []; for (let a = 0; a <= Math.PI * 2 + 0.01; a += 0.25) ring.push([Math.cos(a) * 10.4, Math.sin(a) * 10.4]);
   addPath(ring, 1.1, R);
   const ring2 = []; for (let a = 0; a <= Math.PI * 2 + 0.01; a += 0.12) ring2.push([Math.cos(a) * 44, Math.sin(a) * 44]);

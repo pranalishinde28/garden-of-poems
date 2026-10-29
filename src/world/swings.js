@@ -6,7 +6,7 @@ import { racemeTex } from './textures.js';
 import { windify } from './wind.js';
 import { DS, GEO, M, Merge, VC, part, rockGeo } from './geometry.js';
 import { nightGlow } from '../plants/registry.js';
-import { BENCH, decor, regBegin, regEnd } from './paths.js';
+import { BENCH, decor, regBegin, regEnd, turnRound } from './paths.js';
 import { arborLeaves, wisGeoBase } from './arbors.js';
 import { GREEN_PALS, mapleMat } from '../plants/autumnLeaves.js';
 
@@ -14,7 +14,7 @@ import { GREEN_PALS, mapleMat } from '../plants/autumnLeaves.js';
 export const swings = [];
 export const swingVeilTex = racemeTex('#ffe6ee', '#e5739c', 59);
 export const swingVeilMat = windify(new THREE.MeshLambertMaterial({ map: swingVeilTex, alphaTest: 0.42, side: DS, emissive: '#2a1018' }), 0.03, 'const');
-export const SWING_GARDEN = { x: -19, z: 21 }; // beside the writing bench, facing the pond
+export const SWING_GARDEN = (() => { const p = turnRound(-19, 21); return { ...p, face: Math.atan2(-p.x, -p.z) }; })(); // west of the pond beside the writing bench, facing the pond
 // a white pergola swing, after the owner's picture: four thick square posts, beams and rafters, climbing
 // leaves, a coral bench on chains (slatted seat and back, white arms and frame), flower baskets hanging
 // from the beams, planter boxes at the front, and a string of lights that glows at sunset and at night
@@ -94,18 +94,21 @@ function buildSwing(x, z, ry, seed) {
 }
 (function swingGarden() {
   regBegin('swings');
-  const C0 = SWING_GARDEN, face = Math.atan2(0 - C0.x, 0 - C0.z), fx = Math.sin(face), fz = Math.cos(face), rx = Math.cos(face), rz = -Math.sin(face);
+  const C0 = SWING_GARDEN, face = C0.face, fx = Math.sin(face), fz = Math.cos(face), rx = Math.cos(face), rz = -Math.sin(face);
   let seed = 1;
   // more room between swings: 6.4 m apart in a row, 6.6 m between the rows
   for (let row = 0; row < 2; row++) for (let col = -1; col <= 1; col++) buildSwing(C0.x + rx * col * 6.4 - fx * row * 6.6, C0.z + rz * col * 6.4 - fz * row * 6.6, face, seed++);
   // no court: the swings stand on the lawn
   // stepping stones from the front of the swings to the bench path
-  const S0 = { x: C0.x + fx * 4.5, z: C0.z + fz * 4.5 }, S1 = { x: BENCH.x - 1.8, z: BENCH.z + 2.4 };
+  const S0 = { x: C0.x + fx * 4.5, z: C0.z + fz * 4.5 }, S1 = { x: BENCH.x + Math.sin(BENCH.face) * 1.6 - Math.cos(BENCH.face) * 1.6, z: BENCH.z + Math.cos(BENCH.face) * 1.6 + Math.sin(BENCH.face) * 1.6 };
   const NS = Math.max(2, Math.round(Math.hypot(S1.x - S0.x, S1.z - S0.z) / 1.05) + 1);
   const R = rng(4242), st = new THREE.InstancedMesh(rockGeo(31), VC, NS), d = new THREE.Object3D();
   for (let i = 0; i < NS; i++) { const t = i / (NS - 1), x = lerp(S0.x, S1.x, t), z = lerp(S0.z, S1.z, t); d.position.set(x, groundH(x, z) + 0.01, z); d.rotation.set(0, R() * 6, 0); d.scale.set(0.45, 0.09, 0.4); d.updateMatrix(); st.setMatrixAt(i, d.matrix); st.setColorAt(i, C('#ffffff').lerp(C('#c9c0ad'), R())); }
   st.receiveShadow = true; scene.add(st);
-  decor.push({ x: C0.x - fx * 3.3, z: C0.z - fz * 3.3, r: 12, collide: -1 });
+  // no poem tree grows among the swings, nor so near that its crown leans over them (a big crown spreads ~4.5 m),
+  // nor between the swings and the pond, so the view from the seats stays open
+  decor.push({ x: C0.x - fx * 3.3, z: C0.z - fz * 3.3, r: 16, collide: -1 });
+  decor.push({ x: C0.x + fx * 8, z: C0.z + fz * 8, r: 6.5, collide: -1 });
   // the gateway at the front of the court, its plaque painted like the one at the garden's gate
   { const gw = new THREE.Group(), gx = C0.x + fx * 3.6, gz = C0.z + fz * 3.6; gw.position.set(gx, groundH(gx, gz), gz); gw.rotation.y = face; scene.add(gw);
     const dark = M('#3e2e22'), wood2 = M('#5e4634');

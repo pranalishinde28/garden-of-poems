@@ -99,7 +99,8 @@ function strikeBell() {
 }
 
 /* ---------- the Shinto shrine ---------- */
-const SHRINE = { x: -47, z: -4 };
+// north-west, toward Fuji (round 38; it stood due west, hidden behind the swings)
+const SHRINE = { x: -40.9, z: -23.6 };
 const shrineParts = {};
 (function buildShrine() {
   const g = site(SHRINE.x, SHRINE.z), kit = new Kit();
