@@ -103,6 +103,7 @@ function closeEditor() {
   state.mode = 'walk'; Music.ducked = false; syncPlayerFromCamera();
 }
 $('#e-cancel').onclick = closeEditor;
+$('#e-close').onclick = closeEditor;
 eGo.onclick = () => {
   const content = eBody.value.replace(/\s+$/, ''); if (!content.trim()) return;
   if (!state.editing) clearDraft();
