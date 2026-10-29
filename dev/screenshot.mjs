@@ -35,7 +35,7 @@ const VIEWS = {
   intro:   { intro: true },
   tunnel:  { pos: [0, 1.7, 35.5], look: [0, 1.5, 17] },
   pond:    { pos: [7, 2.2, 9], look: [0, -0.4, 0] },
-  bench:   { pos: [-11.5, 1.75, 1.0], look: [-29.1, 1.4, -0.7] },
+  bench:   { pos: [-11.0, 1.75, 3.5], look: [-28.5, 1.4, 5.8] },
   swings:  { pos: [-13.5, 1.7, 15.5], look: [-21, 1.5, 24.5] },
   overview: { pos: [6, 34, 48], look: [-12, 0, 14] },
   'autumn-tunnel': { pos: [0, 1.7, 35.5], look: [0, 1.5, 17], season: 'autumn' },
@@ -66,15 +66,15 @@ const VIEWS = {
   'sunset-gate': { pos: [0, 1.7, 49], look: [0, 1.6, 20], season: 'spring', light: 'sunset' },
   'day-high': { pos: [4, 14, 44], look: [-20, 10, -200], season: 'spring' },
   'sunset-high': { pos: [4, 14, 44], look: [-20, 10, -200], season: 'autumn', light: 'sunset' },
-  'swing-close': { pos: [-18.4, 1.7, -0.9], look: [-28.3, 1.4, -1.3] },
-  'swing-sunset': { pos: [-18.4, 1.7, -0.9], look: [-28.3, 1.4, -1.3], light: 'sunset' },
-  'swing-night': { pos: [-18.4, 1.7, -0.9], look: [-28.3, 1.4, -1.3], light: 'night' },
+  'swing-close': { pos: [-18.1, 1.7, 3.2], look: [-27.9, 1.4, 5.0] },
+  'swing-sunset': { pos: [-18.1, 1.7, 3.2], look: [-27.9, 1.4, 5.0], light: 'sunset' },
+  'swing-night': { pos: [-18.1, 1.7, 3.2], look: [-27.9, 1.4, 5.0], light: 'night' },
   'peacocks': { pos: [30, 1.8, 15], look: [25.5, 0.9, 21.5], fan: true },
   'trees-a': { pos: [14, 3.2, 20], look: [4, 2.6, 6], season: 'spring', samples: true },
   'trees-b': { pos: [-18, 3.5, -6], look: [-8, 2.5, -14], season: 'spring', samples: true },
   'trees-c': { pos: [20, 4, -2], look: [24, 2.5, -14], season: 'spring', samples: true },
   'trees-d': { pos: [-4, 3, 20], look: [-14, 2.5, 30], season: 'autumn', samples: true },
-  'bench-front': { pos: [-10.0, 1.7, 0.9], look: [-15.7, 1.0, 0.7] },
+  'bench-front': { pos: [-9.6, 1.7, 3.1], look: [-15.2, 1.0, 4.2] },
   'beach-castle': { pos: [27, 2.2, 74], look: [33, 0.2, 73], view: 'sea', season: 'spring' },
   'beach-wide': { pos: [-20, 3.5, -62], look: [-40, 0, -88], view: 'sea', season: 'spring' },
   'beach-sunset': { pos: [30, 2, 70], look: [60, 0.5, 70], view: 'sea', season: 'spring', light: 'sunset' },
@@ -653,7 +653,7 @@ async function avatarFlow(page) {
     await page.evaluate(() => { const p = window.__garden.player; p.pos.set(1.45, 0, 27); p.yaw = 0; p.pitch = -0.1; }); await sleep(2000); await shot('tunnel');
   });
   await step('sit at the bench to write', async () => {
-    await page.evaluate(() => { const p = window.__garden.player; p.pos.set(-13.5, 0, 1.8); }); await sleep(600);
+    await page.evaluate(() => { const p = window.__garden.player; p.pos.set(-12.8, 0, 4.7); }); await sleep(600);
     await page.keyboard.press('KeyE'); await page.waitForFunction(() => window.__garden.state.mode === 'writing', { timeout: 30000, polling: 200 }); await sleep(2500); await shot('bench');
     await page.keyboard.press('Escape'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 30000, polling: 200 });
   });

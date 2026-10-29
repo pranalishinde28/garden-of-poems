@@ -120,7 +120,7 @@ export const benchSeat = () => {
   // third person: over your figure's shoulder from behind the bench, toward the pond
   if (state.thirdPerson) return { pos: bench.localToWorld(new V3(0.75, 1.55, -1.7)), look: bench.localToWorld(new V3(-0.15, 0.75, 3)) };
   const f = new V3(Math.sin(BENCH.face), 0, Math.cos(BENCH.face)), y = groundH(BENCH.x, BENCH.z);
-  return { pos: new V3(BENCH.x + f.x * 0.15, y + 1.18, BENCH.z + f.z * 0.15), look: new V3(BENCH.x + f.x * 12, Math.max(WATER_Y, y) + 0.9, BENCH.z + f.z * 12) };
+  return { pos: new V3(BENCH.x + f.x * 0.15, y + 1.18, BENCH.z + f.z * 0.15), look: new V3(0, WATER_Y + 0.9, 0) };
 };
 export const lanternWorld = () => bench.localToWorld(bench.userData.glowBase.clone());
 
