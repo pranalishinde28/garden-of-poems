@@ -42,7 +42,7 @@ const ironLace = k => new THREE.MeshLambertMaterial({ color: '#f4f2ec', map: scr
   // a white cast-iron bench, wide enough for two, in its own bed of mulch, brick and hydrangeas
   const y = groundH(BENCH.x, BENCH.z);
   bench.position.set(BENCH.x, y, BENCH.z);
-  bench.rotation.y = Math.atan2(-BENCH.x, -BENCH.z);
+  bench.rotation.y = BENCH.face;
   const W = 2.2, SY = 0.47, D = 0.62, dark = M('#3f3a34');
   const tube = (pts, r, mat = iron) => { const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new V3(...p))), 40, r, 8), mat); bench.add(m); return m; };
   // seat: a frame and a fine lattice of bars
@@ -119,8 +119,8 @@ const ironLace = k => new THREE.MeshLambertMaterial({ color: '#f4f2ec', map: scr
 export const benchSeat = () => {
   // third person: over your figure's shoulder from behind the bench, toward the pond
   if (state.thirdPerson) return { pos: bench.localToWorld(new V3(0.75, 1.55, -1.7)), look: bench.localToWorld(new V3(-0.15, 0.75, 3)) };
-  const f = new V3(-BENCH.x, 0, -BENCH.z).normalize();
-  return { pos: new V3(BENCH.x + f.x * 0.15, groundH(BENCH.x, BENCH.z) + 1.18, BENCH.z + f.z * 0.15), look: new V3(0, WATER_Y + 0.9, 0) };
+  const f = new V3(Math.sin(BENCH.face), 0, Math.cos(BENCH.face)), y = groundH(BENCH.x, BENCH.z);
+  return { pos: new V3(BENCH.x + f.x * 0.15, y + 1.18, BENCH.z + f.z * 0.15), look: new V3(BENCH.x + f.x * 12, Math.max(WATER_Y, y) + 0.9, BENCH.z + f.z * 12) };
 };
 export const lanternWorld = () => bench.localToWorld(bench.userData.glowBase.clone());
 
