@@ -848,3 +848,15 @@ body.panel-open #run-btn{opacity:0;pointer-events:none}
 /* the heading stays on one line, sized to the page (the page stops growing at 780 px, the screen doesn't) */
 #editor .ask{white-space:nowrap;font-size:min(2.1rem,3.5vw)}
 @media (max-width:760px){#editor .ask{font-size:min(1.6rem,5.2vw);padding:0 50px}}
+
+/* the welcome buttons: wider, larger type, never cut short; hovering lifts a button, warms it, gilds its edge
+   and slides in a small arrow, so it plainly invites a press */
+#intro .enter,#intro .alt{position:relative;width:min(520px,92vw);text-overflow:clip;overflow:visible;transition:transform .25s ease,background .25s,border-color .25s,box-shadow .25s,padding .25s}
+#intro .enter{font-size:clamp(1.5rem,5vw,2.15rem);padding:.6rem 1.6rem .7rem}
+#intro .alt{font-size:clamp(1.2rem,4.2vw,1.6rem);padding:.6rem 1.6rem .7rem;margin-top:.85rem}
+#intro .enter::after,#intro .alt::after{content:"→";position:absolute;right:1.4rem;top:50%;font-style:normal;opacity:0;transform:translate(-10px,-50%);transition:opacity .25s,transform .25s}
+#intro .enter:hover,#intro .alt:hover,#intro .enter:focus-visible,#intro .alt:focus-visible{transform:translateY(-3px);background:rgba(58,78,58,.9);border-color:#f2d28a;box-shadow:0 12px 32px rgba(0,0,0,.38),0 0 22px rgba(242,210,138,.35);color:#fffaf0}
+#intro .enter:hover::after,#intro .alt:hover::after,#intro .enter:focus-visible::after,#intro .alt:focus-visible::after{opacity:1;transform:translate(0,-50%)}
+#intro .enter:active,#intro .alt:active{transform:translateY(0) scale(.98);box-shadow:0 4px 14px rgba(0,0,0,.3)}
+@media (prefers-reduced-motion:reduce){#intro .enter,#intro .alt,#intro .enter::after,#intro .alt::after{transition:none}#intro .enter:hover,#intro .alt:hover{transform:none}}
+@media (max-width:600px),(hover:none){#intro .enter::after,#intro .alt::after{display:none}}
