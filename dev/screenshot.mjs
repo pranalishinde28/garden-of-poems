@@ -87,6 +87,7 @@ const VIEWS = {
   'fest-night': { pos: [0, 1.7, 47], look: [0, 3.2, 22], season: 'spring', light: 'night' },
   'canopy-under': { pos: [3.5, 1.6, 34], look: [0, 4.6, 22], season: 'spring', light: 'sunset' },
   'canopy-night': { pos: [3.5, 1.6, 34], look: [0, 4.6, 22], season: 'spring', light: 'night' },
+  'canopy-above': { pos: [2, 22, 34], look: [0, 3, 23], season: 'spring', light: 'night' },
   'wall-night': { pos: [5.6, 1.8, 20.2], look: [11.6, 1.9, 20.2], season: 'spring', light: 'night', samples: true },
   'pond-night': { pos: [7, 2.4, 10], look: [0, -0.3, 0], season: 'spring', light: 'night', samples: true },
   'sky-night': { pos: [6, 2, 16], look: [-30, 30, -60], season: 'spring', light: 'night', samples: true },
