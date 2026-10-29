@@ -63,7 +63,7 @@ export function regionLabel(p) { const n = REGIONS[regionKeyFor(p)].name; return
 const book = $('#r-book'), leaf = $('#r-leaf'), still = matchMedia('(prefers-reduced-motion: reduce)');
 const EASE = 'cubic-bezier(.45,.05,.3,1)';
 function copyOfPage() {
-  const c = leaf.cloneNode(true); c.removeAttribute('id'); c.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+  const c = leaf.cloneNode(true); c.removeAttribute('id'); c.querySelectorAll('[id]').forEach(n => { n.classList.add('was-' + n.id); n.removeAttribute('id'); });
   c.className = 'face leaf static'; c.setAttribute('aria-hidden', 'true');
   return c;
 }
@@ -75,17 +75,50 @@ function turnPage(dir, fill) {
   book.querySelectorAll('.leaf.turning,.leaf.under').forEach(n => n.remove());
   const top = leaf.querySelector('.scroll').scrollTop, old = copyOfPage();
   fill();
-  const fresh = copyOfPage(), dur = 950;
+  // window.__flipDur lets the test harness slow a turn down to photograph it
+  const fresh = copyOfPage(), dur = window.__flipDur || 1050;
   reader.classList.add('flipping');
   let moving, under = null;
   if (dir > 0) { moving = sheet(old); book.append(moving); settle(top, [moving]); }
   else { under = old; under.className = 'leaf under static'; moving = sheet(fresh); book.append(under, moving); settle(top, [under]); }
-  moving.style.setProperty('--dur', dur + 'ms');
-  const frames = dir > 0 ? [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(-95deg) scaleX(1.02)', offset: 0.5 }, { transform: 'rotateY(-180deg)', opacity: 0.5 }] : [{ transform: 'rotateY(-180deg)', opacity: 0.5 }, { transform: 'rotateY(-85deg) scaleX(1.02)', offset: 0.5 }, { transform: 'rotateY(0deg)', opacity: 1 }];
-  // the turning page lifts a little off the spine and throws a shadow across the page beneath
+  // the turning page bends like paper (curlTurn); a shadow falls across the page beneath as it lifts
   const shade = document.createElement('div'); shade.className = 'page-shade'; book.append(shade);
   shade.animate(dir > 0 ? [{ opacity: 0.55 }, { opacity: 0.25, offset: 0.5 }, { opacity: 0 }] : [{ opacity: 0 }, { opacity: 0.25, offset: 0.5 }, { opacity: 0.55, offset: 0.95 }, { opacity: 0 }], { duration: dur, easing: 'ease-in-out', fill: 'forwards' });
-  moving.animate(frames.map((f, i) => ({ ...f, transform: f.transform + ' translateZ(0)' })), { duration: dur, easing: EASE, fill: 'forwards' }).finished.catch(() => {}).then(() => { moving.remove(); shade.remove(); under && under.remove(); reader.classList.remove('flipping'); });
+  curlTurn(moving, dir, dur, () => { moving.remove(); shade.remove(); under && under.remove(); reader.classList.remove('flipping'); });
+}
+// A sheet of paper turning: cut into thin strips, each hinged on the one before, so the page can bend. The free
+// edge leads, the paper curls most in the middle of the turn and lies flat again as it lands; each strip darkens
+// as it tilts from the light, and its back is plain paper.
+const STRIPS = 24;
+function curlTurn(sheetEl, dir, dur, done) {
+  const face = sheetEl.querySelector('.face'), W = book.clientWidth, sw = W / STRIPS;
+  sheetEl.textContent = ''; sheetEl.classList.add('curl');
+  const strips = []; let parent = sheetEl;
+  for (let k = 0; k < STRIPS; k++) {
+    const st = document.createElement('div'); st.className = 'strip';
+    st.style.cssText = `left:${k ? sw : 0}px;width:${sw + 1}px`;
+    const f = k ? face.cloneNode(true) : face; f.classList.add('sface'); f.style.cssText = `width:${W}px;left:${-k * sw}px;clip-path:inset(0 ${Math.max(0, W - (k + 1) * sw - 1)}px 0 ${k * sw}px)`;
+    const back = document.createElement('div'); back.className = 'sback';
+    const lit = document.createElement('div'); lit.className = 'slit';
+    st.append(f, back, lit); parent.append(st); strips.push({ st, lit }); parent = st;
+  }
+  const scroll = face.querySelector('.scroll'), top = scroll ? scroll.scrollTop : 0;
+  sheetEl.querySelectorAll('.sface .scroll').forEach(n => { n.scrollTop = top; });
+  const t0 = performance.now(), ease = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  const frame = now => {
+    let t = Math.min(1, (now - t0) / dur); const p = dir > 0 ? t : 1 - t, e = ease(p);
+    const A = 180 * e, B = 70 * Math.sin(Math.PI * e);
+    let acc = 0;
+    strips.forEach(({ st, lit }, k) => {
+      const th = A / STRIPS + B * (2 * k / (STRIPS - 1) - 1) / STRIPS * 2.2;
+      acc += th; st.style.transform = `rotateY(${-th}deg)`;
+      lit.style.opacity = (Math.abs(Math.sin(acc * Math.PI / 180)) * 0.24).toFixed(3);
+    });
+    // the page lifts a little off the book as it turns, and leans as if lifted by its corner
+    sheetEl.style.transform = `translateZ(${(Math.sin(Math.PI * e) * 26).toFixed(1)}px) rotateX(${(Math.sin(Math.PI * e) * 3).toFixed(2)}deg)`;
+    if (t < 1) requestAnimationFrame(frame); else done();
+  };
+  requestAnimationFrame(frame);
 }
 // opening: a cloth cover with the garden's name swings open on the first page
 function openCover() {
@@ -107,9 +140,12 @@ export function fillReader(p, reflection) {
   const k = $('#r-kicker'); k.hidden = !reflection; k.textContent = reflection ? 'A reflection from the water' : '';
   $('#r-title').textContent = p.title;
   const body = $('#r-body'); body.innerHTML = ''; let i = 0;
+  // a long poem (up to 10,000 characters) reads in slightly smaller type, from the top, and its lines arrive
+  // quickly (only the first screenful fades in one by one)
+  const long = p.content.length > 1400; reader.classList.toggle('long-poem', long);
   p.content.replace(/\s+$/, '').split('\n').forEach(line => {
     const d = document.createElement('div');
-    if (!line.trim()) d.className = 'gap'; else { d.className = 'ln'; d.textContent = line; d.style.setProperty('--i', Math.min(i++, 40)); }
+    if (!line.trim()) d.className = 'gap'; else { d.className = 'ln'; d.textContent = line; d.style.setProperty('--i', Math.min(i++, long ? 16 : 40)); }
     body.appendChild(d);
   });
   $('#r-date').textContent = monthYear(p.createdAt);

@@ -36,7 +36,8 @@ eBody.addEventListener('input', () => { autoGrow(); eGo.disabled = !eBody.value.
 // ---- the count, under the poem ----
 function countWords() {
   const t = eBody.value.trim(), w = t ? t.split(/\s+/).length : 0, l = t ? t.split('\n').filter(x => x.trim()).length : 0;
-  $('#e-count').textContent = w ? `${w} ${w === 1 ? 'word' : 'words'} · ${l} ${l === 1 ? 'line' : 'lines'}` : '';
+  const n = eBody.value.length, near = n > 8000 ? ` · ${(10000 - n).toLocaleString()} characters left` : '';
+  $('#e-count').textContent = w ? `${w} ${w === 1 ? 'word' : 'words'} · ${l} ${l === 1 ? 'line' : 'lines'}${near}` : '';
 }
 // ---- a gentle mood suggestion from the words; only offered, never chosen for you ----
 const MOOD_WORDS = {
