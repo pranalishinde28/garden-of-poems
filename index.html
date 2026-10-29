@@ -101,7 +101,7 @@
 <div id="gview" hidden role="region" aria-label="Looking into Takachiho Gorge"><span>Manai Falls, in Takachiho Gorge.</span><button id="gv-back">Step back</button></div>
 <div id="swingui" hidden><span class="sw-hint"><kbd>W</kbd> higher · <kbd>K</kbd> keep pace · <kbd>R</kbd> read · <kbd>V</kbd> view</span><button id="sw-read" aria-pressed="false" aria-controls="swreader">Read</button><button id="sw-pump">Swing</button><button id="sw-keep" aria-pressed="false" aria-label="Keep swinging at this pace (K)"><span class="long">Keep swinging</span><span class="short">Keep</span></button><button id="sw-view" aria-pressed="false">My eyes</button><button id="sw-off">Stand up</button></div>
 <section id="swreader" class="panel" aria-label="Poems to read on the swing" hidden>
-  <div class="sr-head"><span>Reading on the swing</span><button id="sr-close" aria-label="Put the poems away">×</button></div>
+  <div class="sr-head"><span>Reading on the swing</span><button class="xc" id="sr-close" aria-label="Put the poems away">×</button></div>
   <div class="scroll" aria-live="polite"><h2 id="sr-title"></h2><div id="sr-body"></div><div class="meta"><div class="d" id="sr-date"></div><div id="sr-where"></div></div></div>
   <div class="sr-bar">
     <div class="sr-nav"><button id="sr-prev">Earlier</button><span id="sr-pos"></span><button id="sr-next">Later</button></div>
@@ -110,7 +110,7 @@
 </section>
 <div id="visitbar" hidden><span>Visiting <em id="visit-name"></em></span><button id="visit-home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5L12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5"/></svg>Back to my garden</button></div>
 <section id="gardens" class="panel" tabindex="-1" role="dialog" aria-labelledby="g-title" hidden>
-  <button id="g-close" aria-label="Close">×</button>
+  <button class="xc" id="g-close" aria-label="Close">×</button>
   <h2 id="g-title">Gardens</h2>
   <div id="g-account"></div>
   <div id="g-mine" hidden>
@@ -135,7 +135,7 @@
   </div>
 </section>
 <section id="youpanel" class="panel" tabindex="-1" role="dialog" aria-labelledby="y-title" hidden>
-  <button id="y-close" class="x" aria-label="Close">×</button>
+  <button id="y-close" class="xc x" aria-label="Close">×</button>
   <h2 id="y-title">You, in the garden</h2>
   <p class="c-note">Who you are as you walk. Kept on this device, and with your account when you sign in.</p>
   <div id="c-you">
@@ -160,7 +160,7 @@
   </div>
 </section>
 <section id="custom" class="panel" tabindex="-1" role="dialog" aria-labelledby="c-title" hidden>
-  <button id="c-close" class="x" aria-label="Close">×</button>
+  <button id="c-close" class="xc x" aria-label="Close">×</button>
   <h2 id="c-title">Your garden</h2>
   <p class="c-note" id="c-note"></p>
   <h3>The sign at the gate</h3>
@@ -187,7 +187,7 @@
   <div class="seg" data-k="music"><button data-v="piano">Soft piano</button><button data-v="own">My own music</button><button data-v="off">Silence</button></div>
 </section>
 <section id="signpanel" class="panel" tabindex="-1" role="dialog" aria-labelledby="s-name" hidden>
-  <button id="s-close" class="x" aria-label="Close">×</button>
+  <button id="s-close" class="xc x" aria-label="Close">×</button>
   <h2 id="s-name"></h2>
   <p id="s-by" class="g-m"></p>
   <p id="s-desc"></p>
@@ -204,7 +204,7 @@
   <header class="card-head">
     <span class="card-av" id="r-av" aria-hidden="true"></span>
     <div class="card-who"><div class="card-poet" id="r-poet"></div><div class="card-where" id="r-where"></div></div>
-    <button id="r-close" aria-label="Close poem">×</button>
+    <button class="xc" id="r-close" aria-label="Close poem">×</button>
   </header>
   <div class="book" id="r-book">
     <div class="leaf" id="r-leaf"><div class="scroll">
@@ -240,7 +240,7 @@
 
 <section id="editor" class="panel" tabindex="-1" role="dialog" aria-labelledby="e-ask" hidden>
   <div id="seed-dot"></div>
-  <button class="x" id="e-close" aria-label="Close">×</button>
+  <button class="xc x" id="e-close" aria-label="Close">×</button>
   <div class="fields">
     <p class="ask" id="e-ask">What are you carrying today?</p>
     <label class="f" for="e-title">Title</label>
@@ -264,29 +264,29 @@
 
 <input type="file" id="file-music" accept="audio/*" multiple hidden>
 <section id="mapview" role="dialog" aria-modal="true" aria-labelledby="map-title" hidden>
-  <div class="map-head"><h2 id="map-title">The garden</h2><p>Choose a place or a poem, and the garden will carry you there.</p><button id="map-close" class="x" aria-label="Close the map">×</button></div>
+  <div class="map-head"><h2 id="map-title">The garden</h2><p>Choose a place or a poem, and the garden will carry you there.</p><button id="map-close" class="xc x" aria-label="Close the map">×</button></div>
   <div id="map-stage"><canvas id="map-canvas"></canvas><div id="map-marks"></div><div id="map-me" aria-hidden="true"></div></div>
   <div id="map-places" role="list" aria-label="Places"></div>
   <div id="map-legend" aria-hidden="true"></div>
 </section>
-<button id="minimap-hide" aria-label="Hide the small map" title="Hide the small map" hidden>×</button>
+<button class="xc" id="minimap-hide" aria-label="Hide the small map" title="Hide the small map" hidden>×</button>
 <button id="minimap-show" aria-label="Show the small map" title="Show the small map" hidden><svg viewBox="0 0 24 24"><path d="M3.5 6.5l5.5-2 6 2 5.5-2v13l-5.5 2-6-2-5.5 2z"/><path d="M9 4.5v13M15 6.5v13"/></svg></button>
 <button id="minimap-btn" aria-label="Open the map" hidden><canvas id="minimap" width="264" height="264"></canvas></button>
 <section id="sunmap" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="sm-title" hidden>
-  <button class="x" id="sm-close" aria-label="Close">×</button>
+  <button class="xc x" id="sm-close" aria-label="Close">×</button>
   <h2 id="sm-title">The Secret Garden</h2>
   <p class="sm-sub">Choose a place and you will be taken there.</p>
   <div class="sm-stage"><canvas id="sm-canvas" width="800" height="1040"></canvas><div id="sm-marks"></div></div>
 </section>
 <section id="wallpoem" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="wp-title" hidden>
-  <button class="x" id="wp-close" aria-label="Close">×</button>
+  <button class="xc x" id="wp-close" aria-label="Close">×</button>
   <h2 id="wp-title"></h2>
   <p class="wp-by"><span id="wp-poet"></span> · <span id="wp-year"></span></p>
   <div id="wp-text"></div>
   <div class="wp-nav"><button id="wp-prev">← Earlier</button><span id="wp-count"></span><button id="wp-next">Next →</button></div>
 </section>
 <section id="helpsheet" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
-  <button class="x" id="help-close" aria-label="Close">×</button>
+  <button class="xc x" id="help-close" aria-label="Close">×</button>
   <h2 id="help-title">Finding your way</h2>
   <p class="hsub">A quick guide to the garden. Open it any time with <kbd class="only-fine">?</kbd><span class="only-coarse">the ? button</span>.</p>
   <div class="htabs" role="tablist" aria-label="Guide">

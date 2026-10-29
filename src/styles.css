@@ -832,3 +832,16 @@ body.panel-open #run-btn{opacity:0;pointer-events:none}
 #editor .x{position:absolute;top:.8rem;right:.9rem;width:40px;height:40px;border-radius:50%;font-size:1.8rem;line-height:1;color:#5a3418;background:rgba(255,246,224,.35);border:1px solid rgba(110,58,16,.35);z-index:2}
 #editor .x:hover{background:rgba(255,246,224,.7)}
 #editor{background-attachment:local,scroll,scroll,scroll,scroll,scroll,scroll,scroll}
+
+/* every close button: a cross of two fine strokes, centred exactly in its circle (the × glyph sat low) */
+.xc{font-size:0!important;line-height:0!important;padding:0!important}
+#r-close,#sr-close{position:relative}
+.xc::before,.xc::after{content:"";position:absolute;left:50%;top:50%;width:44%;height:2px;border-radius:2px;background:currentColor;transform:translate(-50%,-50%) rotate(45deg)}
+.xc::after{transform:translate(-50%,-50%) rotate(-45deg)}
+#minimap-hide.xc::before,#minimap-hide.xc::after{width:46%;height:1.8px}
+/* the heading keeps clear of the notebook and quill at its left, and stays centred */
+#editor .ask{padding:0 92px;font-size:clamp(1.45rem,3vw,2.1rem)}
+@media (max-width:760px){#editor .ask{padding:0 56px}}
+/* the same soft round frame on every box's close button */
+.panel .xc{width:40px;height:40px;border-radius:50%;color:#5a3418;background:rgba(255,246,224,.38);border:1px solid rgba(110,58,16,.35)}
+.panel .xc:hover{background:rgba(255,246,224,.75)}
