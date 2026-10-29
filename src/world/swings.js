@@ -105,7 +105,10 @@ function buildSwing(x, z, ry, seed) {
   const R = rng(4242), st = new THREE.InstancedMesh(rockGeo(31), VC, NS), d = new THREE.Object3D();
   for (let i = 0; i < NS; i++) { const t = i / (NS - 1), x = lerp(S0.x, S1.x, t), z = lerp(S0.z, S1.z, t); d.position.set(x, groundH(x, z) + 0.01, z); d.rotation.set(0, R() * 6, 0); d.scale.set(0.45, 0.09, 0.4); d.updateMatrix(); st.setMatrixAt(i, d.matrix); st.setColorAt(i, C('#ffffff').lerp(C('#c9c0ad'), R())); }
   st.receiveShadow = true; scene.add(st);
-  decor.push({ x: C0.x - fx * 3.3, z: C0.z - fz * 3.3, r: 12, collide: -1 });
+  // no poem tree grows among the swings, nor so near that its crown leans over them (a big crown spreads ~4.5 m),
+  // nor between the swings and the pond, so the view from the seats stays open
+  decor.push({ x: C0.x - fx * 3.3, z: C0.z - fz * 3.3, r: 16, collide: -1 });
+  decor.push({ x: C0.x + fx * 8, z: C0.z + fz * 8, r: 6.5, collide: -1 });
   // the gateway at the front of the court, its plaque painted like the one at the garden's gate
   { const gw = new THREE.Group(), gx = C0.x + fx * 3.6, gz = C0.z + fz * 3.6; gw.position.set(gx, groundH(gx, gz), gz); gw.rotation.y = face; scene.add(gw);
     const dark = M('#3e2e22'), wood2 = M('#5e4634');
