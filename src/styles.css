@@ -884,3 +884,10 @@ body.panel-open #run-btn{opacity:0;pointer-events:none}
 #intro .enter::before,#intro .alt::before{content:"";display:inline-block;width:1em;margin-right:.45em}
 #intro .enter:hover::after,#intro .alt:hover::after,#intro .enter:focus-visible::after,#intro .alt:focus-visible::after{transform:translateX(0)}
 @media (max-width:600px),(hover:none){#intro .enter::before,#intro .alt::before{display:none}}
+/* the hover arrow, done properly: each button keeps the same room either side of its label (so the label stays
+   centred) and the arrow sits inside the right-hand room; the button clips anything that would stick out */
+#intro .enter,#intro .alt{padding-left:3.4rem;padding-right:3.4rem;overflow:hidden}
+#intro .enter::before,#intro .alt::before{content:none;display:none}
+#intro .enter::after,#intro .alt::after{position:absolute;display:block;width:auto;margin:0;right:1.3rem;top:50%;line-height:1;transform:translate(-8px,-50%)}
+#intro .enter:hover::after,#intro .alt:hover::after,#intro .enter:focus-visible::after,#intro .alt:focus-visible::after{transform:translate(0,-50%)}
+@media (max-width:600px),(hover:none){#intro .enter,#intro .alt{padding-left:1.2rem;padding-right:1.2rem}#intro .enter::after,#intro .alt::after{display:none}}
