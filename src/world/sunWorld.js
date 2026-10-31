@@ -50,6 +50,29 @@ export const TERRACE = { x0: -93, x1: -40, z0: 27, z1: -31 };
 export const TERRACES = [TERRACE, { x0: -95, x1: -60, z0: -79, z1: -142 }, { x0: 55, x1: 95, z0: -38, z1: -88 }];
 const inTerrace = (x, z, m = 0) => TERRACES.some(t => x > t.x0 - m && x < t.x1 + m && z < t.z0 + m && z > t.z1 - m);
 const inWP = (x, z, m = 0) => x > WP.x0 - m && x < WP.x1 + m && z < WP.z0 + m && z > WP.z1 - m;
+// everything built at the fair, with room round it for canopies, flying seats and people: nothing scattered
+// (sunflowers, painted flower cards, terraces, lanterns, lights, trees) may grow inside one. m widens them all.
+const KEEP = [
+  ['c', -36, -44, 8.5 + 3.5],       // the teacups and their striped canopy
+  ['c', 40, -88, 8],                // the drop tower and its ring of seats
+  ['c', 42, -62, 10 + 4],           // the swings, whose chairs fly out
+  ['c', 0, -64, 23 + 1],            // the plaza and its carousel
+  ['c', 12, -47, 3],                // the fireworks kiosk
+  ['e', -56, -66, 15 + 6, 10 + 6],  // the storybook canal and its island
+  ['r', -58, -22, -150, -118],      // the Ferris wheel
+  ['r', -26, 26, -190, -138],       // the castle
+  ['r', 25, 95, -180, -108],        // the roller coaster
+  ['e', 0, -104, 62 + 3, 14 + 3],   // the lagoon
+  ['r', 36, 97, -38, 31],           // Splash Cove
+];
+export function keepClear(x, z, m = 0) {
+  for (const k of KEEP) {
+    if (k[0] === 'c' && Math.hypot(x - k[1], z - k[2]) < k[3] + m) return true;
+    if (k[0] === 'e' && Math.hypot((x - k[1]) / (k[3] + m), (z - k[2]) / (k[4] + m)) < 1) return true;
+    if (k[0] === 'r' && x > k[1] - m && x < k[2] + m && z > k[3] - m && z < k[4] + m) return true;
+  }
+  return false;
+}
 export const wpE = (x, z, p) => Math.hypot((x - p.x) / p.rx, (z - p.z) / p.rz);
 const lakeE = (x, z) => Math.hypot((x - LAKE.x) / LAKE.rx, (z - LAKE.z) / LAKE.rz);
 const lagoonE = (x, z) => Math.hypot((x - LAGOON.x) / LAGOON.rx, (z - LAGOON.z) / LAGOON.rz);
@@ -187,6 +210,7 @@ const mountU = { uSun: { value: new V3(0.3, 0.7, 0.6) }, uNight: skyU.uNight, uD
     if (!(Math.abs(x) > 101 || z > 76 || z < -150)) continue;
     if (Math.abs(x) < 42 && z < -140 && z > -190) continue;
     if (x > 28 && x < 92 && z < -108 && z > -182) continue;
+    if (keepClear(x, z, 4)) continue;
     spots.push([x, z, 0.75 + RT() * 0.6 + smooth(125, 260, r) * 0.5, RT() < 0.55]);
   }
   const conif = spots.filter(s => s[3]), broad = spots.filter(s => !s[3]);
@@ -209,7 +233,7 @@ const mountU = { uSun: { value: new V3(0.3, 0.7, 0.6) }, uNight: skyU.uNight, uD
   // rows 4 m wide that sweep in gentle curves, with a strip of bare earth between them
   for (const T0 of TERRACES) for (let z = T0.z0; z > T0.z1; z -= 0.36) for (let x = T0.x0; x < T0.x1; x += 0.36) {
     const px = x + (RF() - 0.5) * 0.25, pz = z + (RF() - 0.5) * 0.25, f = (pz + 2.2 * Math.sin(px * 0.06) - T0.z1) / 4.4, band = Math.floor(f);
-    if (f % 1 > 0.88 || Math.hypot(px - FAIR_RIDES.drop.x, pz - FAIR_RIDES.drop.z) < 9 || Math.hypot(px - SWING.x, pz - SWING.z) < SWING.r + 3) continue;
+    if (f % 1 > 0.88 || keepClear(px, pz, 0.5)) continue;
     spots.push([px, pz, ROWS[((band % ROWS.length) + ROWS.length) % ROWS.length]]);
   }
   const m = new THREE.InstancedMesh(quad, mat, spots.length), d = new THREE.Object3D(), c = new THREE.Color();
@@ -308,7 +332,7 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
   const spots = [];
   for (let z = FIELD.z0; z > FIELD.z1; z -= 0.55) for (let x = -34; x < 34; x += 0.55) {
     const px = x + (R() - 0.5) * 0.35, pz = z + (R() - 0.5) * 0.35;
-    if (Math.abs(px - pathX(pz)) < 1.8 || lakeE(px, pz) < 1.35 || Math.hypot(px - FAIR_RIDES.tea.x, pz - FAIR_RIDES.tea.z) < FAIR_RIDES.tea.r + 3 || Math.hypot(px - DOOR.x, pz - DOOR.z) < 3.4 || (pz < DOOR.z + 1.2 && pz > DOOR.z - 1.2 && px > DOOR.x && px < pathX(pz))) continue;
+    if (Math.abs(px - pathX(pz)) < 1.8 || lakeE(px, pz) < 1.35 || keepClear(px, pz) || Math.hypot(px - DOOR.x, pz - DOOR.z) < 3.4 || (pz < DOOR.z + 1.2 && pz > DOOR.z - 1.2 && px > DOOR.x && px < pathX(pz))) continue;
     // shorter beside the path, so the field rises away from you
     const d = Math.abs(px - pathX(pz));
     spots.push([px, pz, 1.1 + Math.min(1, d / 6) * 0.7 + R() * 0.6]);
@@ -329,7 +353,7 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
   { const m = new Merge(), lanterns = [];
     for (let z = FIELD.z0 - 1; z > FIELD.z1 + 1; z -= 4) for (let x = -33; x < 33; x += 4.2) {
       const px = x + (R() - 0.5) * 2.2, pz = z + (R() - 0.5) * 2.2;
-      if (Math.abs(px - pathX(pz)) < 2.6 || lakeE(px, pz) < 1.35 || Math.hypot(px - DOOR.x, pz - DOOR.z) < 3.6) continue;
+      if (Math.abs(px - pathX(pz)) < 2.6 || lakeE(px, pz) < 1.35 || keepClear(px, pz, 1) || Math.hypot(px - DOOR.x, pz - DOOR.z) < 3.6) continue;
       const y = sunH(px, pz), h = 2.6 + R() * 0.5;
       m.limb(new V3(px, y, pz), new V3(px, y + h, pz), 0.03, 0.025, C('#8a7a4a'));
       lanterns.push(new V3(px, y + h - 0.25, pz));
@@ -342,7 +366,7 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
     // and lights floating low over the far reaches of the field, all the way to the woods
     for (let z = FIELD.z0 + 4; z > FIELD.z1 - 2; z -= 4.5) for (const s of [-1, 1]) for (let x = 35; x < 108; x += 4.5) {
       const px = s * (x + (R() - 0.5) * 2), pz = z + (R() - 0.5) * 2;
-      if (lakeE(px, pz) < 1.4 || inWP(px, pz, 3) || inTerrace(px, pz, 2)) continue;
+      if (lakeE(px, pz) < 1.4 || keepClear(px, pz, 2) || inTerrace(px, pz, 2)) continue;
       bulb(new V3(px, sunH(px, pz) + 2.4 + R() * 0.8, pz), ['#ffd890', '#ffe8b0', '#ffc0d0'][(R() * 3) | 0]);
     }
   }
@@ -352,7 +376,7 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
     for (let i = 0; i < 90; i++) { const x = 10 + R() * 492, y = 30 + R() * 110, r = 10 + R() * 9; g.drawImage(sunTex.image, x - r * 2.2, y - r * 2.2, r * 4.4, r * 4.4); }
   });
   const card = (() => { const a = new THREE.PlaneGeometry(4, 2.3).translate(0, 1.15, 0), b = a.clone().rotateY(Math.PI / 2); const m = new Merge(); m.add(a, new V3(), new V3(1, 1, 1), C('#ffffff')); m.add(b, new V3(), new V3(1, 1, 1), C('#ffffff')); return m.build(); })();
-  const list = []; for (let z = FIELD.z0 + 4; z > FIELD.z1 - 2; z -= 2.6) for (const s of [-1, 1]) for (let x = 34; x < 110; x += 2.8) if (lakeE(s * x, z) > 1.4 && !inWP(s * x, z, 4) && !inTerrace(s * x, z, 3)) list.push([s * (x + R()), z + R()]);
+  const list = []; for (let z = FIELD.z0 + 4; z > FIELD.z1 - 2; z -= 2.6) for (const s of [-1, 1]) for (let x = 34; x < 110; x += 2.8) if (lakeE(s * x, z) > 1.4 && !keepClear(s * x, z, 3) && !inTerrace(s * x, z, 3)) list.push([s * (x + R()), z + R()]);
   const farMat = new THREE.MeshLambertMaterial({ map: far, alphaTest: 0.45, side: THREE.DoubleSide, emissive: '#ffffff', emissiveMap: far, emissiveIntensity: 0 }); fieldMats.push([farMat, 0.4]);
   const im = new THREE.InstancedMesh(card, farMat, list.length);
   list.forEach(([x, z], i) => { d.position.set(x, sunH(x, z) - 0.2, z); d.rotation.set(0, R() * 0.6 - 0.3 + Math.PI / 4, 0); d.scale.setScalar(0.9 + R() * 0.3); d.updateMatrix(); im.setMatrixAt(i, d.matrix); });
@@ -954,4 +978,4 @@ worlds.sun = {
 
 // the layout, for the secret world's map (ui/sunMap.js)
 export { skyU, sun, LAGOON, lagoonE, fieldMats, waterU };
-export const SUN_PLAN = { WP, TERRACE, TERRACES, LAKE, FIELD, ARCH_Z, PLAZA, CAROUSEL, LAGOON, BRIDGE, CASTLE, WHEEL, CANAL, CANAL_PTS, SWING, KIOSK, DOOR, FAIR_RIDES, pathX, track: track.getSpacedPoints(120) };
+export const SUN_PLAN = { KEEP, WP, TERRACE, TERRACES, LAKE, FIELD, ARCH_Z, PLAZA, CAROUSEL, LAGOON, BRIDGE, CASTLE, WHEEL, CANAL, CANAL_PTS, SWING, KIOSK, DOOR, FAIR_RIDES, pathX, track: track.getSpacedPoints(120) };
