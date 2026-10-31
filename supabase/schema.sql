@@ -45,6 +45,42 @@ end $_$;
 
 ALTER FUNCTION "public"."change_username"("new_name" "text") OWNER TO "postgres";
 
+SET default_tablespace = '';
+
+SET default_table_access_method = "heap";
+
+
+CREATE TABLE IF NOT EXISTS "public"."garden_shares" (
+    "token" "text" DEFAULT "translate"("encode"("extensions"."gen_random_bytes"(18), 'base64'::"text"), '+/'::"text", '-_'::"text") NOT NULL,
+    "owner" "uuid" NOT NULL,
+    "label" "text" DEFAULT ''::"text" NOT NULL,
+    "opened" integer DEFAULT 0 NOT NULL,
+    "last_opened" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "garden_shares_label_check" CHECK (("char_length"("label") <= 60))
+);
+
+
+ALTER TABLE "public"."garden_shares" OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."create_share"("p_label" "text" DEFAULT ''::"text") RETURNS "public"."garden_shares"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare r public.garden_shares;
+begin
+  if auth.uid() is null then raise exception 'sign in to share your garden' using errcode = '42501'; end if;
+  if (select count(*) from public.garden_shares where owner = auth.uid()) >= 20 then
+    raise exception 'a garden may have at most 20 private links; withdraw one first' using errcode = 'P0001';
+  end if;
+  insert into public.garden_shares (owner, label) values (auth.uid(), left(coalesce(trim(p_label), ''), 60)) returning * into r;
+  return r;
+end $$;
+
+
+ALTER FUNCTION "public"."create_share"("p_label" "text") OWNER TO "postgres";
+
 
 CREATE OR REPLACE FUNCTION "public"."delete_my_account"() RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
@@ -84,10 +120,13 @@ CREATE OR REPLACE FUNCTION "public"."valid_avatar"("a" "jsonb") RETURNS boolean
     AS $_$
 begin
   if a is null then return true; end if;
-  if jsonb_typeof(a) <> 'object' or not public.only_keys(a, array['skin','height','hairStyle','hairColor','outfit','cloth','accent','extra']) then return false; end if;
-  if a ? 'hairStyle' and not (a->>'hairStyle' = any(array['short','bob','long','bun','tail','twintails'])) then return false; end if;
-  if a ? 'outfit' and not (a->>'outfit' = any(array['casual','yukata','kimono','coat','dress'])) then return false; end if;
-  if a ? 'extra' and not (a->>'extra' = any(array['none','scarf','hat','parasol'])) then return false; end if;
+  if jsonb_typeof(a) <> 'object' or not public.only_keys(a, array['kind','skin','height','hairStyle','hairColor','outfit','cloth','accent','extra','coat','plumage']) then return false; end if;
+  if a ? 'kind' and not (a->>'kind' = any(array['girl','boy','cat','bird'])) then return false; end if;
+  if a ? 'hairStyle' and not (a->>'hairStyle' = any(array['short','bob','long','bun','tail','twintails','messy'])) then return false; end if;
+  if a ? 'outfit' and not (a->>'outfit' = any(array['casual','yukata','kimono','coat','dress','jacket'])) then return false; end if;
+  if a ? 'extra' and not (a->>'extra' = any(array['none','scarf','hat','parasol','bow'])) then return false; end if;
+  if a ? 'coat' and not (a->>'coat' = any(array['siamese','tabby','black','white','grey'])) then return false; end if;
+  if a ? 'plumage' and not (a->>'plumage' = any(array['cream','grey','blue'])) then return false; end if;
   if exists (select 1 from unnest(array['skin','hairColor','cloth','accent']) k where a ? k and (a->>k) !~ '^#[0-9a-fA-F]{6}$') then return false; end if;
   if a ? 'height' and (jsonb_typeof(a->'height') <> 'number' or (a->>'height')::numeric not between 0.9 and 1.08) then return false; end if;
   return pg_column_size(a) < 1000;
@@ -95,10 +134,6 @@ end $_$;
 
 
 ALTER FUNCTION "public"."valid_avatar"("a" "jsonb") OWNER TO "postgres";
-
-SET default_tablespace = '';
-
-SET default_table_access_method = "heap";
 
 
 CREATE TABLE IF NOT EXISTS "public"."gardens" (
@@ -112,7 +147,7 @@ CREATE TABLE IF NOT EXISTS "public"."gardens" (
     CONSTRAINT "gardens_description_check" CHECK (("char_length"("description") <= 280)),
     CONSTRAINT "gardens_name_check" CHECK ((("char_length"("name") >= 1) AND ("char_length"("name") <= 60))),
     CONSTRAINT "gardens_settings_check" CHECK (("pg_column_size"("settings") < 16000)),
-    CONSTRAINT "gardens_theme_check" CHECK (("theme" = ANY (ARRAY['spring'::"text", 'summer'::"text", 'autumn'::"text", 'winter'::"text"])))
+    CONSTRAINT "gardens_theme_check" CHECK (("theme" = ANY (ARRAY['spring'::"text", 'monsoon'::"text", 'autumn'::"text"])))
 );
 
 
@@ -195,6 +230,22 @@ $$;
 ALTER FUNCTION "public"."list_public_gardens"("q" "text", "after_updated" timestamp with time zone, "after_owner" "uuid", "lim" integer) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."my_visits"() RETURNS TABLE("today" bigint, "week" bigint, "month" bigint, "total" bigint, "people" bigint)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  select count(*) filter (where day = current_date),
+         count(*) filter (where day > current_date - 7),
+         count(*) filter (where day > current_date - 30),
+         count(*),
+         count(distinct visitor)
+  from public.garden_visits where garden_owner = auth.uid();
+$$;
+
+
+ALTER FUNCTION "public"."my_visits"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."notes_only_hide"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -267,6 +318,26 @@ $$;
 ALTER FUNCTION "public"."poem_visible"("p_owner" "uuid", "p_id" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."record_visit"("p_owner" "uuid", "p_visitor" "text", "p_token" "text" DEFAULT NULL::"text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare who text;
+begin
+  if p_owner is null or p_owner = auth.uid() then return; end if;
+  if not exists (select 1 from public.gardens where owner = p_owner and is_public)
+     and not exists (select 1 from public.garden_shares where token = p_token and owner = p_owner) then return; end if;
+  who := case when auth.uid() is not null then 'u:' || auth.uid()::text else 'a:' || left(coalesce(p_visitor, ''), 64) end;
+  if char_length(who) < 10 then return; end if;
+  -- a quiet ceiling against anyone inflating a garden's numbers
+  if (select count(*) from public.garden_visits where garden_owner = p_owner and day = current_date) >= 5000 then return; end if;
+  insert into public.garden_visits (garden_owner, visitor) values (p_owner, who) on conflict do nothing;
+end $$;
+
+
+ALTER FUNCTION "public"."record_visit"("p_owner" "uuid", "p_visitor" "text", "p_token" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."remove_poem"("poem_id" "text") RETURNS "public"."poems"
     LANGUAGE "sql"
     SET "search_path" TO 'public'
@@ -322,6 +393,27 @@ end $$;
 ALTER FUNCTION "public"."save_poem"("p" "jsonb", "base" timestamp with time zone) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."shared_garden"("p_token" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare s public.garden_shares; g jsonb; ps jsonb;
+begin
+  select * into s from public.garden_shares where token = p_token;
+  if not found then return null; end if;
+  if s.owner is distinct from auth.uid() then update public.garden_shares set opened = opened + 1, last_opened = now() where token = p_token; end if;
+  select jsonb_build_object('owner', g0.owner, 'name', g0.name, 'description', g0.description, 'theme', g0.theme, 'settings', g0.settings,
+                            'username', pr.username, 'display_name', pr.display_name, 'is_public', g0.is_public)
+    into g from public.gardens g0 join public.profiles pr on pr.id = g0.owner where g0.owner = s.owner;
+  select coalesce(jsonb_agg(to_jsonb(p) - 'owner' order by p.created_at), '[]'::jsonb) into ps
+    from (select * from public.poems where owner = s.owner and not private and deleted_at is null order by created_at limit 300) p;
+  return g || jsonb_build_object('poems', ps);
+end $$;
+
+
+ALTER FUNCTION "public"."shared_garden"("p_token" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."suggested_gardens"("lim" integer DEFAULT 3) RETURNS TABLE("owner" "uuid", "name" "text", "description" "text", "theme" "text", "updated_at" timestamp with time zone, "username" "text", "display_name" "text", "poem_count" bigint, "settings" "jsonb", "reason" "text")
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -330,7 +422,7 @@ CREATE OR REPLACE FUNCTION "public"."suggested_gardens"("lim" integer DEFAULT 3)
     select distinct p.mood from public.poems p where p.owner = auth.uid() and p.deleted_at is null and p.mood is not null
   ), cand as (
     select g.*,
-      (select count(*) from public.poem_likes l where l.garden_owner = g.owner and l.created_at > now() - interval '30 days') as likes30,
+      (select count(*) from public.poem_likes l where l.garden_owner = g.owner and l.liker <> g.owner and l.created_at > now() - interval '30 days') as likes30,
       (select count(*) from public.notes n where n.garden_owner = g.owner and not n.hidden and n.created_at > now() - interval '30 days') as notes30,
       (select count(*) from public.poems p where p.owner = g.owner and not p.private and p.deleted_at is null and p.mood in (select mood from mine)) as shared
     from public.public_gardens g
@@ -413,9 +505,9 @@ begin
   if s is null or s = '{}'::jsonb then return true; end if;
   if jsonb_typeof(s) <> 'object' then return false; end if;
   if not public.only_keys(s, array['season','view','light','weather','tree','blossom','music','fuji','mist','drift','name','desc','links','show']) then return false; end if;
-  if s ? 'season'  and not (s->>'season'  = any(array['auto','spring','summer','autumn','winter'])) then return false; end if;
+  if s ? 'season'  and not (s->>'season'  = any(array['auto','spring','monsoon','autumn'])) then return false; end if;
   if s ? 'view'    and not (s->>'view'    = any(array['fuji','sea'])) then return false; end if;
-  if s ? 'light'   and not (s->>'light'   = any(array['auto','day','night'])) then return false; end if;
+  if s ? 'light'   and not (s->>'light'   = any(array['auto','day','sunset','night'])) then return false; end if;
   if s ? 'weather' and not (s->>'weather' = any(array['clear','showers','rain'])) then return false; end if;
   if s ? 'tree'    and not (s->>'tree'    = any(array['sakura','maple','green'])) then return false; end if;
   if s ? 'blossom' and not (s->>'blossom' = any(array['pink','white'])) then return false; end if;
@@ -440,6 +532,17 @@ end $_$;
 
 
 ALTER FUNCTION "public"."valid_settings"("s" "jsonb") OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."garden_visits" (
+    "garden_owner" "uuid" NOT NULL,
+    "visitor" "text" NOT NULL,
+    "day" "date" DEFAULT CURRENT_DATE NOT NULL,
+    CONSTRAINT "garden_visits_visitor_check" CHECK ((("char_length"("visitor") >= 8) AND ("char_length"("visitor") <= 80)))
+);
+
+
+ALTER TABLE "public"."garden_visits" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."note_reports" (
@@ -479,6 +582,27 @@ CREATE TABLE IF NOT EXISTS "public"."poem_likes" (
 
 
 ALTER TABLE "public"."poem_likes" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."waitlist" (
+    "person" "uuid" NOT NULL,
+    "wish" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "waitlist_wish_check" CHECK (("wish" = ANY (ARRAY['patron'::"text", 'book'::"text"])))
+);
+
+
+ALTER TABLE "public"."waitlist" OWNER TO "postgres";
+
+
+ALTER TABLE ONLY "public"."garden_shares"
+    ADD CONSTRAINT "garden_shares_pkey" PRIMARY KEY ("token");
+
+
+
+ALTER TABLE ONLY "public"."garden_visits"
+    ADD CONSTRAINT "garden_visits_pkey" PRIMARY KEY ("garden_owner", "day", "visitor");
+
 
 
 ALTER TABLE "public"."gardens"
@@ -551,6 +675,15 @@ ALTER TABLE ONLY "public"."profiles"
 
 
 
+ALTER TABLE ONLY "public"."waitlist"
+    ADD CONSTRAINT "waitlist_pkey" PRIMARY KEY ("person", "wish");
+
+
+
+CREATE INDEX "garden_shares_owner_idx" ON "public"."garden_shares" USING "btree" ("owner");
+
+
+
 CREATE INDEX "gardens_name_trgm" ON "public"."gardens" USING "gin" ("lower"("name") "public"."gin_trgm_ops") WHERE "is_public";
 
 
@@ -619,6 +752,16 @@ CREATE OR REPLACE TRIGGER "poems_touch_garden" AFTER INSERT OR DELETE OR UPDATE 
 
 
 
+ALTER TABLE ONLY "public"."garden_shares"
+    ADD CONSTRAINT "garden_shares_owner_fkey" FOREIGN KEY ("owner") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."garden_visits"
+    ADD CONSTRAINT "garden_visits_garden_owner_fkey" FOREIGN KEY ("garden_owner") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."gardens"
     ADD CONSTRAINT "gardens_owner_fkey" FOREIGN KEY ("owner") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
@@ -664,6 +807,15 @@ ALTER TABLE ONLY "public"."profiles"
 
 
 
+ALTER TABLE ONLY "public"."waitlist"
+    ADD CONSTRAINT "waitlist_person_fkey" FOREIGN KEY ("person") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+CREATE POLICY "add your own wish" ON "public"."waitlist" FOR INSERT WITH CHECK (("person" = "auth"."uid"()));
+
+
+
 CREATE POLICY "delete own poems" ON "public"."poems" FOR DELETE USING (("owner" = "auth"."uid"()));
 
 
@@ -676,10 +828,16 @@ CREATE POLICY "edit own profile" ON "public"."profiles" FOR UPDATE USING (("id" 
 
 
 
+ALTER TABLE "public"."garden_shares" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."garden_visits" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."gardens" ENABLE ROW LEVEL SECURITY;
 
 
-CREATE POLICY "heart a poem you can read, not your own" ON "public"."poem_likes" FOR INSERT WITH CHECK ((("liker" = "auth"."uid"()) AND ("garden_owner" <> "auth"."uid"()) AND "public"."poem_visible"("garden_owner", "poem_id")));
+CREATE POLICY "heart a poem you can read" ON "public"."poem_likes" FOR INSERT WITH CHECK ((("liker" = "auth"."uid"()) AND "public"."poem_visible"("garden_owner", "poem_id")));
 
 
 
@@ -736,6 +894,10 @@ CREATE POLICY "remove notes" ON "public"."notes" FOR DELETE USING ((("author" = 
 
 
 
+CREATE POLICY "rename your own links" ON "public"."garden_shares" FOR UPDATE USING (("owner" = "auth"."uid"())) WITH CHECK (("owner" = "auth"."uid"()));
+
+
+
 CREATE POLICY "report a readable note" ON "public"."note_reports" FOR INSERT WITH CHECK ((("reporter" = "auth"."uid"()) AND (EXISTS ( SELECT 1
    FROM "public"."notes" "n"
   WHERE (("n"."id" = "note_reports"."note_id") AND ("n"."author" <> "auth"."uid"()))))));
@@ -748,11 +910,30 @@ CREATE POLICY "see my reports and reports in my garden" ON "public"."note_report
 
 
 
+CREATE POLICY "see your own links" ON "public"."garden_shares" FOR SELECT USING (("owner" = "auth"."uid"()));
+
+
+
+CREATE POLICY "see your own wishes" ON "public"."waitlist" FOR SELECT USING (("person" = "auth"."uid"()));
+
+
+
 CREATE POLICY "take back your own heart" ON "public"."poem_likes" FOR DELETE USING (("liker" = "auth"."uid"()));
 
 
 
+CREATE POLICY "take back your own wish" ON "public"."waitlist" FOR DELETE USING (("person" = "auth"."uid"()));
+
+
+
 CREATE POLICY "update own poems" ON "public"."poems" FOR UPDATE USING (("owner" = "auth"."uid"())) WITH CHECK (("owner" = "auth"."uid"()));
+
+
+
+ALTER TABLE "public"."waitlist" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "withdraw your own links" ON "public"."garden_shares" FOR DELETE USING (("owner" = "auth"."uid"()));
 
 
 
@@ -766,6 +947,18 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 GRANT ALL ON FUNCTION "public"."change_username"("new_name" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."change_username"("new_name" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."change_username"("new_name" "text") TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."garden_shares" TO "anon";
+GRANT ALL ON TABLE "public"."garden_shares" TO "authenticated";
+GRANT ALL ON TABLE "public"."garden_shares" TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."create_share"("p_label" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."create_share"("p_label" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_share"("p_label" "text") TO "service_role";
 
 
 
@@ -817,6 +1010,12 @@ GRANT ALL ON FUNCTION "public"."list_public_gardens"("q" "text", "after_updated"
 
 
 
+REVOKE ALL ON FUNCTION "public"."my_visits"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."my_visits"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."my_visits"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."notes_only_hide"() TO "anon";
 GRANT ALL ON FUNCTION "public"."notes_only_hide"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."notes_only_hide"() TO "service_role";
@@ -848,6 +1047,13 @@ GRANT ALL ON FUNCTION "public"."poem_visible"("p_owner" "uuid", "p_id" "text") T
 
 
 
+REVOKE ALL ON FUNCTION "public"."record_visit"("p_owner" "uuid", "p_visitor" "text", "p_token" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."record_visit"("p_owner" "uuid", "p_visitor" "text", "p_token" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."record_visit"("p_owner" "uuid", "p_visitor" "text", "p_token" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."record_visit"("p_owner" "uuid", "p_visitor" "text", "p_token" "text") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."remove_poem"("poem_id" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."remove_poem"("poem_id" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."remove_poem"("poem_id" "text") TO "service_role";
@@ -863,6 +1069,13 @@ GRANT ALL ON FUNCTION "public"."restore_poem"("poem_id" "text") TO "service_role
 REVOKE ALL ON FUNCTION "public"."save_poem"("p" "jsonb", "base" timestamp with time zone) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."save_poem"("p" "jsonb", "base" timestamp with time zone) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."save_poem"("p" "jsonb", "base" timestamp with time zone) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."shared_garden"("p_token" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."shared_garden"("p_token" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."shared_garden"("p_token" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."shared_garden"("p_token" "text") TO "service_role";
 
 
 
@@ -903,6 +1116,12 @@ GRANT ALL ON FUNCTION "public"."valid_settings"("s" "jsonb") TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."garden_visits" TO "anon";
+GRANT ALL ON TABLE "public"."garden_visits" TO "authenticated";
+GRANT ALL ON TABLE "public"."garden_visits" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."note_reports" TO "anon";
 GRANT ALL ON TABLE "public"."note_reports" TO "authenticated";
 GRANT ALL ON TABLE "public"."note_reports" TO "service_role";
@@ -921,6 +1140,12 @@ GRANT UPDATE("hidden") ON TABLE "public"."notes" TO "authenticated";
 
 GRANT ALL ON TABLE "public"."poem_likes" TO "authenticated";
 GRANT ALL ON TABLE "public"."poem_likes" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."waitlist" TO "anon";
+GRANT ALL ON TABLE "public"."waitlist" TO "authenticated";
+GRANT ALL ON TABLE "public"."waitlist" TO "service_role";
 
 
 
