@@ -615,7 +615,7 @@ export const myBoat = (() => {
 export function boatWater(x, z) {
   const g = gorgeLocal(x, z), u = g.along, v = g.across;
   if (gorgeJettyH(x, z) !== null || Math.abs(u - (JETTY.u0 + JETTY.u1) / 2) < (JETTY.u1 - JETTY.u0) / 2 + 0.6 && Math.abs(v) < JETTY.half + 0.7) return false;
-  if (Math.hypot(x - SECRET_SIGN.x, z - SECRET_SIGN.z) < 2.4 || Math.hypot(x - SECRET_SIGN_BIG.x, z - SECRET_SIGN_BIG.z) < 5.5) return false;
+  if (Math.hypot(x - SECRET_SIGN.x, z - SECRET_SIGN.z) < 2.4 || Math.hypot(x - SECRET_SIGN_BIG.x, z - SECRET_SIGN_BIG.z) < 4.3) return false;
   if (gorgePool(u, v) < 0.88) return true;
   if (u > A0 - 4 && u < A1 - 10 && Math.abs(v) < gorgeHalf(u) - 1.4) return true;
   if (Math.abs(u - CAVE.along) < CAVE.half - 1.2 && v * FALLS.side > 0 && Math.abs(v) < gorgeHalf(u) + CAVE.depth - 0.5) return true;
@@ -724,8 +724,8 @@ const signMat = new THREE.MeshLambertMaterial({ emissive: '#ffffff', emissiveInt
   };
   build(SECRET_SIGN, gorgeWorld(FALLS.along - 20, 0, FLOOR), 1);
   // the great sign stands on a mossy rock at the canyon's mouth, raised high, lanterns on both posts
-  const big = build(SECRET_SIGN_BIG, gorgeWorld(60, 0, FLOOR), 3.6); big.position.y = FLOOR + 1.8;
-  const rock = new THREE.Mesh(GEO.dode, gorgeMat(new THREE.MeshLambertMaterial({ color: '#6e6a5f', fog: false }), false)); rock.position.copy(SECRET_SIGN_BIG).setY(FLOOR - 0.4); rock.scale.set(5.2, 2.4, 3.2); rock.rotation.y = 0.6; gorge.add(rock);
+  const big = build(SECRET_SIGN_BIG, gorgeWorld(60, 0, FLOOR), 2.6); big.position.y = FLOOR + 1.3;
+  const rock = new THREE.Mesh(GEO.dode, gorgeMat(new THREE.MeshLambertMaterial({ color: '#6e6a5f', fog: false }), false)); rock.position.copy(SECRET_SIGN_BIG).setY(FLOOR - 0.4); rock.scale.set(4.2, 2.0, 2.7); rock.rotation.y = 0.6; gorge.add(rock);
   const lp2 = new THREE.Mesh(GEO.cylB, lampMat); lp2.position.set(-1.55, 2.95, 0.25); lp2.scale.set(0.09, 0.2, 0.09); big.add(lp2);
   const gl2 = glowSprite('#ffc77a', 1.6); gl2.position.set(-1.55, 3.05, 0.25); big.add(gl2);
 }
