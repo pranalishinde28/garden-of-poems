@@ -860,3 +860,21 @@ body.panel-open #run-btn{opacity:0;pointer-events:none}
 #intro .enter:active,#intro .alt:active{transform:translateY(0) scale(.98);box-shadow:0 4px 14px rgba(0,0,0,.3)}
 @media (prefers-reduced-motion:reduce){#intro .enter,#intro .alt,#intro .enter::after,#intro .alt::after{transition:none}#intro .enter:hover,#intro .alt:hover{transform:none}}
 @media (max-width:600px),(hover:none){#intro .enter::after,#intro .alt::after{display:none}}
+
+/* ---------- a paper page turn (curlTurn in reading.js): strips hinged one on another, so the sheet bends ---------- */
+.leaf.turning.curl{transform-origin:left center;transform-style:preserve-3d;background:none;overflow:visible}
+.leaf.curl .strip{position:absolute;top:0;bottom:0;transform-origin:left center;transform-style:preserve-3d}
+.leaf.curl .sface{position:absolute;top:0;bottom:0;display:flex;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden;background:radial-gradient(120% 90% at 30% 10%,rgba(255,255,255,.55),transparent 60%),var(--page)}
+.leaf.curl .strip{overflow:visible}
+.leaf.curl .sback{position:absolute;inset:0;transform:rotateY(180deg);backface-visibility:hidden;-webkit-backface-visibility:hidden;background:#ece2c9}
+.leaf.curl .slit{position:absolute;inset:0;background:#3a2a14;opacity:0;pointer-events:none;transform:translateZ(.1px)}
+
+/* a bigger reading card, for poems up to 10,000 characters (the page scrolls) */
+@media (min-width:761px){#reader{width:min(680px,50vw);max-height:92vh}.book{flex-basis:min(64vh,640px)}}
+#reader.long-poem #r-body{font-size:1.16rem;line-height:1.62}
+#reader.long-poem .leaf .scroll{justify-content:flex-start}
+#reader.long-poem #r-body .ln{animation-duration:.8s;animation-delay:calc(var(--i) * 60ms + 250ms)}
+/* the turning copy of a page keeps the poem's own type (copies lose their ids) */
+.was-r-body{font-size:1.3rem;line-height:1.72}
+#reader.long-poem .was-r-body{font-size:1.16rem;line-height:1.62}
+@media (max-width:760px){.was-r-body{font-size:1.18rem}}
