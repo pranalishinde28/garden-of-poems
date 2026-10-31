@@ -891,3 +891,6 @@ body.panel-open #run-btn{opacity:0;pointer-events:none}
 #intro .enter::after,#intro .alt::after{position:absolute;display:block;width:auto;margin:0;right:1.3rem;top:50%;line-height:1;transform:translate(-8px,-50%)}
 #intro .enter:hover::after,#intro .alt:hover::after,#intro .enter:focus-visible::after,#intro .alt:focus-visible::after{transform:translate(0,-50%)}
 @media (max-width:600px),(hover:none){#intro .enter,#intro .alt{padding-left:1.2rem;padding-right:1.2rem}#intro .enter::after,#intro .alt::after{display:none}}
+/* the welcome buttons grow with the text: their width is in rem (as their type is), never wider than the screen;
+   if a label still cannot fit (very large text on a narrow screen) it wraps onto a second line, never cut */
+#intro .enter,#intro .alt{width:min(29rem,92vw);white-space:normal;text-wrap:balance;line-height:1.2}
