@@ -24,7 +24,16 @@ import { provide } from '../core/late.js';
 import { toast } from '../ui/helpers.js';
 
 // a bird takes off on one press of Space (or the touch button) and lands on the next
-export function toggleFlight() { player.upAt = T; if (!player.flying) { player.flying = true; player.cruise = Math.max(player.alt, 6); } else player.flying = false; }
+// a bird may fly out over the gorge and the hills (FLY_R), but lands only where you can walk: in the garden or on
+// the way down to the gorge's jetty, since from anywhere else there would be no walking back
+const FLY_R = 192;
+const canLand = () => state.world === 'sun' || shore.on || Math.hypot(player.pos.x, player.pos.z) <= WORLD_R + 1 || gorgeWalk(player.pos.x, player.pos.z);
+export function toggleFlight() {
+  player.upAt = T;
+  if (!player.flying) { player.flying = true; player.cruise = Math.max(player.alt, 6); }
+  else if (canLand()) player.flying = false;
+  else toast('Fly back over the garden to land.', 2600);
+}
 addEventListener('keydown', e => { if (e.code === 'Space' && !e.repeat && state.mode === 'walk' && getAvatar().kind === 'bird' && !(e.target.closest && e.target.closest('input, textarea'))) toggleFlight(); });
 // the touch button for flying or pouncing holds this, like Space
 export let flyHeld = false;
@@ -61,7 +70,7 @@ export function walk(dt) {
     // a tap of Space takes off (and the bird keeps flying by itself at its height); another tap lands.
     // Holding Space while aloft climbs higher, holding Q sinks lower.
     // (taking off and landing happen on the key press itself, below, so even the quickest tap counts)
-    if (up && player.flying && T - (player.upAt || 0) > 0.3) player.cruise = Math.min(player.cruise + 4 * dt, 24);
+    if (up && player.flying && T - (player.upAt || 0) > 0.3) player.cruise = Math.min(player.cruise + 5 * dt, 40);
     if (keys.has('KeyQ') && player.flying) player.cruise = Math.max(player.cruise - 4 * dt, 1.2);
     player.jumpHeld = up;
     if (player.flying) player.vy += ((player.cruise - player.alt) * 1.6 - player.vy) * Math.min(1, dt * 3);
@@ -72,7 +81,7 @@ export function walk(dt) {
     if (up && player.alt < 0.01 && !player.jumpHeld) player.vy = 3.6;
     player.jumpHeld = up; player.vy -= 9.8 * dt;
   }
-  player.alt = clamp(player.alt + player.vy * dt, 0, 24); if (player.alt === 0 && player.vy < 0) player.vy = 0;
+  player.alt = clamp(player.alt + player.vy * dt, 0, 40); if (player.alt === 0 && player.vy < 0) player.vy = 0;
   if (kind !== 'bird') player.flying = false;
   const flying = kind === 'bird' && player.alt > 0.15, high = player.alt > 3.2;
   let sp = kind === 'bird' ? (flying ? (sprint ? 15 : fast ? 9 : 6) : (sprint ? 4.6 : fast ? 3.4 : 2.2)) : kind === 'cat' ? (sprint ? 10.5 : fast ? 6.4 : 3.4) : sprint ? 9 : fast ? 5.2 : 3.0;
@@ -88,7 +97,8 @@ export function walk(dt) {
   else player.vel.set(0, 0, 0);
   if (!away) wade(dt, player.pos, Math.hypot(player.vel.x, player.vel.z));
   const r = Math.hypot(player.pos.x, player.pos.z);
-  const rMax = shore.on ? SHORE_MAX_R : WORLD_R + 1; if (r > rMax && !away && (shore.on || !gorgeWalk(player.pos.x, player.pos.z))) player.pos.multiplyScalar(rMax / r);
+  const aloft = kind === 'bird' && player.flying && !shore.on;
+  const rMax = shore.on ? SHORE_MAX_R : aloft ? FLY_R : WORLD_R + 1; if (r > rMax && !away && (shore.on || aloft || !gorgeWalk(player.pos.x, player.pos.z))) player.pos.multiplyScalar(rMax / r);
   plants.forEach(pl => {
     if (!pl.collide || pl.vis < 0.5 || high) return;
     const dx = player.pos.x - pl.root.position.x, dz = player.pos.z - pl.root.position.z, d = Math.hypot(dx, dz), m = pl.collide + 0.35;
