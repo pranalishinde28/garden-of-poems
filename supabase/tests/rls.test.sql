@@ -163,6 +163,70 @@ select throws_ok($$update public.profiles set avatar = '{"kind":"cat","coat":"pl
 select lives_ok($$update public.profiles set avatar = '{"outfit":"kimono","skin":"#d9a77f","height":1.02}' where id = auth.uid()$$, 'a valid avatar saves');
 select throws_ok($$insert into public.poems (owner, id, title, content, mood) values (auth.uid(), 'odd', 'Odd', 'x', 'furious')$$, '23514', null, 'moods are known values');
 
+-- ---------- private links: a private garden opened for whoever holds the link ----------
+reset role;
+update public.gardens set is_public = false where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$select create_share('For my sister')$$, 'the poet makes a private link');
+select is((select count(*) from public.garden_shares), 1::bigint, 'the poet sees their own link');
+select is((select char_length(token) from public.garden_shares limit 1), 24, 'a link is 24 random characters');
+reset role;
+create temp table t_share as select token from public.garden_shares where owner = '00000000-0000-0000-0000-0000000000a1';
+grant select on t_share to anon, authenticated;
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select is((select count(*) from public.garden_shares), 0::bigint, 'nobody else can list a poet''s links');
+select throws_ok($$insert into public.garden_shares (owner) values ('00000000-0000-0000-0000-0000000000b2')$$, '42501', null, 'links are made only through create_share');
+select pg_temp.as_anon();
+select is(shared_garden('not-a-real-link-at-all00'), null, 'a made-up link opens nothing');
+select is((select shared_garden(token)->>'name' from t_share), 'A quiet garden', 'the link opens the private garden''s sign');
+select is((select jsonb_path_exists(shared_garden(token)->'poems', '$[*] ? (@.id == "secret")') from t_share), false, 'the link never shows a private poem');
+select is((select count(*) from public.poems where owner = '00000000-0000-0000-0000-0000000000a1'), 0::bigint, 'the link does not open the poems table itself');
+reset role;
+select is((select jsonb_array_length(shared_garden(token)->'poems') from t_share), (select count(*)::int from public.poems where owner = '00000000-0000-0000-0000-0000000000a1' and not private and deleted_at is null), 'and it shows every poem that is not private');
+update public.garden_shares set opened = 0;
+select pg_temp.as_anon();
+select shared_garden(token) from t_share;
+select shared_garden(token) from t_share;
+select throws_ok($$select create_share('x')$$, '42501', null, 'anonymous visitors cannot make links');
+reset role;
+select is((select opened from public.garden_shares where owner = '00000000-0000-0000-0000-0000000000a1'), 2, 'each opening is counted');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+delete from public.garden_shares;
+select pg_temp.as_anon();
+select is((select shared_garden(token) from t_share), null, 'a withdrawn link opens nothing');
+
+-- ---------- visitor counts: anonymous, public or shared gardens only, never your own walks ----------
+reset role;
+select pg_temp.as_anon();
+select lives_ok($$select record_visit('00000000-0000-0000-0000-0000000000a1', 'browser-key-one')$$, 'a visit to a private garden without a link is ignored, quietly');
+reset role;
+select is((select count(*) from public.garden_visits), 0::bigint, 'so nothing was counted');
+update public.gardens set is_public = true where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_anon();
+select record_visit('00000000-0000-0000-0000-0000000000a1', 'browser-key-one');
+select record_visit('00000000-0000-0000-0000-0000000000a1', 'browser-key-one');
+select record_visit('00000000-0000-0000-0000-0000000000a1', 'browser-key-two');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select record_visit('00000000-0000-0000-0000-0000000000a1', 'ignored-for-accounts');
+select record_visit('00000000-0000-0000-0000-0000000000a1', 'another-key-same-person');
+select is((select count(*) from public.garden_visits), 0::bigint, 'nobody reads the visit rows directly');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select record_visit('00000000-0000-0000-0000-0000000000a1', 'my-own-walk-key');
+select results_eq($$select today, week, month, total, people from my_visits()$$, $$values (3::bigint, 3::bigint, 3::bigint, 3::bigint, 3::bigint)$$, 'the poet sees three visitors today: two browsers and one account, counted once each, and not their own walk');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select results_eq($$select total from my_visits()$$, $$values (0::bigint)$$, 'others see only their own garden''s visits');
+select pg_temp.as_anon();
+select throws_ok($$select * from my_visits()$$, '42501', null, 'anonymous visitors see no counts');
+
+-- ---------- the waitlist ----------
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select lives_ok($$insert into public.waitlist (person, wish) values ('00000000-0000-0000-0000-0000000000b2', 'patron')$$, 'a person joins the patrons'' list');
+select throws_ok($$insert into public.waitlist (person, wish) values ('00000000-0000-0000-0000-0000000000c3', 'book')$$, '42501', null, 'not in someone else''s name');
+select throws_ok($$insert into public.waitlist (person, wish) values ('00000000-0000-0000-0000-0000000000b2', 'yacht')$$, '23514', null, 'only known wishes');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c3');
+select is((select count(*) from public.waitlist), 0::bigint, 'nobody sees another person''s wishes');
+reset role;
+
 -- ---------- accounts ----------
 select is(username_available('bob'), false, 'a taken username is not available');
 select is(username_available('ada_two'), true, 'a free username is available');

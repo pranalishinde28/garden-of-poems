@@ -10,7 +10,7 @@ import { state } from '../core/state.js';
 import { nightGlow } from '../plants/registry.js';
 import { regThing } from '../core/things.js';
 import { late, provide } from '../core/late.js';
-import { siteURL } from '../core/util.js';
+import { gardenURL, siteURL } from '../core/util.js';
 import { chalk, chalkSprig, chalkboard, fit, garland, roundRect, serif } from './signArt.js';
 import { Cloud } from '../cloud/cloud.ts';
 import { addTick } from '../core/things.js';
@@ -28,11 +28,11 @@ const KINDS = [
 ];
 export function linkKind(url, label) {
   let host = ''; try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (e) { /* not a URL */ }
-  if ((label === 'My garden' || label === 'This garden') && /[?&]garden=/.test(url)) return { name: label, col: '#1f5a3a', host };
+  if ((label === 'My garden' || label === 'This garden') && url.startsWith(siteURL())) return { name: label, col: '#1f5a3a', host };
   for (const [re, name, col] of KINDS) if (re.test(host)) return { name, col, host };
   return { name: label || host || 'My website', col: '#5a4634', host };
 }
-const handleOf = url => { try { const u = new URL(url); if (u.searchParams.get('garden')) return '@' + u.searchParams.get('garden'); if (/substack\.com$/.test(u.hostname)) return u.hostname.split('.')[0]; const p = u.pathname.replace(/\/+$/, '').split('/').filter(Boolean); return p.length ? (p[0].startsWith('@') ? p[0] : '@' + p[p.length - 1]) : u.hostname.replace(/^www\./, ''); } catch (e) { return url; } };
+const handleOf = url => { try { const u = new URL(url); if (u.searchParams.get('garden')) return '@' + u.searchParams.get('garden'); if (url.startsWith(siteURL())) return '@' + decodeURIComponent(url.slice(siteURL().length)); if (/substack\.com$/.test(u.hostname)) return u.hostname.split('.')[0]; const p = u.pathname.replace(/\/+$/, '').split('/').filter(Boolean); return p.length ? (p[0].startsWith('@') ? p[0] : '@' + p[p.length - 1]) : u.hostname.replace(/^www\./, ''); } catch (e) { return url; } };
 
 const W = 1024, H = 1280; // half the width of the main sign, the same height
 // each platform's name in a light chalk of its own colour, readable on the dark slate
@@ -101,7 +101,7 @@ export function drawLinkBoards() {
   const own = !state.visiting, links = ((own ? SETTINGS.links : state.visiting.sign.links) || []).filter(l => l && /^https?:\/\//i.test(l.url)).slice(0, 5);
   // a public garden gets its own code first, so a visitor can come back to it (or share it)
   const user = own ? (Cloud.garden && Cloud.garden.is_public && Cloud.profile && Cloud.profile.username) : state.visiting.username;
-  if (user) links.unshift({ label: own ? 'My garden' : 'This garden', url: siteURL() + '?garden=' + encodeURIComponent(user), garden: true });
+  if (user) links.unshift({ label: own ? 'My garden' : 'This garden', url: gardenURL(user), garden: true });
   const k = JSON.stringify([own, links, !!Cloud.user]); if (k === key) return; key = k;
   paint(cv, links, own); tex.needsUpdate = true;
 }

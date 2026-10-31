@@ -123,6 +123,16 @@ function layout() {
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, r.width, r.height);
   drawWorld(g, P, S, true);
 }
+// the garden's plan for the opening page of a book of poems (ui/book.js): parchment, the drawn garden, and a
+// dot for every poem tree in its mood's ink
+export function gardenMapImage(px) {
+  const c = document.createElement('canvas'); c.width = c.height = px; const g = c.getContext('2d');
+  const pg = g.createRadialGradient(px / 2, px / 2, px * 0.2, px / 2, px / 2, px * 0.75); pg.addColorStop(0, '#f6ecd4'); pg.addColorStop(1, '#e8d8b4'); g.fillStyle = pg; g.fillRect(0, 0, px, px);
+  const s = px / (2 * 80), P = (x, z) => [px / 2 + x * s, px / 2 + (z - 2) * s];
+  drawWorld(g, P, s, true);
+  plants.forEach(pl => { if (!onMap(pl)) return; const [x, y] = P(pl.root.position.x, pl.root.position.z); g.beginPath(); g.arc(x, y, Math.max(3, 1.5 * s), 0, 7); g.fillStyle = MOOD_INK[moodOf(pl.poem)]; g.fill(); g.lineWidth = Math.max(1, 0.35 * s); g.strokeStyle = '#3b3428'; g.stroke(); });
+  return c.toDataURL('image/jpeg', 0.92);
+}
 // places to do something, each with a short hint and where to stand
 function places() {
   const L = [];

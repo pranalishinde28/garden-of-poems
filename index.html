@@ -88,6 +88,9 @@
   <button id="m-cine"><span class="t">Soft film look: on</span><small>glow, colour and grain over the garden</small></button>
   <button id="m-sample"><span class="t">Plant twelve sample poems</span><small>a few poems to wander among</small></button>
   <button id="m-clear" class="danger"><span class="t">Clear the garden</span><small>remove every poem here</small></button>
+  <p class="mh">Keep and share</p>
+  <button id="m-book"><span class="t">Make a book of my poems</span><small>every poem with its tree, ready to print</small></button>
+  <button id="m-patron"><span class="t">Become a patron of the garden</span><small>help it grow; be first to hear</small></button>
   <p class="mh" id="m-acct-h" hidden>Your account</p>
   <button id="m-signout" hidden><span class="t">Sign out</span><small id="m-signout-who">your poems stay safe in your account</small></button>
 </div></div>
@@ -117,8 +120,16 @@
     <h3>Your garden</h3>
     <p id="g-status"></p>
     <button id="g-toggle" class="g-btn">Make my garden public</button>
-    <button id="g-copy" class="g-link" hidden>Copy the link to my garden</button>
+    <div id="g-address" hidden><p class="g-m">Its address</p><div class="g-addr"><span id="g-addr-url"></span><button id="g-copy" class="g-chip">Copy</button></div></div>
     <button id="g-custom" class="g-link">Customize its look, sign and music</button>
+    <button id="g-book" class="g-link">Make a book of my poems</button>
+    <button id="g-patron" class="g-link">Become a patron of the garden</button>
+    <h3>Visitors</h3>
+    <div id="g-visits" class="g-m"></div>
+    <h3>Private links</h3>
+    <p class="g-m">Share your garden with chosen people, even while it is private. Whoever has a link can walk through it and read your poems, except the ones you keep private. Withdraw a link whenever you like.</p>
+    <div class="g-mklink"><input type="text" id="g-share-label" maxlength="60" placeholder="Who is it for? (only you see this)" aria-label="Who the link is for (only you see this)" autocomplete="off"><button id="g-share-make" class="g-btn">Make a private link</button></div>
+    <div id="g-shares"></div>
     <h3>Recently removed</h3>
     <p class="g-m">Poems you remove wait here for 30 days before they are gone for good.</p>
     <div id="g-removed"></div>
@@ -285,6 +296,20 @@
   <div id="wp-text"></div>
   <div class="wp-nav"><button id="wp-prev">← Earlier</button><span id="wp-count"></span><button id="wp-next">Next →</button></div>
 </section>
+<section id="patron" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="pt-title" hidden>
+  <button class="xc x" id="pt-close" aria-label="Close">×</button>
+  <h2 id="pt-title">Become a patron of the garden</h2>
+  <p>The Garden of Poems is kept quiet on purpose: no adverts, ever, and the garden itself always free.</p>
+  <p>Patrons will help keep it growing. As thanks, they will have more of it: new scenery and seasons, more kinds of trees, lanterns and outfits, a garden address of their own, and printed books of their poems at a kinder price.</p>
+  <p class="pt-soon">Patronage is not open yet. Leave your name and you will be among the first to hear when it is.</p>
+  <p id="pt-state" class="g-m" role="status"></p>
+  <div class="pt-acts"><button id="pt-go" class="g-btn">Count me in</button><button id="pt-undo" class="g-link" hidden>Take my name off the list</button></div>
+</section>
+<div id="book" hidden role="dialog" aria-modal="true" aria-labelledby="bk-h">
+  <div class="bk-bar"><h2 id="bk-h">Your book</h2><span id="bk-status" role="status"></span><button id="bk-print" class="g-btn" disabled>Print, or save as PDF</button><button id="bk-close" class="g-link">Close</button></div>
+  <div class="bk-help"><p>Choose <b>Save as PDF</b> in the print window to keep your book. Its pages are 6 × 9 inches, the size most print-on-demand services use for poetry: upload the PDF to <b>Lulu</b> or <b>Blurb</b> to order printed copies. The trees are pictured in the garden’s light as it is now: choose day, sunset or night before you make the book.</p><p id="bk-wish-row"><button id="bk-wish" class="g-link">Tell me when printed copies can be ordered here</button></p></div>
+  <div id="bk-pages"></div>
+</div>
 <section id="helpsheet" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
   <button class="xc x" id="help-close" aria-label="Close">×</button>
   <h2 id="help-title">Finding your way</h2>

@@ -19,7 +19,8 @@ provide({
 // the card simply leaves the heart out.
 let cur = null; // { p, owner, poemId, visiting, hearts: { likes, mine } | null }
 const heartBtn = $('#r-heart'), talkBtn = $('#r-talk'), likesEl = $('#r-likes'), notesBox = $('#r-notes');
-const isPublic = () => !!state.visiting || !!(Cloud.user && Cloud.garden && Cloud.garden.is_public);
+// a garden opened by a private link while it is private has no hearts or notes (they would be refused)
+const isPublic = () => state.visiting ? state.visiting.isPublic !== false : !!(Cloud.user && Cloud.garden && Cloud.garden.is_public);
 const canHeart = () => !!(cur && cur.hearts && !heartBtn.hidden);
 function setPoet(name) { const n = $('#r-poet'); n.textContent = name; $('#r-av').textContent = (name.trim()[0] || '·').toUpperCase(); }
 
