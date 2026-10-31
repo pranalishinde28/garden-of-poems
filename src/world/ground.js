@@ -71,13 +71,15 @@ export const mountainU = [], mountainMeshes = [];
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
   const u = { uHor: { value: new THREE.Color() }, uNight: { value: 0 }, uDusk: { value: 0 }, uLight: { value: new THREE.Vector3(0.6, 0.45, 0.6) } };
   mountainU.push(u);
-  const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: u, fog: false,
+  // both sides: a bird flying out over the gorge sees the hills from above and behind, where single-sided
+  // faces vanished and left the pale sky showing through
+  const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: u, fog: false, side: THREE.DoubleSide,
     vertexShader: 'varying vec3 vW,vN;void main(){vW=(modelMatrix*vec4(position,1.)).xyz;vN=normal;gl_Position=projectionMatrix*viewMatrix*vec4(vW,1.);}',
     fragmentShader: `uniform vec3 uHor,uLight;uniform float uNight,uDusk;varying vec3 vW,vN;
       float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
       float nz(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);return mix(mix(h2(i),h2(i+vec2(1,0)),u.x),mix(h2(i+vec2(0,1)),h2(i+vec2(1,1)),u.x),u.y);}
       void main(){
-        vec3 n=normalize(vN);float lam=max(dot(n,normalize(uLight)),0.);
+        vec3 n=normalize(vN);if(n.y<0.)n=-n;float lam=max(dot(n,normalize(uLight)),0.);
         // forest: a dappled canopy of tree crowns, darker in the folds, fresher on the ridges
         float trees=nz(vW.xz*.35)*.55+nz(vW.xz*1.3)*.45,hgt=clamp(vW.y/110.,0.,1.);
         vec3 deep=vec3(.12,.34,.12),fresh=vec3(.34,.62,.2),meadow=vec3(.52,.72,.3);

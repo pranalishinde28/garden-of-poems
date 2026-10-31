@@ -64,16 +64,22 @@ const parasolGeo = (() => { const g = new THREE.ConeGeometry(1, 0.32, 36, 1, tru
   // a fine grid of wires overhead, from which everything hangs
   const wires = new Merge(); for (let x = CAN.x0; x <= CAN.x1 + 0.01; x += 2.2) wires.limb(new V3(x, y, CAN.z0), new V3(x, y, CAN.z1), 0.012, 0.012, C('#3a3330')); for (let z = CAN.z0; z <= CAN.z1 + 0.01; z += 2.2) wires.limb(new V3(CAN.x0, y, z), new V3(CAN.x1, y, z), 0.012, 0.012, C('#3a3330'));
   // painted parasols, open and gently tilted, at different heights
-  const pm = new THREE.InstancedMesh(parasolGeo, parasolMat, 26), d = new THREE.Object3D(); let n = 0;
-  // each keeps clear of the others as seen from below (no two overlap), with a little sky between them
+  const pm = new THREE.InstancedMesh(parasolGeo, parasolMat, 80), d = new THREE.Object3D(); let n = 0;
+  // each keeps clear of the others as seen from below (no two overlap), with a little sky between them: first
+  // the large ones, then smaller ones settled into the gaps between them, so the canopy is full but never piled up
   const placed = [];
-  for (let i = 0; i < 2000 && n < 26; i++) {
-    const s = 0.95 + R() * 0.55, x = CAN.x0 + 0.3 + s + R() * (CAN.x1 - CAN.x0 - 0.6 - 2 * s), z = CAN.z0 + 0.3 + s + R() * (CAN.z1 - CAN.z0 - 0.6 - 2 * s);
-    if (placed.some(p => Math.hypot(p.x - x, p.z - z) < (p.s + s) * 1.12)) continue;
-    placed.push({ x, z, s }); const hy = y - 0.5 - R() * 1.1;
-    d.position.set(x, hy, z); d.rotation.set((R() - .5) * 0.35, R() * 6.28, (R() - .5) * 0.35); d.scale.set(s, s, s); d.updateMatrix(); pm.setMatrixAt(n++, d.matrix);
-    cords.limb(new V3(x, hy, z), new V3(x, y, z), 0.006, 0.006, C('#2a2420'));
-  }
+  const hang = (smin, smax, want, tries) => {
+    for (let i = 0, got = 0; i < tries && got < want && n < 80; i++) {
+      const s = smin + R() * (smax - smin), x = CAN.x0 + 0.3 + s + R() * (CAN.x1 - CAN.x0 - 0.6 - 2 * s), z = CAN.z0 + 0.3 + s + R() * (CAN.z1 - CAN.z0 - 0.6 - 2 * s);
+      if (placed.some(p => Math.hypot(p.x - x, p.z - z) < (p.s + s) * 1.1)) continue;
+      placed.push({ x, z, s }); got++; const hy = y - 0.5 - R() * 1.1;
+      d.position.set(x, hy, z); d.rotation.set((R() - .5) * 0.35, R() * 6.28, (R() - .5) * 0.35); d.scale.set(s, s, s); d.updateMatrix(); pm.setMatrixAt(n++, d.matrix);
+      cords.limb(new V3(x, hy, z), new V3(x, y, z), 0.006, 0.006, C('#2a2420'));
+    }
+  };
+  hang(0.95, 1.5, 26, 2000);
+  hang(0.6, 0.9, 30, 4000);
+  hang(0.45, 0.6, 20, 4000);
   pm.count = n; scene.add(pm);
   // lanterns among them: pink, white and yellow
   const cols = ['pink', 'white', 'yellow', 'white', 'pink'];

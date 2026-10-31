@@ -11,7 +11,7 @@ export const stones = [];
 // the writing bench and the swings stand round to the west of the pond, a little toward the gate (rounds 36
 // and 38): moved round the pond on their circles by SIDE_TURN, and facing the pond
 export const SIDE_TURN = -0.66;
-export const turnRound = (x, z) => { const c = Math.cos(SIDE_TURN), s = Math.sin(SIDE_TURN); return { x: x * c + z * s, z: -x * s + z * c }; };
+export const turnRound = (x, z, turn = SIDE_TURN) => { const c = Math.cos(turn), s = Math.sin(turn); return { x: x * c + z * s, z: -x * s + z * c }; };
 export const BENCH = (() => { const p = turnRound(-9.4, 12.6); return { ...p, face: Math.atan2(-p.x, -p.z) }; })();
 export const TULIPS = [{ x0: 2.7, x1: 8.2, z0: 16.5, z1: 31.5 }, { x0: -8.2, x1: -2.7, z0: 16.5, z1: 31.5 }, { x0: 24, x1: 38, z0: 40, z1: 52, field: true }, { x0: -38, x1: -24, z0: 40, z1: 52, field: true }];
 export const inTulip = (x, z, m) => TULIPS.some(t => x > t.x0 - m && x < t.x1 + m && z > t.z0 - m && z < t.z1 + m);

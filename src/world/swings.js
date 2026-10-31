@@ -14,7 +14,10 @@ import { GREEN_PALS, mapleMat } from '../plants/autumnLeaves.js';
 export const swings = [];
 export const swingVeilTex = racemeTex('#ffe6ee', '#e5739c', 59);
 export const swingVeilMat = windify(new THREE.MeshLambertMaterial({ map: swingVeilTex, alphaTest: 0.42, side: DS, emissive: '#2a1018' }), 0.03, 'const');
-export const SWING_GARDEN = (() => { const p = turnRound(-19, 21); return { ...p, face: Math.atan2(-p.x, -p.z) }; })(); // west of the pond beside the writing bench, facing the pond
+// west of the pond, a little nearer the gate than the bench (so the shrine stands clear of the view), and turned
+// 45° from the pond toward Fuji: from every seat Fuji rises ahead and to the left, the pond ahead and to the right
+export const SWING_TURN = -0.48, SWING_FUJI_TURN = Math.PI / 4;
+export const SWING_GARDEN = (() => { const p = turnRound(-19, 21, SWING_TURN); return { ...p, face: Math.atan2(-p.x, -p.z) + SWING_FUJI_TURN }; })();
 // a white pergola swing, after the owner's picture: four thick square posts, beams and rafters, climbing
 // leaves, a coral bench on chains (slatted seat and back, white arms and frame), flower baskets hanging
 // from the beams, planter boxes at the front, and a string of lights that glows at sunset and at night
