@@ -878,3 +878,9 @@ body.panel-open #run-btn{opacity:0;pointer-events:none}
 .was-r-body{font-size:1.3rem;line-height:1.72}
 #reader.long-poem .was-r-body{font-size:1.16rem;line-height:1.62}
 @media (max-width:760px){.was-r-body{font-size:1.18rem}}
+/* the hover arrow rides on the label's own line (an invisible twin on the left keeps the label centred),
+   so however long the label, the arrow sits just after it and never on top of it */
+#intro .enter::after,#intro .alt::after{position:static;display:inline-block;width:1em;margin-left:.45em;text-align:left;vertical-align:baseline;transform:translateX(-6px)}
+#intro .enter::before,#intro .alt::before{content:"";display:inline-block;width:1em;margin-right:.45em}
+#intro .enter:hover::after,#intro .alt:hover::after,#intro .enter:focus-visible::after,#intro .alt:focus-visible::after{transform:translateX(0)}
+@media (max-width:600px),(hover:none){#intro .enter::before,#intro .alt::before{display:none}}
