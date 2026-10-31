@@ -70,7 +70,7 @@ function startRide(r) {
   ride = r; r.board && r.board(); r.seat(prev);
   head = r.yaw0 !== undefined ? r.yaw0 : player.yaw; player.yaw = 0; player.pitch = r.fwd ? 0 : -0.05;
   state.mode = 'ride';
-  $('#ride-name').textContent = r.name; rideUI.hidden = false; requestAnimationFrame(() => rideUI.classList.add('show'));
+  $('#ride-name').textContent = r.name; $('#rideui .sw-hint').textContent = r.hint || 'drag to look around'; rideUI.hidden = false; requestAnimationFrame(() => rideUI.classList.add('show'));
   $('#ride-off').focus({ preventScroll: true });
 }
 function stopRide() {

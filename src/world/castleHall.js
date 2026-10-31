@@ -544,7 +544,10 @@ const TEA = FAIR_RIDES.tea, teaTop = new THREE.Group(), teaSubs = [], cups = [];
 // the drop tower: 56 metres, the tallest thing at the fair. The ring of seats creeps up for fifteen seconds,
 // hangs at the top over the whole secret garden, then falls freely for nearly three seconds before the brakes catch it
 const TOW = FAIR_RIDES.drop, H = 56, ringSeat = new THREE.Group();
-let dropY = 3;
+let dropY = 3, braking = false;
+// the fall, worked out once: from the top (50 m) it falls freely for three quarters of the way to the stopping
+// point (1 m above its rest), then the brakes take the last quarter at 3 g
+const G = 9.8, DROP = (() => { const top = H - 6, stop = 4, a = 3 * G, fall = (top - stop) * a / (a + G), v = Math.sqrt(2 * G * fall); return { top, stop, a, v, yb: top - fall, tf: v / G, tb: v / a }; })();
 {
   const gy = sunH(TOW.x, TOW.z), m = new Merge();
   m.add(new THREE.CylinderGeometry(4.2, 4.8, 1, 32), new V3(TOW.x, gy + 0.5, TOW.z), new V3(1, 1, 1), C('#efe6d2'));
@@ -563,7 +566,8 @@ let dropY = 3;
   for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2; r.add(GEO.box, new V3(Math.cos(a) * 3.2, -0.25, Math.sin(a) * 3.2), new V3(0.9, 0.2, 0.8), C('#3b78d0'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), -a)); r.add(GEO.box, new V3(Math.cos(a) * 2.8, 0.45, Math.sin(a) * 2.8), new V3(0.9, 1.3, 0.15), C('#3b78d0'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), -a + Math.PI / 2)); r.limb(new V3(Math.cos(a) * 2.75, 1.1, Math.sin(a) * 2.75), new V3(Math.cos(a) * 3.35, 0.2, Math.sin(a) * 3.35), 0.05, 0.05, C('#f2c12e')); }
   ringSeat.add(new THREE.Mesh(r.build(), toy));
   ride({ key: 'drop', label: 'Ride the drop tower', name: 'On the drop tower: hold on!', exit: exitAt(TOW.x - 6.5, TOW.z + 2),
-    seat(v) { ringSeat.localToWorld(v.set(3.4, 1.05, 0)); }, fwd(v) { const a = ringSeat.rotation.y; v.set(Math.cos(a), dropY > 40 ? -0.55 : -0.25, -Math.sin(a)); } }, ringSeat, { x: O.x + TOW.x, z: O.z + TOW.z, r: 7 });
+    // the brakes buzz through the seat as they bite
+    seat(v) { ringSeat.localToWorld(v.set(3.4, 1.05, 0)); if (braking) { v.x += (Math.random() - 0.5) * 0.05; v.y += (Math.random() - 0.5) * 0.07; } }, fwd(v) { const a = ringSeat.rotation.y; v.set(Math.cos(a), dropY > 40 ? -0.55 : -0.25, -Math.sin(a)); } }, ringSeat, { x: O.x + TOW.x, z: O.z + TOW.z, r: 7 });
 }
 // all the rides' bulbs: dim by day, bright after dark
 const fairGlow = { value: 0.15 };
@@ -579,12 +583,16 @@ addTick(() => {
   if (state.world !== 'sun') return;
   fairGlow.value = Math.max(state.night, (state.dusk || 0) * 0.6, 0.18);
   teaTop.rotation.y = T * 0.35; teaSubs.forEach((s, i) => { s.rotation.y = -T * 0.9 + i; }); cups.forEach((c, i) => { c.rotation.y = T * (1.4 + (i % 3) * 0.3); });
-  // a 26-second cycle: creep up to the top (15 s), hang there (4 s), free fall (2.6 s), brake and bounce, rest
-  const t = T % 26, top = H - 6;
-  if (t < 15) dropY = 3 + smooth(0, 15, t) * (top - 3);
-  else if (t < 19) dropY = top + Math.sin((t - 15) * 3) * 0.05;
-  else if (t < 21.6) { const f = t - 19; dropY = Math.max(10, top - 0.5 * 9.8 * f * f); }
-  else if (t < 23) { const f = (t - 21.6) / 1.4; dropY = 10 - 7 * smooth(0, 1, f) + Math.sin(f * 9) * (1 - f) * 0.6; }
+  // a 26-second cycle: creep up to the top (15 s) and hang there (4 s); then a true free fall, at g, for about
+  // 2.7 s, until magnetic brakes take the ring at about 3 g and slow it, smoothly, to a stop 1 m above the
+  // platform, where it settles. Position and speed never jump, so there is no jolt at the bottom.
+  const t = T % 26, d = DROP;
+  braking = false;
+  if (t < 15) dropY = 3 + smooth(0, 15, t) * (d.top - 3);
+  else if (t < 19) dropY = d.top + Math.sin((t - 15) * 3) * 0.05;
+  else if (t < 19 + d.tf) { const f = t - 19; dropY = d.top - 0.5 * G * f * f; }
+  else if (t < 19 + d.tf + d.tb) { const f = t - 19 - d.tf; dropY = d.yb - d.v * f + 0.5 * d.a * f * f; braking = true; }
+  else if (t < 19 + d.tf + d.tb + 1.6) dropY = d.stop - (d.stop - 3) * smooth(0, 1.6, t - 19 - d.tf - d.tb);
   else dropY = 3;
   ringSeat.position.y = sunH(TOW.x, TOW.z) + dropY; if (t < 19) ringSeat.rotation.y = T * 0.12;
 });

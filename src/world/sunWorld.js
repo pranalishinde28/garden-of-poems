@@ -42,6 +42,15 @@ const WHEEL = { x: -40, z: -134, hub: 18.5, r: 15 };
 const CANAL = { x: -56, z: -66, rx: 15, rz: 10, half: 2.4 }, SWING = { x: 42, z: -62, r: 10 }, KIOSK = { x: 12, z: -47 };
 const CANAL_PTS = Array.from({ length: 120 }, (_, k) => { const a = k / 120 * Math.PI * 2; return [CANAL.x + Math.cos(a) * (CANAL.rx + 2 * Math.sin(3 * a)), CANAL.z + Math.sin(a) * (CANAL.rz + 1.5 * Math.cos(2 * a))]; });
 const canalD = (x, z) => { if (Math.abs(x - CANAL.x) > CANAL.rx + 8 || Math.abs(z - CANAL.z) > CANAL.rz + 8) return 99; let b = 1e9; for (const [px, pz] of CANAL_PTS) b = Math.min(b, (px - x) ** 2 + (pz - z) ** 2); return Math.sqrt(b); };
+// Splash Cove, the water park, east of the sunflowers (built in waterPark.js): a wave pool, a slide tower and its
+// splash pool; and the flower terraces west of the sunflowers, rows of colour after Shikisai-no-oka
+export const WP = { x0: 40, x1: 93, z0: 27, z1: -34, wave: { x: 66, z: 7, rx: 20, rz: 13 }, splash: { x: 50, z: -24, rx: 7.5, rz: 5.5 }, tower: { x: 86, z: -24, h: 16 } };
+export const TERRACE = { x0: -93, x1: -40, z0: 27, z1: -31 };
+// three patches of flower rows: west of the sunflowers, south-west of the canal, and east of the swings by the lagoon
+export const TERRACES = [TERRACE, { x0: -95, x1: -60, z0: -79, z1: -142 }, { x0: 55, x1: 95, z0: -38, z1: -88 }];
+const inTerrace = (x, z, m = 0) => TERRACES.some(t => x > t.x0 - m && x < t.x1 + m && z < t.z0 + m && z > t.z1 - m);
+const inWP = (x, z, m = 0) => x > WP.x0 - m && x < WP.x1 + m && z < WP.z0 + m && z > WP.z1 - m;
+export const wpE = (x, z, p) => Math.hypot((x - p.x) / p.rx, (z - p.z) / p.rz);
 const lakeE = (x, z) => Math.hypot((x - LAKE.x) / LAKE.rx, (z - LAKE.z) / LAKE.rz);
 const lagoonE = (x, z) => Math.hypot((x - LAGOON.x) / LAGOON.rx, (z - LAGOON.z) / LAGOON.rz);
 // the stone path curves through the sunflowers from the lake to the arch, then runs straight on
@@ -56,8 +65,13 @@ export function sunH(x, z) {
   h = lerp(h, -1.4, 1 - smooth(0.85, 1.12, lakeE(x, z)));
   h = lerp(h, -1.4, 1 - smooth(0.88, 1.06, lagoonE(x, z)));
   { const cd = canalD(x, z); if (cd < 4) h = lerp(h, -1.0, 1 - smooth(CANAL.half - 0.6, CANAL.half + 0.9, cd)); }
+  // the water park is laid level, its pools sunk into it
+  if (x > WP.x0 - 10 && x < WP.x1 + 10 && z < WP.z0 + 10 && z > WP.z1 - 10) {
+    h = lerp(h, 0.02, smooth(WP.x0 - 8, WP.x0, x) * (1 - smooth(WP.x1, WP.x1 + 8, x)) * smooth(WP.z1 - 8, WP.z1, z) * (1 - smooth(WP.z0, WP.z0 + 8, z)));
+    h = lerp(h, -1.6, 1 - smooth(0.92, 1.0, wpE(x, z, WP.wave))); h = lerp(h, -1.6, 1 - smooth(0.9, 1.0, wpE(x, z, WP.splash)));
+  }
   const a = Math.atan2(z + 60, x);
-  h += smooth(160, 280, r) * (20 + 10 * Math.sin(a * 3 + 1) + 6 * Math.sin(a * 7 + 2));
+  h += smooth(150, 290, r) * (9 + 5 * Math.sin(a * 3 + 1) + 3 * Math.sin(a * 7 + 2));
   return h;
 }
 
@@ -113,22 +127,94 @@ const lawnTex = canvasTex(256, 256, (g, w, h) => {
   const lawnMat = new THREE.MeshLambertMaterial({ vertexColors: true, map: lawnTex, emissive: '#5c9a3a', emissiveIntensity: 0 }); fieldMats.push([lawnMat, 0.16]);
   root.add(new THREE.Mesh(g, lawnMat));
 }
-const mountMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, fog: false });
+// the mountains: a real range all round, forested low down, rock on the steep faces and above the treeline,
+// snow on the highest peaks; lit by this world's sun, rosy at sunset, dark at night, hazed with distance.
+// It rises behind the lawn's own hills (which end at r 300) so their edge is never seen.
+const mountU = { uSun: { value: new V3(0.3, 0.7, 0.6) }, uNight: skyU.uNight, uDusk: skyU.uDusk, uFog: { value: new THREE.Color('#d4e6f4') } };
 {
-  const pos = [], idx = [], SEG = 220, RINGS = 10;
+  const RN = rng(53), perm = new Uint8Array(512); { const p = [...Array(256).keys()]; for (let i = 255; i > 0; i--) { const j = Math.floor(RN() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } for (let i = 0; i < 512; i++) perm[i] = p[i & 255]; }
+  const sm = t => t * t * (3 - 2 * t), hs = (x, y) => perm[(perm[x & 255] + y) & 255] / 255;
+  const vn = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), u = sm(x - xi), v = sm(y - yi); return (hs(xi, yi) * (1 - u) + hs(xi + 1, yi) * u) * (1 - v) + (hs(xi, yi + 1) * (1 - u) + hs(xi + 1, yi + 1) * u) * v; };
+  const fbm = (x, y) => { let s = 0, a = 0.5, f = 1; for (let o = 0; o < 6; o++) { s += vn(x * f, y * f) * a; a *= 0.5; f *= 2.03; } return s; };
+  const SEG = 420, RINGS = 84, pos = [], idx = [];
   for (let i = 0; i <= RINGS; i++) {
-    const r = 440 + i * 55;
+    const r = 250 + 750 * Math.pow(i / RINGS, 1.15);
     for (let k = 0; k <= SEG; k++) {
-      const a = k / SEG * Math.PI * 2, n = Math.sin(a * 4 + 1) * 0.5 + Math.sin(a * 9 + 2) * 0.3 + Math.sin(a * 17) * 0.15;
-      const h = (60 + 70 * (0.5 + 0.5 * n)) * Math.sin(i / RINGS * Math.PI) * (a > Math.PI ? 1.3 : 0.9) - 10;
-      pos.push(Math.cos(a) * r, h, Math.sin(a) * r - 60);
-      if (i < RINGS && k < SEG) { const b = i * (SEG + 1) + k; idx.push(b, b + SEG + 1, b + 1, b + 1, b + SEG + 1, b + SEG + 2); }
+      const a = k / SEG * Math.PI * 2, x = Math.cos(a) * r, z = Math.sin(a) * r;
+      // near: rounded, forested mountains; far: a higher range whose tallest peaks carry snow
+      const hills = Math.pow(fbm(x / 170 + 5, z / 170 - 2), 1.25) * 170 * smooth(270, 420, r);
+      const ridge = 1 - Math.abs(fbm(x / 240 + 11, z / 240 - 4) * 2 - 1), mass = fbm(x / 520 - 3, z / 520 + 9);
+      const peaks = Math.pow(ridge, 1.6) * (0.35 + 0.85 * mass) * 300 * smooth(480, 760, r);
+      pos.push(x, (-6 + 18 * smooth(250, 300, r) + hills + peaks) * (1 - 0.7 * smooth(920, 1000, r)), z - 60);
+      if (i < RINGS && k < SEG) { const b = i * (SEG + 1) + k; idx.push(b, b + 1, b + SEG + 1, b + 1, b + SEG + 2, b + SEG + 1); }
     }
   }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
-  const col = []; for (let i = 0; i < pos.length; i += 3) { const k = clamp(pos[i + 1] / 120, 0, 1); col.push(0.42 + 0.12 * k, 0.53 + 0.1 * k, 0.66 + 0.08 * k); }
-  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  root.add(new THREE.Mesh(g, mountMat));
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  root.add(new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: mountU, fog: false, side: THREE.DoubleSide,
+    vertexShader: 'varying vec3 vW,vN;void main(){vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;vN=normal;gl_Position=projectionMatrix*viewMatrix*w;}',
+    fragmentShader: `uniform vec3 uSun,uFog;uniform float uNight,uDusk;varying vec3 vW,vN;
+      float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+      float nz(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);return mix(mix(h2(i),h2(i+vec2(1,0)),u.x),mix(h2(i+vec2(0,1)),h2(i+vec2(1,1)),u.x),u.y);}
+      void main(){
+        vec3 n=normalize(vN);if(n.y<0.)n=-n;float lam=max(dot(n,normalize(uSun)),0.),slope=1.-n.y,y=vW.y;vec2 p=vW.xz;
+        // a forest canopy of crowns, darker in the folds
+        float tr=nz(p*.22)*.5+nz(p*.9)*.35+nz(p*3.1)*.15;
+        vec3 c=mix(vec3(.08,.22,.1),vec3(.25,.47,.19),smoothstep(.3,.8,tr));
+        c=mix(c,vec3(.36,.52,.24),smoothstep(.62,.85,nz(p*.012))*.35);
+        // bare rock on steep faces and above the treeline, streaked
+        vec3 rock=vec3(.47,.45,.42)*(.75+.35*nz(p*.04)+.15*nz(vec2(p.x*.02,y*.3)));
+        float bare=max(smoothstep(.5,.72,slope),smoothstep(165.,215.,y+22.*nz(p*.02)));
+        c=mix(c,rock,bare);
+        // snow on the highest peaks, lying in the gentler hollows, thin on the steepest rock
+        float line=255.+35.*nz(p*.008);
+        float snow=smoothstep(line,line+30.,y+(.45-slope)*60.)*(1.-smoothstep(.55,.8,slope)*.85);
+        c=mix(c,vec3(.95,.96,1.),snow);
+        c*=.34+.9*lam;
+        c=mix(c,c*vec3(1.3,.86,.82),uDusk*.6);
+        c=mix(c,vec3(1.,.82,.72)*(.6+.5*lam),snow*uDusk*.45);
+        c*=mix(1.,.16,uNight);
+        float d=length(p-cameraPosition.xz);vec3 hz=mix(mix(vec3(.66,.79,.92),vec3(.98,.7,.6),uDusk),uFog,uNight);c=mix(c,hz,smoothstep(330.,1100.,d)*.5);
+        gl_FragColor=vec4(c,1.);
+      }` })));
+}
+
+// a forest over the lawn's rising hills, all round the fair and the field, beyond where you can walk
+{
+  const RT = rng(77), spots = [];
+  for (let i = 0; i < 9000 && spots.length < 2600; i++) {
+    const x = (RT() * 2 - 1) * 296, z = -60 + (RT() * 2 - 1) * 296, r = Math.hypot(x, z + 60);
+    if (r < 125 || r > 300) continue;
+    if (!(Math.abs(x) > 101 || z > 76 || z < -150)) continue;
+    if (Math.abs(x) < 42 && z < -140 && z > -190) continue;
+    if (x > 28 && x < 92 && z < -108 && z > -182) continue;
+    spots.push([x, z, 0.75 + RT() * 0.6 + smooth(125, 260, r) * 0.5, RT() < 0.55]);
+  }
+  const conif = spots.filter(s => s[3]), broad = spots.filter(s => !s[3]);
+  const mk = (geo, list, place, cols) => { const m = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial(), list.length), d = new THREE.Object3D(), c = new THREE.Color(); list.forEach((sp, i) => { place(d, sp); d.updateMatrix(); m.setMatrixAt(i, d.matrix); m.setColorAt(i, c.set(cols[(RT() * cols.length) | 0]).multiplyScalar(0.85 + RT() * 0.3)); }); root.add(m); return m; };
+  const GREENS = ['#2f5a2a', '#355f2c', '#284d26', '#3d6a30'], BROAD = ['#3f6f2e', '#4a7a32', '#36622a', '#567f36'];
+  mk(new THREE.ConeGeometry(1, 1, 7).translate(0, 0.5, 0), conif, (d, [x, z, k]) => { d.position.set(x, sunH(x, z) + 1.6 * k, z); d.scale.set(2.3 * k, 9 * k, 2.3 * k); d.rotation.set(0, RT() * 6, 0); }, GREENS);
+  mk(new THREE.IcosahedronGeometry(1, 1), broad, (d, [x, z, k]) => { d.position.set(x, sunH(x, z) + 4.2 * k, z); d.scale.set(3.4 * k, 3 * k, 3.4 * k); d.rotation.set(0, RT() * 6, 0); }, BROAD);
+  mk(new THREE.CylinderGeometry(0.18, 0.26, 1, 5).translate(0, 0.5, 0), spots, (d, [x, z, k]) => { d.position.set(x, sunH(x, z) - 0.2, z); d.scale.set(k, 2.2 * k, k); d.rotation.set(0, 0, 0); }, ['#5a4030', '#4e3828']);
+}
+
+// the flower terraces, west of the sunflowers: long rows of colour over the slope, as at Shikisai-no-oka
+{
+  const ROWS = ['#8a6ccf', '#f4f1ea', '#e2363a', '#f2cf3a', '#ef7fb0', '#6a3fb8', '#f28a2a', '#f7e8b8', '#c04a9c', '#ffffff', '#e86a3a', '#9a80e0'];
+  // a carpet of tiny blossoms over a little green, so each row reads as one sweep of colour
+  const tex = canvasTex(128, 128, (g, w, h) => { const RS = rng(5); g.fillStyle = '#3f7a2a'; for (let k = 0; k < 90; k++) g.fillRect(RS() * w, 40 + RS() * 88, 2, 8 + RS() * 20); for (let k = 0; k < 340; k++) { const x = 4 + RS() * 120, y = 4 + RS() * 64 + (RS() < 0.3 ? RS() * 30 : 0), r = 1.6 + RS() * 2.2; g.fillStyle = RS() < 0.12 ? 'rgba(255,255,255,.95)' : '#ffffff'; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } });
+  const geo = new THREE.PlaneGeometry(1.1, 0.6).translate(0, 0.3, 0), quad = new THREE.BufferGeometry();
+  { const parts = [0, Math.PI / 3, Math.PI * 2 / 3].map(r => geo.clone().rotateY(r)); const pos = [], uv = [], idx = []; parts.forEach((p, k) => { const o = pos.length / 3; pos.push(...p.attributes.position.array); uv.push(...p.attributes.uv.array); idx.push(...Array.from(p.index.array, v => v + o)); }); quad.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); quad.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); quad.setIndex(idx); quad.computeVertexNormals(); }
+  const mat = windify(new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0 }), 0.05, 'flower'); fieldMats.push([mat, 0.12]);
+  const RF = rng(91), spots = [];
+  // rows 4 m wide that sweep in gentle curves, with a strip of bare earth between them
+  for (const T0 of TERRACES) for (let z = T0.z0; z > T0.z1; z -= 0.36) for (let x = T0.x0; x < T0.x1; x += 0.36) {
+    const px = x + (RF() - 0.5) * 0.25, pz = z + (RF() - 0.5) * 0.25, f = (pz + 2.2 * Math.sin(px * 0.06) - T0.z1) / 4.4, band = Math.floor(f);
+    if (f % 1 > 0.88 || Math.hypot(px - FAIR_RIDES.drop.x, pz - FAIR_RIDES.drop.z) < 9 || Math.hypot(px - SWING.x, pz - SWING.z) < SWING.r + 3) continue;
+    spots.push([px, pz, ROWS[((band % ROWS.length) + ROWS.length) % ROWS.length]]);
+  }
+  const m = new THREE.InstancedMesh(quad, mat, spots.length), d = new THREE.Object3D(), c = new THREE.Color();
+  spots.forEach(([x, z, col], i) => { d.position.set(x, sunH(x, z), z); d.rotation.set(0, RF() * 6, 0); d.scale.setScalar(0.7 + RF() * 0.3); d.updateMatrix(); m.setMatrixAt(i, d.matrix); m.setColorAt(i, c.set(col)); });
+  root.add(m);
 }
 
 /* ---------- water: the lake and the lagoon, catching the fair's lights in long streaks at night ---------- */
@@ -256,7 +342,7 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
     // and lights floating low over the far reaches of the field, all the way to the woods
     for (let z = FIELD.z0 + 4; z > FIELD.z1 - 2; z -= 4.5) for (const s of [-1, 1]) for (let x = 35; x < 108; x += 4.5) {
       const px = s * (x + (R() - 0.5) * 2), pz = z + (R() - 0.5) * 2;
-      if (lakeE(px, pz) < 1.4) continue;
+      if (lakeE(px, pz) < 1.4 || inWP(px, pz, 3) || inTerrace(px, pz, 2)) continue;
       bulb(new V3(px, sunH(px, pz) + 2.4 + R() * 0.8, pz), ['#ffd890', '#ffe8b0', '#ffc0d0'][(R() * 3) | 0]);
     }
   }
@@ -266,7 +352,7 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
     for (let i = 0; i < 90; i++) { const x = 10 + R() * 492, y = 30 + R() * 110, r = 10 + R() * 9; g.drawImage(sunTex.image, x - r * 2.2, y - r * 2.2, r * 4.4, r * 4.4); }
   });
   const card = (() => { const a = new THREE.PlaneGeometry(4, 2.3).translate(0, 1.15, 0), b = a.clone().rotateY(Math.PI / 2); const m = new Merge(); m.add(a, new V3(), new V3(1, 1, 1), C('#ffffff')); m.add(b, new V3(), new V3(1, 1, 1), C('#ffffff')); return m.build(); })();
-  const list = []; for (let z = FIELD.z0 + 4; z > FIELD.z1 - 2; z -= 2.6) for (const s of [-1, 1]) for (let x = 34; x < 110; x += 2.8) if (lakeE(s * x, z) > 1.4) list.push([s * (x + R()), z + R()]);
+  const list = []; for (let z = FIELD.z0 + 4; z > FIELD.z1 - 2; z -= 2.6) for (const s of [-1, 1]) for (let x = 34; x < 110; x += 2.8) if (lakeE(s * x, z) > 1.4 && !inWP(s * x, z, 4) && !inTerrace(s * x, z, 3)) list.push([s * (x + R()), z + R()]);
   const farMat = new THREE.MeshLambertMaterial({ map: far, alphaTest: 0.45, side: THREE.DoubleSide, emissive: '#ffffff', emissiveMap: far, emissiveIntensity: 0 }); fieldMats.push([farMat, 0.4]);
   const im = new THREE.InstancedMesh(card, farMat, list.length);
   list.forEach(([x, z], i) => { d.position.set(x, sunH(x, z) - 0.2, z); d.rotation.set(0, R() * 0.6 - 0.3 + Math.PI / 4, 0); d.scale.setScalar(0.9 + R() * 0.3); d.updateMatrix(); im.setMatrixAt(i, d.matrix); });
@@ -802,7 +888,7 @@ addTick(dt => {
   sun.position.set(lerp(lerp(40, -120, d), 60, n), lerp(lerp(100, 25, d), 80, n), lerp(lerp(120, -200, d), -100, n));
   sunScene.fog.color.copy(mix3(n, d, 'fog')); sunScene.background.copy(sunScene.fog.color); renderer.setClearColor(sunScene.fog.color);
   sunScene.fog.near = lerp(170, 120, n); sunScene.fog.far = lerp(1150, 700, n);
-  mountMat.color.setRGB(1, 1, 1).lerp(DUSK_TINT, d * 0.5).multiplyScalar(lerp(1, 0.22, n));
+  mountU.uSun.value.copy(sun.position).normalize(); mountU.uFog.value.copy(sunScene.fog.color);
   // the fair's lights: a little by day, warm at sunset, full at night
   const glow = Math.max(n, d * 0.6, 0.12); waterU.uGlow.value = glow;
   winMats.forEach(m => { m.emissiveIntensity = glow * 1.2; });
@@ -867,4 +953,5 @@ worlds.sun = {
 };
 
 // the layout, for the secret world's map (ui/sunMap.js)
-export const SUN_PLAN = { LAKE, FIELD, ARCH_Z, PLAZA, CAROUSEL, LAGOON, BRIDGE, CASTLE, WHEEL, CANAL, CANAL_PTS, SWING, KIOSK, DOOR, FAIR_RIDES, pathX, track: track.getSpacedPoints(120) };
+export { skyU, sun, LAGOON, lagoonE, fieldMats, waterU };
+export const SUN_PLAN = { WP, TERRACE, TERRACES, LAKE, FIELD, ARCH_Z, PLAZA, CAROUSEL, LAGOON, BRIDGE, CASTLE, WHEEL, CANAL, CANAL_PTS, SWING, KIOSK, DOOR, FAIR_RIDES, pathX, track: track.getSpacedPoints(120) };

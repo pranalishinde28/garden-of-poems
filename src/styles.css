@@ -964,3 +964,8 @@ body.panel-open #run-btn{opacity:0;pointer-events:none}
 /* the notes under a poem keep their room (up to 26vh); the page above gives way instead. The taller page of
    the bigger card had squeezed the notes to nothing on an 800 px tall window */
 #r-notes{flex:0 0 auto}
+
+/* under the water for a moment at the end of the slide: a blue-green haze, light from above, rising bubbles */
+#underwater{position:fixed;inset:0;z-index:8;pointer-events:none;opacity:0;background:radial-gradient(120% 70% at 50% -10%,rgba(160,240,255,.55),transparent 60%),linear-gradient(180deg,rgba(40,170,200,.55),rgba(8,70,110,.85));backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+#underwater::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 20% 80%,rgba(255,255,255,.55) 0 3px,transparent 4px),radial-gradient(circle at 70% 90%,rgba(255,255,255,.5) 0 4px,transparent 5px),radial-gradient(circle at 45% 70%,rgba(255,255,255,.45) 0 2px,transparent 3px),radial-gradient(circle at 85% 60%,rgba(255,255,255,.4) 0 3px,transparent 4px);background-size:220px 260px;animation:bubbles 1.6s linear infinite}
+@keyframes bubbles{from{background-position:0 0}to{background-position:0 -260px}}

@@ -24,6 +24,13 @@ function draw() {
   g.beginPath(); g.ellipse(W / 2, H / 2, W * 0.47, H * 0.48, 0, 0, 7); g.fillStyle = '#b9d38c'; g.fill();
   // the sunflower field
   { const [x0, y0] = px(-34, P.FIELD.z0), [x1, y1] = px(34, P.FIELD.z1); g.fillStyle = '#f2cf4a'; g.fillRect(x0, y0, x1 - x0, y1 - y0); g.fillStyle = '#7a4e1e'; for (let y = y0 + 8; y < y1; y += 14) for (let x = x0 + 8; x < x1; x += 14) { g.beginPath(); g.arc(x + ((y / 14) % 2) * 7, y, 2.2, 0, 7); g.fill(); } g.strokeStyle = '#a8862a'; g.lineWidth = 2; g.strokeRect(x0, y0, x1 - x0, y1 - y0); }
+  // the flower terraces: rows of colour west of the sunflowers
+  for (const T0 of P.TERRACES) { const cols = ['#a890dc', '#f6f2ea', '#e66a5a', '#f2d35a', '#f2a0c4', '#8a6ac8']; for (let k = 0, z = T0.z0; z > T0.z1; z -= 4.4, k++) { const [x0, y0] = px(T0.x0, z), [x1, y1] = px(T0.x1, Math.max(T0.z1, z - 3.8)); g.fillStyle = cols[k % cols.length]; g.fillRect(x0, y0, x1 - x0, y1 - y0); } const [a0, b0] = px(T0.x0, T0.z0), [a1, b1] = px(T0.x1, T0.z1); g.strokeStyle = '#5a4630'; g.lineWidth = 2; g.strokeRect(a0, b0, a1 - a0, b1 - b0); }
+  // Splash Cove: its deck, the wave pool and splash pool, the slide's flume from its tower
+  { const W0 = P.WP, [a0, b0] = px(W0.x0, W0.z0), [a1, b1] = px(W0.x1, W0.z1); g.fillStyle = '#efe8da'; g.fillRect(a0, b0, a1 - a0, b1 - b0); g.strokeStyle = '#5a4630'; g.lineWidth = 2; g.strokeRect(a0, b0, a1 - a0, b1 - b0); }
+  ell(P.WP.wave.x, P.WP.wave.z, P.WP.wave.rx, P.WP.wave.rz, '#5cc8dc'); ell(P.WP.splash.x, P.WP.splash.z, P.WP.splash.rx, P.WP.splash.rz, '#5cc8dc');
+  if (P.FLUME) { g.beginPath(); P.FLUME.forEach((q, i) => { const [a, b] = px(q.x, q.z); i ? g.lineTo(a, b) : g.moveTo(a, b); }); g.strokeStyle = '#f2b81e'; g.lineWidth = 5; g.stroke(); }
+  { const [a, b] = px(P.WP.tower.x, P.WP.tower.z); g.fillStyle = '#3b78d0'; g.fillRect(a - 9, b - 9, 18, 18); }
   // water: the lake, the lagoon, the canal
   ell(P.LAKE.x, P.LAKE.z, P.LAKE.rx, P.LAKE.rz, '#8cc0dc');
   ell(P.LAGOON.x, P.LAGOON.z, P.LAGOON.rx, P.LAGOON.rz, '#8cc0dc');
@@ -61,6 +68,10 @@ const PLACES = () => [
   ['The Ferris wheel', 'see the whole fair', P.WHEEL.x, P.WHEEL.z, P.WHEEL.x, P.WHEEL.z + 6.5, 0, 'l'],
   ['The roller coaster', 'hold on tight', 50, -142, 29, -118, -Math.PI / 2, 'r'],
   ['The Hall of Mirrors', 'inside the castle', P.CASTLE.x, P.CASTLE.z, null, null, 0, 'r'],
+  ['The water slide', 'twist down into the pool', P.WP.tower.x, P.WP.tower.z, P.WP.tower.x - 4, P.WP.tower.z - 4.5, Math.PI * 0.75, 'b'],
+  ['The wave pool', 'float on the waves', P.WP.wave.x, P.WP.wave.z, P.WP.wave.x, P.WP.wave.z - P.WP.wave.rz - 2.6, Math.PI, 't'],
+  ['Jet skis', 'out on the lagoon', P.DOCK.x, P.DOCK.z1 + 2, P.DOCK.x, P.DOCK.z0 + 2.2, Math.PI, 'b'],
+  ['Flower terraces', 'rows of every colour', (P.TERRACE.x0 + P.TERRACE.x1) / 2, (P.TERRACE.z0 + P.TERRACE.z1) / 2, P.TERRACE.x1 + 1, (P.TERRACE.z0 + P.TERRACE.z1) / 2, Math.PI / 2, 'b'],
 ];
 function build() {
   marks.innerHTML = '';
