@@ -8,11 +8,11 @@ import { camera, renderer, scene, view } from '../world/renderer.js';
 import { worlds } from '../core/worlds.js';
 import { LOOKOUT } from '../world/gorge.js';
 import { curLook, floorH, player } from '../player/camera.js';
-import { moveFigureTo } from '../player/figure.js';
+import { getAvatar, moveFigureTo } from '../player/figure.js';
 import { setCue, showRegion, toast } from './helpers.js';
 import { late, provide } from '../core/late.js';
 
-provide({ get hopTo() { return hopTo; }, get enterHallFromMap() { return enterHallFromMap; }, get enterLibraryFromMap() { return enterLibraryFromMap; }, get enterHall() { return enterHall; }, get leaveHall() { return leaveHall; }, get startRide() { return startRide; }, get enterSunWorld() { return enterSunWorld; }, get leaveSunWorld() { return leaveSunWorld; }, get setVeil() { return setVeil; } });
+provide({ get hopTo() { return hopTo; }, get enterHallFromMap() { return enterHallFromMap; }, get enterLibraryFromMap() { return enterLibraryFromMap; }, get enterHall() { return enterHall; }, get leaveHall() { return leaveHall; }, get startRide() { return startRide; }, get enterSunWorld() { return enterSunWorld; }, get leaveSunWorld() { return leaveSunWorld; }, get setVeil() { return setVeil; }, get enterTemple() { return enterTemple; }, get leaveTemple() { return leaveTemple; } });
 
 /* ================= between worlds ================= */
 // Rowing into the light at the end of the cave behind Manai Falls carries you to the Sunflower Garden;
@@ -128,3 +128,27 @@ function hopTo(pos, yaw, name) {
   setTimeout(() => { showHall(false); showLibrary(false); place(pos, yaw); state.mode = 'walk'; setTimeout(() => { veil.classList.remove('on'); setTimeout(() => { if (!veil.classList.contains('on')) veil.hidden = true; }, 1800); }, 300); }, 1300);
 }
 function enterHallFromMap() { if (state.world !== 'sun') return; state.mode = 'walk'; enterHall(); }
+
+/* ================= through a pagoda's door into the temple, and out again ================= */
+// Every pagoda opens onto the same temple (world/templeInterior.js); you come out of the one you went in by.
+// A bird that flew in to a pagoda on the hills comes out flying.
+let templeFrom = null;
+function enterTemple(door) {
+  if (state.mode !== 'walk' || state.world === 'temple') return;
+  templeFrom = door;
+  cross('Through the pagoda’s doors…', () => {
+    worlds.temple.enter(); view.scene = worlds.temple.scene; state.world = 'temple'; document.body.classList.add('otherworld');
+    moveFigureTo(worlds.temple.scene); renderer.setClearColor(worlds.temple.scene.background);
+    place(worlds.temple.arrive.pos, worlds.temple.arrive.yaw);
+  }, () => showRegion({ name: 'The Temple of the Golden Buddha', sub: 'Walk through the carved hall to the Buddha. Light a candle at the altar. The door behind you leads back out.' }));
+}
+function leaveTemple() {
+  if (state.world !== 'temple' || state.mode !== 'walk') return;
+  cross('Back out under the sky…', () => {
+    worlds.temple.leave(); view.scene = scene; state.world = 'garden'; document.body.classList.remove('otherworld');
+    moveFigureTo(scene); renderer.setClearColor(scene.fog.color);
+    const o = templeFrom ? templeFrom.out : { pos: new V3(41, 0, -25), yaw: 0 };
+    place(o.pos, o.yaw);
+    if (templeFrom && templeFrom.far && getAvatar().kind === 'bird') { player.alt = 3; player.flying = true; }
+  });
+}

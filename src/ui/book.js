@@ -57,6 +57,7 @@ async function openBook() {
   if (busy) return;
   if (state.visiting) { toast('A book is made from your own garden. Return home first.'); return; }
   if (state.world === 'sun') { toast('The white door leads home, where your poems grow.'); return; }
+  if (state.world === 'temple') { toast('Step back out into the garden, where your poems grow.'); return; }
   if (state.mode !== 'walk') return;
   const list = poems.slice().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   if (!list.length) { toast('Plant a poem first, and your book will have its first page.'); return; }

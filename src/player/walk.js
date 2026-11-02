@@ -21,13 +21,14 @@ import { clamp, isTouch } from '../core/util.js';
 import { state } from '../core/state.js';
 import { $ } from '../core/util.js';
 import { provide } from '../core/late.js';
+import { worlds } from '../core/worlds.js';
 import { toast } from '../ui/helpers.js';
 
 // a bird takes off on one press of Space (or the touch button) and lands on the next
 // a bird may fly out over the gorge and the hills (FLY_R), but lands only where you can walk: in the garden or on
 // the way down to the gorge's jetty, since from anywhere else there would be no walking back
 const FLY_R = 192;
-const canLand = () => state.world === 'sun' || shore.on || Math.hypot(player.pos.x, player.pos.z) <= WORLD_R + 1 || gorgeWalk(player.pos.x, player.pos.z);
+const canLand = () => !!worlds[state.world] || shore.on || Math.hypot(player.pos.x, player.pos.z) <= WORLD_R + 1 || gorgeWalk(player.pos.x, player.pos.z);
 export function toggleFlight() {
   player.upAt = T;
   if (!player.flying) { player.flying = true; player.cruise = Math.max(player.alt, 6); }
@@ -85,7 +86,7 @@ export function walk(dt) {
   if (kind !== 'bird') player.flying = false;
   const flying = kind === 'bird' && player.alt > 0.15, high = player.alt > 3.2;
   let sp = kind === 'bird' ? (flying ? (sprint ? 15 : fast ? 9 : 6) : (sprint ? 4.6 : fast ? 3.4 : 2.2)) : kind === 'cat' ? (sprint ? 10.5 : fast ? 6.4 : 3.4) : sprint ? 9 : fast ? 5.2 : 3.0;
-  const away = state.world === 'sun';
+  const away = !!worlds[state.world];
   { const dep = away ? 0 : seaDepth(player.pos.x, player.pos.z); if (dep > 0 && !flying) sp *= 1 - Math.min(0.6, dep * 0.7); } // wading is slow
   const sy = Math.sin(player.yaw), cy = Math.cos(player.yaw);
   player.vel.lerp(new V3((-sy * iz + cy * ix) * sp, 0, (-cy * iz - sy * ix) * sp), 1 - Math.exp(-dt * 5));

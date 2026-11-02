@@ -151,7 +151,7 @@ function places() {
   if (SETTINGS.view !== 'sea') L.push({ name: 'The secret garden', hint: 'sunflowers and a fairground, beyond the falls', x: LOOKOUT.x - 4, z: LOOKOUT.z - 12, stand: [0, 0], face: [0, 0], side: 'l', go: () => late.enterSunWorld && late.enterSunWorld() });
   if (SETTINGS.view !== 'sea') { const r = Math.hypot(LOOKOUT.x, LOOKOUT.z), k = (r - 3) / r; L.push({ name: 'The gorge lookout', hint: 'Takachiho Gorge and its falls', x: LOOKOUT.x, z: LOOKOUT.z, stand: [LOOKOUT.x * k, LOOKOUT.z * k], face: [LOOKOUT.x * 2, LOOKOUT.z * 2], side: 'l' }); }
   before(LANDMARKS.shrine, 15, 'The shrine', 'ring the bell, make a wish', 'r');
-  before(LANDMARKS.pagoda, 9, 'The pagoda', 'three storeys, and a lantern each side', 'r');
+  before(LANDMARKS.pagoda, 9, 'The pagoda', 'step inside: a temple and its golden Buddha', 'r');
   before(LANDMARKS.bell, 5.5, 'The bell tower', 'strike the temple bell', 'l');
   return L;
 }
@@ -237,7 +237,7 @@ export function closeMap(restore = true) {
   if (restore && openedFrom && openedFrom.focus) openedFrom.focus({ preventScroll: true });
 }
 // in the secret world the map is that world's own (ui/sunMap.js)
-export const toggleMap = () => state.world === 'sun' ? late.toggleSunMap && late.toggleSunMap() : view.hidden ? openMap() : closeMap();
+export const toggleMap = () => state.world === 'temple' ? late.toast && late.toast('Inside the temple there is one way out: the door you came in by.') : state.world === 'sun' ? late.toggleSunMap && late.toggleSunMap() : view.hidden ? openMap() : closeMap();
 provide({ get toggleMap() { return toggleMap; } });
 
 // ---- gliding to a place: lift, drift, settle ----

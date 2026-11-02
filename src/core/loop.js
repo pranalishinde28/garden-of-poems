@@ -25,6 +25,7 @@ import { trampleU } from '../world/grass.js';
 import { noteFrame, quality } from '../settings/quality.js';
 import { power, shouldDraw } from './power.js';
 import { late } from './late.js';
+import { away } from './worlds.js';
 import { thingsBusy, updateThings } from './things.js';
 
 let last = performance.now(), first = true, reflFrame = 0;
@@ -59,7 +60,7 @@ export function frame(now) {
   airU.uCam.value.copy(camera.position); rainU.uCam.value.copy(camera.position);
   trampleU.uPlayer.value.set(player.pos.x, 0, player.pos.z);
   sky.position.copy(camera.position);
-  Music.update(state.world === 'sun' ? 0 : state.rain);
+  Music.update(away() ? 0 : state.rain);
   camera.updateMatrixWorld();
   noteFrame(now);
   if (view.scene === scene && (quality.reflEvery === 1 || (++reflFrame % quality.reflEvery) === 0)) renderReflection();

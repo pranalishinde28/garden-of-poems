@@ -9,7 +9,7 @@ import { koiLure, river, water } from '../water/water.js';
 import { bench, sign } from '../world/decor.js';
 import { swings } from '../world/swings.js';
 import { animals } from '../animals/animals.js';
-import { player } from '../player/camera.js';
+import { floorH, player } from '../player/camera.js';
 import { things } from '../core/things.js';
 import { late, provide } from '../core/late.js';
 
@@ -72,7 +72,8 @@ canvas.addEventListener('pointerup', endDrag); canvas.addEventListener('pointerc
 canvas.addEventListener('pointerleave', () => { hoverXY = null; hoverPlant = null; });
 
 function groundHitDist(o, d) {
-  for (let t = 0.5; t < 90; t += t < 20 ? 0.35 : 0.8) { const x = o.x + d.x * t, y = o.y + d.y * t, z = o.z + d.z * t; if (y < groundH(x, z)) return t; }
+  const fh = state.world === 'temple' ? floorH : groundH;
+  for (let t = 0.5; t < 90; t += t < 20 ? 0.35 : 0.8) { const x = o.x + d.x * t, y = o.y + d.y * t, z = o.z + d.z * t; if (y < fh(x, z)) return t; }
   return Infinity;
 }
 export function pick(cx, cy) {

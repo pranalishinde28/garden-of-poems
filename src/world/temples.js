@@ -4,7 +4,7 @@ import { scene } from './renderer.js';
 import { Kit, PAL, brackets, hipRoof, lantern, nightLit, pagoda, railing, roofMat, setRoofSeason, storey, torii } from './architecture.js';
 
 /* ================= the view toward Fuji: a five-storey pagoda, a temple hall, a torii ================= */
-// Built on the hills beyond the hedge, outside the garden (nothing here is clickable). The pagoda
+// Built on the hills beyond the hedge, outside the garden (only the pagodas' doors can be touched, by a bird). The pagoda
 // stands to the right of Fuji and the hall and torii to the left, as in the classic Chūreitō view.
 // Roofs turn white in winter (setTempleSeason).
 
@@ -32,6 +32,8 @@ function hall(x, z) {
 }
 function gate(x, z) { const kit = new Kit(); torii(kit, 8.4, 9); lantern(kit, -5.8, 1.5, 1.6); lantern(kit, 5.8, 1.5, 1.6); kit.build(place(x, z, 1, 0.2), body, roofs); }
 
+// the pagodas you can step inside (world/templeInterior.js): where each stands, its scale and how far it sinks
+export const BIG_PAGODAS = [{ x: 40, z: -96, s: 1.05 }, { x: -92, z: -122, s: 0.62 }];
 bigPagoda(40, -96, 1.05);
 hall(-66, -104);
 gate(-44, -86);
