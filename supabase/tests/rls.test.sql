@@ -251,6 +251,28 @@ select lives_ok($$update public.books set body = 'Once, in a garden, a tree grew
 select lives_ok($$delete from public.books where id = 'b2'$$, 'and takes one off the shelf');
 reset role;
 
+-- ---------- the Hall of Paintings: your paintings, and a public garden's shared ones ----------
+reset role;
+update public.gardens set is_public = false where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$insert into public.paintings (id, title, artist, path) values ('p1', 'Dawn', 'Ada', '00000000-0000-0000-0000-0000000000a1/p1.jpg')$$, 'a painter hangs a painting');
+select lives_ok($$insert into public.paintings (id, title, path, private) values ('p2', 'Sketch', '00000000-0000-0000-0000-0000000000a1/p2.jpg', true)$$, 'and a private one');
+select throws_ok($$insert into public.paintings (id, title, path) values ('p3', 'Elsewhere', 'someone/p3.jpg')$$, '23514', null, 'a picture lives only in its painter''s own folder');
+select throws_ok($$insert into public.paintings (owner, id, title, path) values ('00000000-0000-0000-0000-0000000000b2', 'x', 'Forged', '00000000-0000-0000-0000-0000000000b2/x.jpg')$$, '42501', null, 'not in someone else''s name');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select is((select count(*) from public.paintings where owner = '00000000-0000-0000-0000-0000000000a1'), 0::bigint, 'a private garden''s paintings stay hidden');
+reset role;
+update public.gardens set is_public = true where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_anon();
+select results_eq($$select id from public.paintings where owner = '00000000-0000-0000-0000-0000000000a1'$$, $$values ('p1')$$, 'a public garden shows its paintings, never a private one');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+delete from public.paintings where owner = '00000000-0000-0000-0000-0000000000a1';
+reset role;
+select is((select count(*) from public.paintings where owner = '00000000-0000-0000-0000-0000000000a1'), 2::bigint, 'nobody else takes them down');
+select ok(exists (select 1 from storage.buckets where id = 'paintings' and not public), 'the pictures are kept in a private bucket');
+-- the accounts tests below run as Ada, as the library's block left them
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+
 -- ---------- accounts ----------
 select is(username_available('bob'), false, 'a taken username is not available');
 select is(username_available('ada_two'), true, 'a free username is available');

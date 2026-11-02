@@ -305,6 +305,21 @@ $$;
 ALTER FUNCTION "public"."only_keys"("obj" "jsonb", "allowed" "text"[]) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."paintings_guard"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  if (select count(*) from public.paintings where owner = new.owner) >= 60 then
+    raise exception 'a wall holds at most 60 paintings' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+
+
+ALTER FUNCTION "public"."paintings_guard"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."poem_likes_for"("p_owner" "uuid") RETURNS TABLE("poem_id" "text", "likes" integer, "mine" boolean)
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -608,6 +623,31 @@ CREATE TABLE IF NOT EXISTS "public"."notes" (
 ALTER TABLE "public"."notes" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."paintings" (
+    "owner" "uuid" DEFAULT "auth"."uid"() NOT NULL,
+    "id" "text" NOT NULL,
+    "title" "text" NOT NULL,
+    "artist" "text" DEFAULT ''::"text" NOT NULL,
+    "note" "text" DEFAULT ''::"text" NOT NULL,
+    "path" "text" NOT NULL,
+    "width" integer DEFAULT 0 NOT NULL,
+    "height" integer DEFAULT 0 NOT NULL,
+    "private" boolean DEFAULT false NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "paintings_artist_check" CHECK (("char_length"("artist") <= 80)),
+    CONSTRAINT "paintings_check" CHECK (("path" = (((("owner")::"text" || '/'::"text") || "id") || '.jpg'::"text"))),
+    CONSTRAINT "paintings_height_check" CHECK ((("height" >= 0) AND ("height" <= 10000))),
+    CONSTRAINT "paintings_id_check" CHECK ((("char_length"("id") >= 1) AND ("char_length"("id") <= 64))),
+    CONSTRAINT "paintings_note_check" CHECK (("char_length"("note") <= 600)),
+    CONSTRAINT "paintings_path_check" CHECK (("char_length"("path") <= 200)),
+    CONSTRAINT "paintings_title_check" CHECK ((("char_length"("btrim"("title")) >= 1) AND ("char_length"("btrim"("title")) <= 120))),
+    CONSTRAINT "paintings_width_check" CHECK ((("width" >= 0) AND ("width" <= 10000)))
+);
+
+
+ALTER TABLE "public"."paintings" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."poem_likes" (
     "garden_owner" "uuid" NOT NULL,
     "poem_id" "text" NOT NULL,
@@ -677,6 +717,11 @@ ALTER TABLE ONLY "public"."notes"
 
 ALTER TABLE "public"."notes"
     ADD CONSTRAINT "notes_text_trim" CHECK ((("text" = "btrim"("text")) AND ("text" <> ''::"text"))) NOT VALID;
+
+
+
+ALTER TABLE ONLY "public"."paintings"
+    ADD CONSTRAINT "paintings_pkey" PRIMARY KEY ("owner", "id");
 
 
 
@@ -784,6 +829,10 @@ CREATE OR REPLACE TRIGGER "notes_rate_limit" BEFORE INSERT ON "public"."notes" F
 
 
 
+CREATE OR REPLACE TRIGGER "paintings_guard" BEFORE INSERT ON "public"."paintings" FOR EACH ROW EXECUTE FUNCTION "public"."paintings_guard"();
+
+
+
 CREATE OR REPLACE TRIGGER "poems_tidy" BEFORE INSERT OR UPDATE ON "public"."poems" FOR EACH ROW EXECUTE FUNCTION "public"."tidy_poem"();
 
 
@@ -836,6 +885,11 @@ ALTER TABLE ONLY "public"."notes"
 
 
 
+ALTER TABLE ONLY "public"."paintings"
+    ADD CONSTRAINT "paintings_owner_fkey" FOREIGN KEY ("owner") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."poem_likes"
     ADD CONSTRAINT "poem_likes_garden_owner_poem_id_fkey" FOREIGN KEY ("garden_owner", "poem_id") REFERENCES "public"."poems"("owner", "id") ON DELETE CASCADE;
 
@@ -872,6 +926,10 @@ CREATE POLICY "change your own books" ON "public"."books" FOR UPDATE USING (("ow
 
 
 
+CREATE POLICY "change your own paintings" ON "public"."paintings" FOR UPDATE USING (("owner" = "auth"."uid"())) WITH CHECK (("owner" = "auth"."uid"()));
+
+
+
 CREATE POLICY "delete own poems" ON "public"."poems" FOR DELETE USING (("owner" = "auth"."uid"()));
 
 
@@ -891,6 +949,10 @@ ALTER TABLE "public"."garden_visits" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."gardens" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "hang your own paintings" ON "public"."paintings" FOR INSERT WITH CHECK (("owner" = "auth"."uid"()));
+
 
 
 CREATE POLICY "heart a poem you can read" ON "public"."poem_likes" FOR INSERT WITH CHECK ((("liker" = "auth"."uid"()) AND "public"."poem_visible"("garden_owner", "poem_id")));
@@ -913,6 +975,9 @@ ALTER TABLE "public"."note_reports" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."notes" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."paintings" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."poem_likes" ENABLE ROW LEVEL SECURITY;
@@ -984,11 +1049,21 @@ CREATE POLICY "see your own wishes" ON "public"."waitlist" FOR SELECT USING (("p
 
 
 
+CREATE POLICY "see your paintings, or the shared paintings of a public garden" ON "public"."paintings" FOR SELECT USING ((("owner" = "auth"."uid"()) OR ((NOT "private") AND (EXISTS ( SELECT 1
+   FROM "public"."gardens" "g"
+  WHERE (("g"."owner" = "paintings"."owner") AND "g"."is_public"))))));
+
+
+
 CREATE POLICY "take back your own heart" ON "public"."poem_likes" FOR DELETE USING (("liker" = "auth"."uid"()));
 
 
 
 CREATE POLICY "take back your own wish" ON "public"."waitlist" FOR DELETE USING (("person" = "auth"."uid"()));
+
+
+
+CREATE POLICY "take down your own paintings" ON "public"."paintings" FOR DELETE USING (("owner" = "auth"."uid"()));
 
 
 
@@ -1110,6 +1185,12 @@ GRANT ALL ON FUNCTION "public"."only_keys"("obj" "jsonb", "allowed" "text"[]) TO
 
 
 
+GRANT ALL ON FUNCTION "public"."paintings_guard"() TO "anon";
+GRANT ALL ON FUNCTION "public"."paintings_guard"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."paintings_guard"() TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."poem_likes_for"("p_owner" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."poem_likes_for"("p_owner" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."poem_likes_for"("p_owner" "uuid") TO "authenticated";
@@ -1217,6 +1298,12 @@ GRANT ALL ON TABLE "public"."notes" TO "service_role";
 
 
 GRANT UPDATE("hidden") ON TABLE "public"."notes" TO "authenticated";
+
+
+
+GRANT ALL ON TABLE "public"."paintings" TO "anon";
+GRANT ALL ON TABLE "public"."paintings" TO "authenticated";
+GRANT ALL ON TABLE "public"."paintings" TO "service_role";
 
 
 

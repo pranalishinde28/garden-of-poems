@@ -329,6 +329,24 @@
     <div class="lb-wacts"><button id="lb-w-cancel" class="lb-btn">Not now</button><button id="lb-w-save" class="lb-btn go">Put it on my shelf</button></div>
   </div>
 </div>
+<div id="paintview" hidden role="dialog" aria-modal="true" aria-label="A painting">
+  <button class="xc" id="pv-close" aria-label="Close">×</button>
+  <div id="pv-look">
+    <div class="pv-stage"><button id="pv-prev" class="pv-arrow" aria-label="The painting before">‹</button><div class="pv-frame"><img id="pv-img" alt=""></div><button id="pv-next" class="pv-arrow" aria-label="The next painting">›</button></div>
+    <div class="pv-side"><div id="pv-info"></div><div class="pv-acts"><span id="pv-count"></span><button id="pv-remove" class="lb-btn quiet" hidden>Take it down</button><button id="pv-hang" class="lb-btn go">Hang a painting of your own</button></div></div>
+  </div>
+  <div id="pv-form" hidden>
+    <h2>Hang a painting of your own</h2>
+    <p id="pv-where" class="lb-note"></p>
+    <label class="pv-pick"><input type="file" id="pv-file" accept="image/jpeg,image/png,image/webp"><span>Choose a picture from this device</span></label>
+    <img id="pv-preview" hidden alt="Your painting">
+    <div class="lb-wrow"><label for="pv-title">Title</label><input id="pv-title" maxlength="120" autocomplete="off" placeholder="What is it called?"></div>
+    <div class="lb-wrow"><label for="pv-artist">By</label><input id="pv-artist" maxlength="80" autocomplete="off" placeholder="Your name"></div>
+    <div class="lb-wrow"><label for="pv-note">A few words</label><input id="pv-note" maxlength="600" autocomplete="off" placeholder="What it shows, or why you painted it (optional)"></div>
+    <label id="pv-privrow" class="lb-check"><input type="checkbox" id="pv-private"> Keep it private, even if my garden is public.</label>
+    <div class="lb-wacts"><button id="pv-cancel" class="lb-btn">Not now</button><button id="pv-save" class="lb-btn go">Hang it in the gallery</button></div>
+  </div>
+</div>
 <section id="helpsheet" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
   <button class="xc x" id="help-close" aria-label="Close">×</button>
   <h2 id="help-title">Finding your way</h2>

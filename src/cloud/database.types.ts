@@ -137,6 +137,20 @@ isOneToOne: false
       referencedColumns: ["owner","id"]
     }
                   ]
+                },"paintings": {
+                  Row: {
+                    "artist": string,"created_at": string,"height": number,"id": string,"note": string,"owner": string,"path": string,"private": boolean,"title": string,"width": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "artist"?: string,"created_at"?: string,"height"?: number,"id": string,"note"?: string,"owner"?: string,"path": string,"private"?: boolean,"title": string,"width"?: number
+                  }
+                  Update: {
+                    "artist"?: string,"created_at"?: string,"height"?: number,"id"?: string,"note"?: string,"owner"?: string,"path"?: string,"private"?: boolean,"title"?: string,"width"?: number
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"poem_likes": {
                   Row: {
                     "created_at": string,"garden_owner": string,"liker": string,"poem_id": string

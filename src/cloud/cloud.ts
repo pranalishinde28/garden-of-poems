@@ -425,3 +425,32 @@ export async function removeBook(id: string) {
   const { error } = await Cloud.sb.from('books').delete().eq('owner', Cloud.user.id).eq('id', id);
   return !error;
 }
+
+// ---------- the Hall of Paintings: paintings people hang ----------
+export type PaintingRow = Database['public']['Tables']['paintings']['Row'];
+export async function listPaintings(owner: string): Promise<PaintingRow[] | null> {
+  if (!Cloud.sb) return null;
+  const { data, error } = await Cloud.sb.from('paintings').select('*').eq('owner', owner).order('created_at');
+  if (missing(error)) return null;
+  if (error) throw error;
+  return data || [];
+}
+export async function paintingBlob(path: string): Promise<Blob | null> {
+  if (!Cloud.sb) return null;
+  const { data, error } = await Cloud.sb.storage.from('paintings').download(path);
+  return error ? null : data;
+}
+export async function savePainting(p: { id: string; title: string; artist: string; note: string; private: boolean; width: number; height: number }, file: Blob | null) {
+  if (!Cloud.sb || !Cloud.user) throw new Error('Sign in to keep paintings in your account.');
+  const path = `${Cloud.user.id}/${p.id}.jpg`;
+  if (file) { const up = await Cloud.sb.storage.from('paintings').upload(path, file, { contentType: 'image/jpeg', upsert: true }); if (up.error) throw new Error(/bucket|not found/i.test(up.error.message) ? NEEDS_UPDATE : up.error.message); }
+  const { error } = await Cloud.sb.from('paintings').upsert({ owner: Cloud.user.id, path, ...p });
+  if (error) throw new Error(missing(error) ? NEEDS_UPDATE : error.message);
+}
+export async function removePainting(id: string) {
+  if (!Cloud.sb || !Cloud.user) return false;
+  const path = `${Cloud.user.id}/${id}.jpg`;
+  const { error } = await Cloud.sb.from('paintings').delete().eq('owner', Cloud.user.id).eq('id', id);
+  if (!error) await Cloud.sb.storage.from('paintings').remove([path]);
+  return !error;
+}

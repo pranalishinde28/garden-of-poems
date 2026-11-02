@@ -1039,3 +1039,38 @@ body.panel-open #run-btn{opacity:0;pointer-events:none}
 .lb-spine.long span{font-size:.76rem}
 body.lib-open #toast{z-index:70}
 body.lib-open #steps{display:none}
+
+/* ---------- looking at a painting, and hanging your own (ui/paintings.js) ---------- */
+#paintview{position:fixed;inset:0;z-index:55;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 100% at 50% 40%,rgba(60,20,22,.94),rgba(16,8,8,.97));color:#f3e6c8;opacity:0;transition:opacity .35s;user-select:text;-webkit-user-select:text;overflow:auto}
+#paintview.open{opacity:1}
+#paintview[hidden]{display:none}
+#paintview .xc{position:absolute;right:1.2rem;top:1rem;width:44px;height:44px;border-radius:50%;color:#f3e6c8;background:rgba(255,240,210,.12);border:1px solid rgba(240,216,144,.4);z-index:2}
+#pv-look{display:flex;gap:2rem;align-items:center;width:min(1400px,96vw);height:min(86vh,900px);padding:1rem}
+#pv-look[hidden]{display:none}
+.pv-stage{flex:1;min-width:0;height:100%;display:flex;align-items:center;gap:.6rem}
+.pv-frame{flex:1;min-width:0;height:100%;display:flex;align-items:center;justify-content:center}
+#pv-img{max-width:100%;max-height:100%;object-fit:contain;border:14px solid #c99a32;border-image:linear-gradient(135deg,#f0d880,#a8801e 40%,#e8c25a 60%,#8a6418) 1;box-shadow:0 20px 60px rgba(0,0,0,.6),inset 0 0 0 2px #5a3a10}
+.pv-arrow{flex:none;width:52px;height:52px;border-radius:50%;font-size:2rem;line-height:1;color:#f3e6c8;background:rgba(255,240,210,.1);border:1px solid rgba(240,216,144,.4);cursor:pointer}
+.pv-arrow:hover{background:rgba(255,240,210,.22)}
+.pv-side{width:min(360px,30vw);flex:none;display:flex;flex-direction:column;gap:1rem}
+#pv-info h2{font-family:var(--fell);font-weight:400;font-size:clamp(1.8rem,2.6vw,2.4rem);line-height:1.15;margin:0 0 .4rem;color:#f0d890}
+#pv-info .pv-by{font-style:italic;font-size:1.3rem;margin:0 0 .3rem}
+#pv-info .pv-where{font-size:1.05rem;opacity:.8;margin:0 0 1rem}
+#pv-info .pv-note{font-size:1.15rem;line-height:1.55;margin:0}
+#pv-info .pv-pd{font-size:.92rem;font-style:italic;opacity:.6;margin-top:1rem}
+.pv-acts{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center}
+#pv-count{font-style:italic;opacity:.75;margin-right:auto}
+#pv-form{width:min(720px,94vw);padding:1.6rem 2rem;border-radius:6px;background:#f6ecd6;color:#2a1c0c;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#pv-form[hidden]{display:none}
+#pv-form h2{font-family:var(--fell);font-weight:400;font-size:2rem;margin:0 0 .2rem;text-align:center}
+#pv-form .lb-note{text-align:center;color:rgba(42,28,12,.7)}
+#pv-form input:not([type=file]):not([type=checkbox]){font:inherit;font-size:1.15rem;color:#2a1c0c;background:rgba(255,252,240,.7);border:1px solid rgba(110,70,30,.4);border-radius:4px;padding:.4rem .6rem}
+#pv-form .lb-wrow{grid-template-columns:7rem 1fr}
+.pv-pick{display:flex;justify-content:center;margin:.8rem 0}
+.pv-pick input{position:absolute;opacity:0;width:1px;height:1px}
+.pv-pick span{padding:.6rem 1.4rem;border-radius:999px;border:2px dashed rgba(110,70,30,.5);font-size:1.1rem;font-weight:600;cursor:pointer}
+.pv-pick:focus-within span,.pv-pick span:hover{background:rgba(110,70,30,.08)}
+#pv-preview{display:block;max-width:100%;max-height:30vh;margin:0 auto .8rem;border:8px solid #c99a32}
+#pv-form .lb-btn{color:#2a1c0c;border-color:rgba(110,70,30,.5);background:transparent}
+#pv-form .lb-btn.go{background:#5a3417;color:#f8edd4;border-color:#5a3417}
+@media (max-width:800px){#pv-look{flex-direction:column;height:auto}.pv-stage{height:56vh;width:100%}.pv-side{width:100%}}
