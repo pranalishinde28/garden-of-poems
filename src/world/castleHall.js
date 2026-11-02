@@ -25,8 +25,14 @@ export const HALL = { x: 420, z: -60, y: -90, hw: 32, hl: 88, wall: 17, vault: 3
 // bays open into hallways: on the west wall (your left as you come in through the castle's gate, facing up the
 // gallery) to the library (world/libraryHall.js); on the east wall (your right) to the Hall of Paintings
 // (world/paintingHall.js). The third bay from the entrance on each side.
-export const OPEN_BAY = 19, OPEN_SIDE = -1, OPENINGS = [[-1, 19], [1, 19]];
-export const isOpen = (side, i) => OPENINGS.some(([s, b]) => s === side && b === i);
+// Each opening spans two bays (16 m), with no pilaster between them.
+export const OPEN_BAY = 18, OPEN_SIDE = -1, OPENINGS = [[-1, 18, 19], [1, 18, 19]];
+export const isOpen = (side, i) => OPENINGS.some(([s, b0, b1]) => s === side && i >= b0 && i <= b1);
+// the pilaster (and candelabrum) at the boundary before bay i stands between two open bays: leave it out
+const midOpen = (side, i) => isOpen(side, i - 1) && isOpen(side, i);
+// the poems that would have hung in the open bays hang instead in bay 1 at the far end (no curtains there)
+const POEM_BAY_ALSO = 1;
+export const OPEN_Z = HALL.z - HALL.hl + (OPENINGS[0][1] + OPENINGS[0][2] + 1) / 2 * HALL.bay, OPEN_HALF = (OPENINGS[0][2] - OPENINGS[0][1] + 1) * HALL.bay / 2;
 const hall = new THREE.Group(); hall.position.set(O.x + HALL.x, O.y + HALL.y, O.z + HALL.z); hall.visible = false; sunScene.add(hall);
 const W = (x, z) => new V3(O.x + HALL.x + x, O.y + HALL.y, O.z + HALL.z + z);
 const gilt = new THREE.MeshPhongMaterial({ vertexColors: true, color: '#d8c49a', specular: '#8a6a2a', shininess: 40, emissive: '#2a1c08', emissiveIntensity: 0.6, fog: false });
@@ -143,6 +149,7 @@ const marbleTex = canvasTex(128, 512, (g, w, h) => {
     const x = side * HALL.hw;
     for (let i = 0; i <= bays; i++) {
       const z = -HALL.hl + i * HALL.bay;
+      if (midOpen(side, i)) continue;
       // a pilaster of red marble standing out from the wall: white marble base, gilded capital with volutes
       pil.add(GEO.box, new V3(x - side * 0.28, HALL.wall / 2 - 0.3, z), new V3(0.56, HALL.wall - 2.4, 1.5), C('#ffffff'));
       m.add(GEO.box, new V3(x - side * 0.34, 0.75, z), new V3(0.7, 1.5, 1.8), IVORY);
@@ -304,7 +311,7 @@ function poemTex([title, poet, year, text]) {
 export const POEM_SPOTS = [];
 {
   const m = new Merge(), bays = Math.round(HALL.hl * 2 / HALL.bay), spots = [];
-  for (const side of [-1, 1]) for (let i = 0; i < bays; i += 2) spots.push({ side, z: -HALL.hl + i * HALL.bay + HALL.bay / 2 });
+  for (const side of [-1, 1]) { for (let i = 0; i < bays; i += 2) if (!isOpen(side, i)) spots.push({ side, z: -HALL.hl + i * HALL.bay + HALL.bay / 2 }); if (OPENINGS.some(([sd, b0, b1]) => sd === side && b0 % 2 === 0)) spots.push({ side, z: -HALL.hl + POEM_BAY_ALSO * HALL.bay + HALL.bay / 2 }); }
   spots.forEach((sp, k) => {
     const P = POEMS[k % POEMS.length], t = poemTex(P), pw = 6.1, ph = 9.6, x = sp.side * (HALL.hw - 0.45), y = 6.6;
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshBasicMaterial({ map: t, color: '#ddd2ba', fog: false }));
@@ -374,7 +381,7 @@ export const POEM_SPOTS = [];
     m.add(GEO.box, new V3(cx + nx * (off + 0.05), top + 0.25, cz + nz * (off + 0.05)), new V3(Math.abs(ax) * (2 * half + 0.6) + Math.abs(nx) * 0.3, 0.4, Math.abs(az) * (2 * half + 0.6) + Math.abs(nz) * 0.3), GOLD);
     for (let k = 0; k <= 24; k++) { const u = k / 24, along = -half - 0.15 + (2 * half + 0.3) * u, sag = 0.9 + 0.8 * Math.abs(Math.sin(u * Math.PI * 2)); m.add(GEO.cone, new V3(cx + ax * along + nx * (off + 0.2), top + 0.1 - sag - 0.12, cz + az * along + nz * (off + 0.2)), new V3(0.06, 0.24, 0.06), GOLD); }
   };
-  for (const side of [-1, 1]) for (let i = 1; i < bays; i += 2) if (!isOpen(side, i)) hang(side * HALL.hw, -HALL.hl + i * HALL.bay + HALL.bay / 2, 0, 1, -side, 0, 3.1, 14.6, 4.6, 0.55);
+  for (const side of [-1, 1]) for (let i = 1; i < bays; i += 2) if (!isOpen(side, i) && i !== POEM_BAY_ALSO) hang(side * HALL.hw, -HALL.hl + i * HALL.bay + HALL.bay / 2, 0, 1, -side, 0, 3.1, 14.6, 4.6, 0.55);
   // either side of the door at the south end, and the great painting at the north end
   hang(0, HALL.hl, 1, 0, 0, -1, 5.2, 11.6, 3.8, 0.7, 0.75);
   hang(0, -HALL.hl, 1, 0, 0, 1, 14, 15.2, 5.0, 0.9, 0.86);
@@ -455,6 +462,7 @@ export const POEM_SPOTS = [];
   const bays = Math.round(HALL.hl * 2 / HALL.bay);
   for (let i = 0; i <= bays; i++) for (const s of [-1, 1]) {
     const z = -HALL.hl + i * HALL.bay, x = s * (HALL.hw - 1.6);
+    if (midOpen(s, i)) continue;
     m.add(GEO.box, new V3(x, 0.7, z), new V3(1.0, 1.4, 1.0), C('#5a7a62'));
     m.add(GEO.box, new V3(x, 1.45, z), new V3(1.2, 0.12, 1.2), GOLD);
     // a gilded figure, arms raised, holding a branch of eight candles
@@ -463,7 +471,7 @@ export const POEM_SPOTS = [];
     m.limb(new V3(x, 4.2, z), new V3(x, 5.0, z), 0.08, 0.08, GOLD);
     for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, r = k % 2 ? 0.7 : 0.45, cy = 5.0 + (k % 2 ? 0 : 0.35); m.limb(new V3(x, 5.0, z), new V3(x + Math.cos(a) * r, cy, z + Math.sin(a) * r), 0.04, 0.04, GOLD); m.limb(new V3(x + Math.cos(a) * r, cy, z + Math.sin(a) * r), new V3(x + Math.cos(a) * r, cy + 0.35, z + Math.sin(a) * r), 0.05, 0.05, C('#fffaf0')); bulb(x + Math.cos(a) * r, cy + 0.5, z + Math.sin(a) * r, '#ffcf80'); }
     // busts of white marble on columns between the candelabra, and a crimson bench by every other one
-    if (i < bays && i % 2 === 1 && !isOpen(s, i)) {
+    if (i < bays && i % 2 === 1 && !isOpen(s, i) && i !== POEM_BAY_ALSO) {
       const zb = z + HALL.bay / 2, xb = s * (HALL.hw - 2.2);
       m.add(new THREE.CylinderGeometry(0.4, 0.45, 1.6, 12), new V3(xb, 0.8, zb), new V3(1, 1, 1), C('#e8e2d8'));
       m.add(GEO.sph, new V3(xb, 1.95, zb), new V3(0.42, 0.32, 0.3), C('#f2eee6'));
@@ -618,7 +626,7 @@ addTick(() => {
     }
     const lx = x - O.x - HALL.x, lz = z - O.z - HALL.z;
     // through the open bay the way runs on into the hallway (libraryHall.js takes over there)
-    if (OPENINGS.some(([sd, bi]) => lx * sd > 0 && Math.abs(lz - (-HALL.hl + (bi + 0.5) * HALL.bay)) < 3.2) && Math.abs(lz) < HALL.hl - 1.4) return false;
+    if (OPENINGS.some(([sd, b0, b1]) => lx * sd > 0 && Math.abs(lz - (-HALL.hl + (b0 + b1 + 1) / 2 * HALL.bay)) < (b1 - b0 + 1) * HALL.bay / 2 - 0.8) && Math.abs(lz) < HALL.hl - 1.4) return false;
     return Math.abs(lx) > HALL.hw - 2.9 || Math.abs(lz) > HALL.hl - 1.4;
   };
 }

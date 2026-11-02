@@ -8,7 +8,7 @@ import { addTick, regThing } from '../core/things.js';
 import { late } from '../core/late.js';
 import { player } from '../player/camera.js';
 import { O, sunScene } from './sunWorld.js';
-import { HALL, OPEN_BAY, OPEN_SIDE, artTex, baroque, cover, frame, hall, img, loadArt } from './castleHall.js';
+import { HALL, OPEN_HALF, OPEN_SIDE, OPEN_Z, artTex, baroque, cover, frame, hall, img, loadArt } from './castleHall.js';
 
 /* ================= the Library, inside the castle: after the State Hall of the Austrian National Library ================= */
 // Down a hallway from the Hall of Mirrors (a bay of its west wall, on your left as you come in, opens into it): a long hall of two storeys of walnut bookcases, a gallery
@@ -19,11 +19,12 @@ import { HALL, OPEN_BAY, OPEN_SIDE, artTex, baroque, cover, frame, hall, img, lo
 
 const R = rng(2468);
 // the library stands west of the Hall of Mirrors, level with its open bay; a 22 m hallway joins them
-const BAY_Z = HALL.z - HALL.hl + (OPEN_BAY + 0.5) * HALL.bay;
+const BAY_Z = OPEN_Z;
 export const LIB = { x: HALL.x + OPEN_SIDE * (HALL.hw + 22 + 15), z: BAY_Z, y: -90, hw: 7.5, hl: 38, rx: 15, rz: 12.5, wall: 13.6, gal: 6.5 };
 // the hallway, in the library's own coordinates: A at the hall's wall, B at the dome's side; as wide as the bay
 // (8 m) and as tall as the hall's walls (17 m) under its own vault, so the opening runs the bay's full height
-const HW = { A: HALL.x + OPEN_SIDE * HALL.hw - LIB.x, B: -OPEN_SIDE * (LIB.rx - 0.4), half: HALL.bay / 2, h: HALL.wall, rise: 3.4 };
+// it runs on into the dome as far as the dome's oval wall at the hallway's sides, so no gap is left between them
+const HW = { A: HALL.x + OPEN_SIDE * HALL.hw - LIB.x, B: -OPEN_SIDE * LIB.rx * Math.sqrt(1 - ((OPEN_HALF + 0.3) / LIB.rz) ** 2), half: OPEN_HALF, h: HALL.wall, rise: 4.4 };
 HW.lo = Math.min(HW.A, HW.B); HW.hi = Math.max(HW.A, HW.B); HW.s = Math.sign(HW.B - HW.A);
 const lib = new THREE.Group(); lib.position.set(O.x + LIB.x, O.y + LIB.y, O.z + LIB.z); lib.visible = false; sunScene.add(lib);
 const J = Math.sqrt(1 - (LIB.hw / LIB.rx) ** 2) * LIB.rz; // where the wings' walls meet the dome's oval
@@ -307,8 +308,12 @@ const wayLamps = [];
   way.add(new THREE.Mesh(m.build(), gilt));
   const sign = canvasTex(512, 128, (g, w, hh) => { g.fillStyle = '#2a1a10'; g.fillRect(0, 0, w, hh); g.strokeStyle = '#d4a63a'; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, hh - 16); g.fillStyle = '#f0d890'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '700 64px "Cormorant Garamond", Georgia, serif'; g.fillText('The Library', w / 2, hh / 2 + 4); });
   const face = -dir * Math.PI / 2; // turned toward the Hall of Mirrors
-  const sg1 = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.05), new THREE.MeshBasicMaterial({ map: sign, fog: false, side: THREE.DoubleSide })); sg1.position.set(A + dir * 0.4, 13.8, 0); sg1.rotation.y = face; way.add(sg1);
-  const sg2 = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.85), new THREE.MeshBasicMaterial({ map: sign, fog: false })); sg2.position.set(B - dir * 0.5, 12.2, 0); sg2.rotation.y = face; way.add(sg2);
+  // a sign reads the right way from both sides: two panels back to back, never one painted on both faces
+  for (const k of [0, 1]) { const sg1 = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 1.35), new THREE.MeshBasicMaterial({ map: sign, fog: false })); sg1.position.set(A + dir * (k ? 0.48 : 0.32), 13.8, 0); sg1.rotation.y = face + k * Math.PI; way.add(sg1); }
+  for (const k of [0, 1]) { const sg2 = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.05), new THREE.MeshBasicMaterial({ map: sign, fog: false })); sg2.position.set(B - dir * (k ? 0.42 : 0.58), 13.2, 0); sg2.rotation.y = face + k * Math.PI; way.add(sg2); }
+  { const bar = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, half * 2), new THREE.MeshPhongMaterial({ color: '#d4a63a', emissive: '#3a2808', fog: false })); bar.position.set(B - dir * 0.5, 14.1, 0); way.add(bar); }
+  // the vault's end where it meets the Hall of Mirrors, closed above the opening
+  { const lu = new THREE.Mesh(new THREE.CircleGeometry(1, 40, 0, Math.PI), new THREE.MeshLambertMaterial({ color: '#e8d8b0', emissive: '#efe2c4', emissiveIntensity: 0.45, side: THREE.DoubleSide, fog: false })); lu.scale.set(half, rise, 1); lu.position.set(A + dir * 0.05, h, 0); lu.rotation.y = Math.PI / 2; way.add(lu); }
   // where the way meets the dome: dark walnut above its arch, up past the drum, and either side to the bookcases
   const dark = new THREE.MeshLambertMaterial({ color: '#3a2210', emissive: '#2a1608', emissiveIntensity: 0.6, fog: false });
   const box = (x, y, z, w, hh, d) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), dark); b.position.set(x, y, z); way.add(b); };
