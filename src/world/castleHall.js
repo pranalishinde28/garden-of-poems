@@ -22,8 +22,9 @@ import { CASTLE, FAIR_RIDES, O, rides, sunH, sunScene } from './sunWorld.js';
 
 const R = rng(9191);
 export const HALL = { x: 420, z: -60, y: -90, hw: 32, hl: 88, wall: 17, vault: 32, rise: 0.5, bay: 8 };
-// one bay of the east wall opens into the hallway to the library (world/libraryHall.js)
-export const OPEN_BAY = 11;
+// one bay opens into the hallway to the library (world/libraryHall.js): on the west wall (your left as you come in
+// through the castle's gate, facing up the gallery), the third bay from the entrance
+export const OPEN_BAY = 19, OPEN_SIDE = -1;
 const hall = new THREE.Group(); hall.position.set(O.x + HALL.x, O.y + HALL.y, O.z + HALL.z); hall.visible = false; sunScene.add(hall);
 const W = (x, z) => new V3(O.x + HALL.x + x, O.y + HALL.y, O.z + HALL.z + z);
 const gilt = new THREE.MeshPhongMaterial({ vertexColors: true, color: '#d8c49a', specular: '#8a6a2a', shininess: 40, emissive: '#2a1c08', emissiveIntensity: 0.6, fog: false });
@@ -130,8 +131,8 @@ const marbleTex = canvasTex(128, 512, (g, w, h) => {
 {
   const bays = Math.round(HALL.hl * 2 / HALL.bay), m = new Merge(), pil = new Merge();
   for (const [side, mirror] of [[-1, true], [1, false]]) {
-    // the painted wall, in runs of whole bays; on the east, the run stops either side of the open bay
-    const runs = side > 0 ? [[0, OPEN_BAY], [OPEN_BAY + 1, bays]] : [[0, bays]];
+    // the painted wall, in runs of whole bays; on the open side it stops either side of the open bay
+    const runs = side === OPEN_SIDE ? [[0, OPEN_BAY], [OPEN_BAY + 1, bays]] : [[0, bays]];
     for (const [b0, b1] of runs) {
       const t = bayTex(mirror); t.repeat.set(b1 - b0, 1);
       const wall = new THREE.Mesh(new THREE.PlaneGeometry((b1 - b0) * HALL.bay, HALL.wall), new THREE.MeshLambertMaterial({ map: t, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: mirror ? 0.28 : 0.42, color: '#d8ccb4', fog: false }));
@@ -145,7 +146,7 @@ const marbleTex = canvasTex(128, 512, (g, w, h) => {
       m.add(GEO.box, new V3(x - side * 0.34, 0.75, z), new V3(0.7, 1.5, 1.8), IVORY);
       m.add(GEO.box, new V3(x - side * 0.36, HALL.wall - 1.7, z), new V3(0.72, 0.9, 1.9), GOLD);
       for (const o of [-0.8, 0.8]) m.add(GEO.sph, new V3(x - side * 0.6, HALL.wall - 1.5, z + o), new V3(0.22, 0.28, 0.22), GOLD2);
-      if (i === bays || (side > 0 && i === OPEN_BAY)) continue;
+      if (i === bays || (side === OPEN_SIDE && i === OPEN_BAY)) continue;
       // the arch's gilded frame, a trophy of arms above it, and gilded leaves either side
       const zc = z + HALL.bay / 2, ar = 2.7 * HALL.bay / 8, spring = HALL.wall * 0.62;
       m.add(new THREE.TorusGeometry(ar, 0.16, 6, 28, Math.PI).rotateY(Math.PI / 2), new V3(x - side * 0.08, spring, zc), new V3(1, 1, 1), GOLD);
@@ -371,7 +372,7 @@ export const POEM_SPOTS = [];
     m.add(GEO.box, new V3(cx + nx * (off + 0.05), top + 0.25, cz + nz * (off + 0.05)), new V3(Math.abs(ax) * (2 * half + 0.6) + Math.abs(nx) * 0.3, 0.4, Math.abs(az) * (2 * half + 0.6) + Math.abs(nz) * 0.3), GOLD);
     for (let k = 0; k <= 24; k++) { const u = k / 24, along = -half - 0.15 + (2 * half + 0.3) * u, sag = 0.9 + 0.8 * Math.abs(Math.sin(u * Math.PI * 2)); m.add(GEO.cone, new V3(cx + ax * along + nx * (off + 0.2), top + 0.1 - sag - 0.12, cz + az * along + nz * (off + 0.2)), new V3(0.06, 0.24, 0.06), GOLD); }
   };
-  for (const side of [-1, 1]) for (let i = 1; i < bays; i += 2) if (!(side > 0 && i === OPEN_BAY)) hang(side * HALL.hw, -HALL.hl + i * HALL.bay + HALL.bay / 2, 0, 1, -side, 0, 3.1, 14.6, 4.6, 0.55);
+  for (const side of [-1, 1]) for (let i = 1; i < bays; i += 2) if (!(side === OPEN_SIDE && i === OPEN_BAY)) hang(side * HALL.hw, -HALL.hl + i * HALL.bay + HALL.bay / 2, 0, 1, -side, 0, 3.1, 14.6, 4.6, 0.55);
   // either side of the door at the south end, and the great painting at the north end
   hang(0, HALL.hl, 1, 0, 0, -1, 5.2, 11.6, 3.8, 0.7, 0.75);
   hang(0, -HALL.hl, 1, 0, 0, 1, 14, 15.2, 5.0, 0.9, 0.86);
@@ -460,7 +461,7 @@ export const POEM_SPOTS = [];
     m.limb(new V3(x, 4.2, z), new V3(x, 5.0, z), 0.08, 0.08, GOLD);
     for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, r = k % 2 ? 0.7 : 0.45, cy = 5.0 + (k % 2 ? 0 : 0.35); m.limb(new V3(x, 5.0, z), new V3(x + Math.cos(a) * r, cy, z + Math.sin(a) * r), 0.04, 0.04, GOLD); m.limb(new V3(x + Math.cos(a) * r, cy, z + Math.sin(a) * r), new V3(x + Math.cos(a) * r, cy + 0.35, z + Math.sin(a) * r), 0.05, 0.05, C('#fffaf0')); bulb(x + Math.cos(a) * r, cy + 0.5, z + Math.sin(a) * r, '#ffcf80'); }
     // busts of white marble on columns between the candelabra, and a crimson bench by every other one
-    if (i < bays && i % 2 === 1 && !(s > 0 && i === OPEN_BAY)) {
+    if (i < bays && i % 2 === 1 && !(s === OPEN_SIDE && i === OPEN_BAY)) {
       const zb = z + HALL.bay / 2, xb = s * (HALL.hw - 2.2);
       m.add(new THREE.CylinderGeometry(0.4, 0.45, 1.6, 12), new V3(xb, 0.8, zb), new V3(1, 1, 1), C('#e8e2d8'));
       m.add(GEO.sph, new V3(xb, 1.95, zb), new V3(0.42, 0.32, 0.3), C('#f2eee6'));
@@ -614,8 +615,8 @@ addTick(() => {
       return b(x, z);
     }
     const lx = x - O.x - HALL.x, lz = z - O.z - HALL.z;
-    // through the open bay on the east wall, the way runs on into the hallway (libraryHall.js takes over there)
-    if (lx > 0 && Math.abs(lz - (-HALL.hl + (OPEN_BAY + 0.5) * HALL.bay)) < 2.3 && Math.abs(lz) < HALL.hl - 1.4) return false;
+    // through the open bay the way runs on into the hallway (libraryHall.js takes over there)
+    if (lx * OPEN_SIDE > 0 && Math.abs(lz - (-HALL.hl + (OPEN_BAY + 0.5) * HALL.bay)) < 3.2 && Math.abs(lz) < HALL.hl - 1.4) return false;
     return Math.abs(lx) > HALL.hw - 2.9 || Math.abs(lz) > HALL.hl - 1.4;
   };
 }
