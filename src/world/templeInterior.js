@@ -14,7 +14,8 @@ import { BIG_PAGODAS, templeGroup } from './temples.js';
 import { seatedBuddha, standingDisciple } from './buddha.js';
 
 /* ================= inside the pagodas: the temple of the golden Buddha ================= */
-// Every pagoda's door opens onto the same temple, its own scene far from the garden (state.world 'temple').
+// The two pagodas on the hills open onto this temple (the garden's own pagoda opens onto a Japanese shrine,
+// world/shrineInterior.js); its own scene far from the garden (state.world 'temple').
 // From the door: a hall of carved white marble pillars under a stepped, carved dome over an inlaid floor
 // (after Akshardham and the old stone temples of India), then through a carved arch into a Thai ubosot
 // (after Wat Arun, Bangkok): cream walls scattered with flowers, tiled pillars, crystal chandeliers on red
@@ -470,6 +471,7 @@ SFX.rin = function () {
 const loc = (x, z) => [x - TO.x, z - TO.z];
 worlds.temple = {
   scene: templeScene,
+  name: 'The Temple of the Golden Buddha', sub: 'Walk through the carved hall to the Buddha. Light a candle at the altar. The door behind you leads back out.',
   arrive: { pos: TO.clone().add(new V3(0, 0, HALL_Z - 4.6)), yaw: 0 },
   floorH() { return 0; },
   blocked(x, z) {
@@ -488,20 +490,20 @@ worlds.temple = {
   leave() {},
 };
 
-/* ---------- the doors: the garden's pagoda, and the two on the hills (a bird can reach those) ---------- */
+/* ---------- the doors: the garden's pagoda opens onto the Japanese shrine (world/shrineInterior.js), the two on the hills (a bird can reach those) onto this temple ---------- */
 // each door is an invisible panel over the pagoda's real door; its cue is in front of the steps
 const doorM = new THREE.MeshBasicMaterial({ visible: false });
 export const pagodaDoors = [];
-function door(parent, cx, cz, yaw, s, y0, w, h, front, outside) {
+function door(parent, cx, cz, yaw, s, y0, w, h, front, outside, world = 'temple') {
   const d = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.3), doorM);
   const c = Math.cos(yaw), sn = Math.sin(yaw), at = (lx, lz) => ({ x: cx + lx * c + lz * sn, z: cz - lx * sn + lz * c });
   const p = at(0, front * 0.62); d.position.set(p.x, y0 + h / 2, p.z); d.rotation.y = yaw; parent.add(d);
   const n = at(0, outside), out = at(0, outside + 0.6), face = Math.atan2(-(out.x - n.x), -(out.z - n.z));
-  const info = { door: d, out: { pos: new V3(n.x, 0, n.z), yaw: face }, far: parent === templeGroup };
+  const info = { door: d, out: { pos: new V3(n.x, 0, n.z), yaw: face }, far: parent === templeGroup, world };
   regThing(d, 'Step inside the pagoda', () => late.enterTemple && late.enterTemple(info), { x: n.x, z: n.z, r: 2.6 * Math.max(0.8, s) });
   pagodaDoors.push(info);
 }
-{ const P = LANDMARKS.pagoda, yaw = Math.atan2(-P.x, -P.z); door(scene, P.x, P.z, yaw, 1, groundH(P.x, P.z) - 0.12 + 1.14, 1.7, 2.4, 3.6, 5.6); }
+{ const P = LANDMARKS.pagoda, yaw = Math.atan2(-P.x, -P.z); door(scene, P.x, P.z, yaw, 1, groundH(P.x, P.z) - 0.12 + 1.14, 1.7, 2.4, 3.6, 5.6, 'shrine'); }
 addTick(() => { for (const d of pagodaDoors) if (d.far) d.door.visible = templeGroup.visible; }, true);
 for (const B of BIG_PAGODAS) { const yaw = Math.atan2(-B.x, -B.z); door(templeGroup, B.x, B.z, yaw, B.s, groundH(B.x, B.z) - 0.3 + 1.2 * B.s, 1.9 * B.s, 2.9 * B.s, 4.1 * B.s, 7.2 * B.s); }
 worlds.temple.doors = pagodaDoors;

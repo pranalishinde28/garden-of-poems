@@ -72,7 +72,7 @@ canvas.addEventListener('pointerup', endDrag); canvas.addEventListener('pointerc
 canvas.addEventListener('pointerleave', () => { hoverXY = null; hoverPlant = null; });
 
 function groundHitDist(o, d) {
-  const fh = state.world === 'temple' ? floorH : groundH;
+  const fh = state.world === 'temple' || state.world === 'shrine' ? floorH : groundH;
   for (let t = 0.5; t < 90; t += t < 20 ? 0.35 : 0.8) { const x = o.x + d.x * t, y = o.y + d.y * t, z = o.z + d.z * t; if (y < fh(x, z)) return t; }
   return Infinity;
 }

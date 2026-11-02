@@ -131,7 +131,7 @@ export const Music = {
   },
   update(rain = 0) {
     if (!this.ctx || !this.master) return;
-    this.master.gain.setTargetAtTime(this.muted ? 0 : this.ducked ? 0.32 : 0.6, this.ctx.currentTime, 0.8);
+    this.master.gain.setTargetAtTime(this.muted ? 0 : (this.ducked ? 0.32 : 0.6) * (this.hush ? 0.25 : 1), this.ctx.currentTime, 0.8); // hush: inside a pagoda (audio/sanctuary.js)
     if (!this.rainOut && rain > 0.01 && !this.muted) this.makeRain();
     if (this.rainOut) this.rainOut.gain.setTargetAtTime(this.muted ? 0 : rain * 0.5, this.ctx.currentTime, 0.5);
   }
