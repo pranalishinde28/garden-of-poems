@@ -111,9 +111,9 @@ const sky = new THREE.Mesh(new THREE.SphereGeometry(1300, 32, 16), new THREE.Sha
       vec3 dusk=mix(vec3(1.,.62,.36),mix(vec3(.85,.45,.6),vec3(.25,.25,.55),smoothstep(.15,.6,y)),smoothstep(0.,.18,y));
       vec3 night=mix(vec3(.07,.1,.2),vec3(.01,.02,.06),pow(y,.5));
       vec3 c=mix(mix(day,dusk,uDusk),night,uNight);
-      vec2 q=d.xz/(d.y+.12)*1.6;float cl=smoothstep(.52,.8,fbm(q+vec2(3.,1.)))*smoothstep(.02,.15,d.y);
+      vec2 q=d.xz/(d.y+.12)*1.6;float cf=fbm(q+vec2(3.,1.)),cl=smoothstep(.46,.74,cf)*smoothstep(.02,.15,d.y);
       vec3 cc=mix(mix(vec3(1.,.99,.97),vec3(1.,.7,.6),uDusk),vec3(.14,.16,.26),uNight);
-      c=mix(c,cc*(.92+.08*fbm(q*3.)),cl*.85);
+      float lit=smoothstep(.46,.9,fbm(q*1.3+vec2(1.3,.4)));vec3 base=mix(vec3(.58,.64,.74),vec3(.6,.45,.5),uDusk);c=mix(c,mix(base,cc,.35+.65*lit)*(.9+.1*fbm(q*3.))+vec3(1.,.85,.55)*pow(max(dot(d,normalize(uSun)),0.),6.)*lit*.35*(1.-uNight),cl*.9);
       vec3 sd=normalize(mix(uSun,vec3(-.5,.08,-.86),uDusk));float s=max(dot(d,sd),0.);
       c+=vec3(1.,.9,.7)*(pow(s,600.)*3.+pow(s,12.)*.25)*(1.-uNight);
       // stars and a moon at night
@@ -138,11 +138,13 @@ const lawnTex = canvasTex(256, 256, (g, w, h) => {
 }, true);
 {
   const S = 600, N = 210, g = new THREE.PlaneGeometry(S, S, N, N).rotateX(-Math.PI / 2), p = g.attributes.position, col = [], uv = g.attributes.uv, c = new THREE.Color();
-  const LAWN = C('#4a8530'), LAWN2 = C('#57953a'), FOREST = C('#2a4f22'), BANK = C('#4d6b35');
+  const LAWN = C('#4a8530'), LAWN2 = C('#57953a'), FOREST = C('#2a4f22'), BANK = C('#4d6b35'), MEAD = C('#7aa83e'), DEEP = C('#2f6a26');
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), z = p.getZ(i) - 60, y = sunH(x, z); p.setXYZ(i, x, y, z); uv.setXY(i, x / 3, z / 3);
     const r = Math.hypot(x, z + 60);
-    c.copy(LAWN).lerp(LAWN2, (Math.sin(x * 0.42) > 0 ? 0.55 : 0.1) * (1 - smooth(60, 120, r))).lerp(FOREST, smooth(150, 210, r) * 0.9);
+    // a patchwork of greens, sunlit yellow-green and deep green in soft patches, as in a meadow in the hills
+    const pa = Math.sin(x * 0.09 + Math.sin(z * 0.07) * 2) * Math.sin(z * 0.11 + Math.sin(x * 0.05) * 2) + 0.5 * Math.sin(x * 0.31 + z * 0.23);
+    c.copy(LAWN).lerp(LAWN2, (Math.sin(x * 0.42) > 0 ? 0.55 : 0.1) * (1 - smooth(60, 120, r))).lerp(pa > 0.35 ? MEAD : DEEP, Math.min(1, Math.abs(pa - 0.35) * 0.9) * smooth(40, 90, r) * 0.7).lerp(FOREST, smooth(150, 210, r) * 0.9);
     c.lerp(BANK, smooth(-0.1, -0.6, y));
     col.push(c.r, c.g, c.b);
   }
@@ -159,15 +161,15 @@ const mountU = { uSun: { value: new V3(0.3, 0.7, 0.6) }, uNight: skyU.uNight, uD
   const sm = t => t * t * (3 - 2 * t), hs = (x, y) => perm[(perm[x & 255] + y) & 255] / 255;
   const vn = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), u = sm(x - xi), v = sm(y - yi); return (hs(xi, yi) * (1 - u) + hs(xi + 1, yi) * u) * (1 - v) + (hs(xi, yi + 1) * (1 - u) + hs(xi + 1, yi + 1) * u) * v; };
   const fbm = (x, y) => { let s = 0, a = 0.5, f = 1; for (let o = 0; o < 6; o++) { s += vn(x * f, y * f) * a; a *= 0.5; f *= 2.03; } return s; };
-  const SEG = 420, RINGS = 84, pos = [], idx = [];
+  const SEG = 520, RINGS = 100, pos = [], idx = [];
   for (let i = 0; i <= RINGS; i++) {
     const r = 250 + 750 * Math.pow(i / RINGS, 1.15);
     for (let k = 0; k <= SEG; k++) {
       const a = k / SEG * Math.PI * 2, x = Math.cos(a) * r, z = Math.sin(a) * r;
       // near: rounded, forested mountains; far: a higher range whose tallest peaks carry snow
-      const hills = Math.pow(fbm(x / 170 + 5, z / 170 - 2), 1.25) * 170 * smooth(270, 420, r);
+      const nr = 1 - Math.abs(fbm(x / 210 + 2, z / 210 + 7) * 2 - 1), hills = (Math.pow(fbm(x / 190 + 5, z / 190 - 2), 1.2) * 115 + Math.pow(nr, 2.2) * 135) * smooth(270, 440, r);
       const ridge = 1 - Math.abs(fbm(x / 240 + 11, z / 240 - 4) * 2 - 1), mass = fbm(x / 520 - 3, z / 520 + 9);
-      const peaks = Math.pow(ridge, 1.6) * (0.35 + 0.85 * mass) * 300 * smooth(480, 760, r);
+      const peaks = Math.pow(ridge, 1.6) * (0.3 + 0.8 * mass) * 260 * smooth(560, 820, r);
       pos.push(x, (-6 + 18 * smooth(250, 300, r) + hills + peaks) * (1 - 0.7 * smooth(920, 1000, r)), z - 60);
       if (i < RINGS && k < SEG) { const b = i * (SEG + 1) + k; idx.push(b, b + 1, b + SEG + 1, b + 1, b + SEG + 2, b + SEG + 1); }
     }
@@ -182,21 +184,21 @@ const mountU = { uSun: { value: new V3(0.3, 0.7, 0.6) }, uNight: skyU.uNight, uD
         vec3 n=normalize(vN);if(n.y<0.)n=-n;float lam=max(dot(n,normalize(uSun)),0.),slope=1.-n.y,y=vW.y;vec2 p=vW.xz;
         // a forest canopy of crowns, darker in the folds
         float tr=nz(p*.22)*.5+nz(p*.9)*.35+nz(p*3.1)*.15;
-        vec3 c=mix(vec3(.08,.22,.1),vec3(.25,.47,.19),smoothstep(.3,.8,tr));
+        vec3 c=mix(vec3(.09,.26,.1),vec3(.3,.56,.2),smoothstep(.3,.8,tr));c=mix(c,vec3(.48,.66,.26),smoothstep(.7,1.,lam)*.3);
         c=mix(c,vec3(.36,.52,.24),smoothstep(.62,.85,nz(p*.012))*.35);
         // bare rock on steep faces and above the treeline, streaked
         vec3 rock=vec3(.47,.45,.42)*(.75+.35*nz(p*.04)+.15*nz(vec2(p.x*.02,y*.3)));
-        float bare=max(smoothstep(.5,.72,slope),smoothstep(165.,215.,y+22.*nz(p*.02)));
+        float bare=max(smoothstep(.62,.82,slope),smoothstep(190.,240.,y+22.*nz(p*.02)));
         c=mix(c,rock,bare);
         // snow on the highest peaks, lying in the gentler hollows, thin on the steepest rock
-        float line=255.+35.*nz(p*.008);
+        float line=290.+35.*nz(p*.008);
         float snow=smoothstep(line,line+30.,y+(.45-slope)*60.)*(1.-smoothstep(.55,.8,slope)*.85);
         c=mix(c,vec3(.95,.96,1.),snow);
         c*=.34+.9*lam;
         c=mix(c,c*vec3(1.3,.86,.82),uDusk*.6);
         c=mix(c,vec3(1.,.82,.72)*(.6+.5*lam),snow*uDusk*.45);
         c*=mix(1.,.16,uNight);
-        float d=length(p-cameraPosition.xz);vec3 hz=mix(mix(vec3(.66,.79,.92),vec3(.98,.7,.6),uDusk),uFog,uNight);c=mix(c,hz,smoothstep(330.,1100.,d)*.5);
+        float d=length(p-cameraPosition.xz);vec3 hz=mix(mix(vec3(.66,.79,.92),vec3(.98,.7,.6),uDusk),uFog,uNight);c=mix(c,hz,smoothstep(330.,1100.,d)*.5);vec3 vd=normalize(vW-cameraPosition);float sg=pow(max(dot(vd,normalize(uSun)),0.),3.);c=mix(c,vec3(1.,.93,.72),sg*smoothstep(120.,650.,d)*.6*(1.-uNight));c=mix(c,hz,smoothstep(500.,1000.,d)*.25);
         gl_FragColor=vec4(c,1.);
       }` })));
 }
@@ -213,12 +215,40 @@ const mountU = { uSun: { value: new V3(0.3, 0.7, 0.6) }, uNight: skyU.uNight, uD
     if (keepClear(x, z, 4)) continue;
     spots.push([x, z, 0.75 + RT() * 0.6 + smooth(125, 260, r) * 0.5, RT() < 0.55]);
   }
-  const conif = spots.filter(s => s[3]), broad = spots.filter(s => !s[3]);
-  const mk = (geo, list, place, cols) => { const m = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial(), list.length), d = new THREE.Object3D(), c = new THREE.Color(); list.forEach((sp, i) => { place(d, sp); d.updateMatrix(); m.setMatrixAt(i, d.matrix); m.setColorAt(i, c.set(cols[(RT() * cols.length) | 0]).multiplyScalar(0.85 + RT() * 0.3)); }); root.add(m); return m; };
-  const GREENS = ['#2f5a2a', '#355f2c', '#284d26', '#3d6a30'], BROAD = ['#3f6f2e', '#4a7a32', '#36622a', '#567f36'];
-  mk(new THREE.ConeGeometry(1, 1, 7).translate(0, 0.5, 0), conif, (d, [x, z, k]) => { d.position.set(x, sunH(x, z) + 1.6 * k, z); d.scale.set(2.3 * k, 9 * k, 2.3 * k); d.rotation.set(0, RT() * 6, 0); }, GREENS);
-  mk(new THREE.IcosahedronGeometry(1, 1), broad, (d, [x, z, k]) => { d.position.set(x, sunH(x, z) + 4.2 * k, z); d.scale.set(3.4 * k, 3 * k, 3.4 * k); d.rotation.set(0, RT() * 6, 0); }, BROAD);
-  mk(new THREE.CylinderGeometry(0.18, 0.26, 1, 5).translate(0, 0.5, 0), spots, (d, [x, z, k]) => { d.position.set(x, sunH(x, z) - 0.2, z); d.scale.set(k, 2.2 * k, k); d.rotation.set(0, 0, 0); }, ['#5a4030', '#4e3828']);
+  // soft, lumpy crowns: each a clump of rounded masses, lit on top and shadowed beneath, jittered so no two
+  // read alike; tall ones (in the folds of the hills) are clumps stacked higher. No cones, no single balls.
+  const NZ = (x, y, z) => Math.sin(x * 1.7 + y * 2.3) * Math.sin(y * 1.9 + z * 1.3) * Math.sin(z * 2.1 + x * 1.1);
+  const crown = (seed, tall) => {
+    const RC = rng(seed), m = new Merge(), blob = new THREE.SphereGeometry(1, 12, 9);
+    const lumps = tall ? [[0, 0.55, 0, 0.95], [0, 1.35, 0, 0.8], [0, 2.05, 0, 0.6], [0.45, 0.9, 0.2, 0.62], [-0.4, 1.6, -0.25, 0.55], [0.3, 1.8, -0.35, 0.5]]
+      : [[0, 0.62, 0, 1.0], [0.62, 0.42, 0.18, 0.7], [-0.58, 0.48, -0.12, 0.72], [0.12, 0.45, 0.66, 0.66], [-0.15, 0.4, -0.64, 0.66], [0.25, 1.05, -0.1, 0.62], [-0.3, 0.98, 0.25, 0.58]];
+    lumps.forEach(([x, y, z, r]) => {
+      const g = blob.clone(), p = g.attributes.position, col = [], o = RC() * 9;
+      for (let v = 0; v < p.count; v++) {
+        const vx = p.getX(v), vy = p.getY(v), vz = p.getZ(v), k = 1 + 0.16 * NZ(vx * 2 + o, vy * 2, vz * 2 + o) + 0.07 * NZ(vx * 5, vy * 5 + o, vz * 5);
+        p.setXYZ(v, vx * k, vy * k * 0.92, vz * k);
+        // lighter where the sun falls on top, darker in the shade beneath and inside the clump
+        const lt = 0.62 + 0.38 * Math.max(0, vy) + 0.12 * (vy + y - 0.6), c = clamp(lt, 0.45, 1.15);
+        col.push(c * (0.96 + 0.06 * Math.max(0, vy)), c, c * (0.9 - 0.08 * Math.max(0, vy)));
+      }
+      g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+      m.add(g, new V3(x + (RC() - 0.5) * 0.15, y, z + (RC() - 0.5) * 0.15), new V3(r, r, r), C('#ffffff'));
+    });
+    return m.build();
+  };
+  const crownMat = new THREE.MeshLambertMaterial({ vertexColors: true }), CROWNS = ['#3f7a2c', '#4b8a30', '#376d28', '#5a9436', '#2f6526', '#6a9e3a'];
+  const kinds = [crown(11, false), crown(23, false), crown(37, false), crown(41, true), crown(53, true)];
+  const groups = kinds.map(() => []);
+  spots.forEach(sp => { const tall = sp[3]; groups[tall ? 3 + ((RT() * 2) | 0) : (RT() * 3) | 0].push(sp); });
+  const dd = new THREE.Object3D(), cc = new THREE.Color();
+  groups.forEach((list, gi) => {
+    const tall = gi >= 3, m = new THREE.InstancedMesh(kinds[gi], crownMat, list.length);
+    list.forEach(([x, z, k], i) => { const w = (tall ? 2.6 : 3.4) * k * (0.85 + RT() * 0.35); dd.position.set(x, sunH(x, z) + (tall ? 3.2 : 2.6) * k, z); dd.scale.set(w, w * (tall ? 1.55 : 1.0), w); dd.rotation.set(0, RT() * 6.28, 0); dd.updateMatrix(); m.setMatrixAt(i, dd.matrix); m.setColorAt(i, cc.set(CROWNS[(RT() * CROWNS.length) | 0]).multiplyScalar(0.88 + RT() * 0.24)); });
+    root.add(m);
+  });
+  const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16, 0.3, 1, 6).translate(0, 0.5, 0), new THREE.MeshLambertMaterial(), spots.length);
+  spots.forEach(([x, z, k, tall], i) => { dd.position.set(x, sunH(x, z) - 0.2, z); dd.scale.set(k, (tall ? 3.6 : 2.9) * k, k); dd.rotation.set(0, 0, 0); dd.updateMatrix(); trunks.setMatrixAt(i, dd.matrix); trunks.setColorAt(i, cc.set(RT() < 0.5 ? '#5a4030' : '#4a3626')); });
+  root.add(trunks);
 }
 
 // the flower terraces, west of the sunflowers: long rows of colour over the slope, as at Shikisai-no-oka
@@ -239,6 +269,38 @@ const mountU = { uSun: { value: new V3(0.3, 0.7, 0.6) }, uNight: skyU.uNight, uD
   const m = new THREE.InstancedMesh(quad, mat, spots.length), d = new THREE.Object3D(), c = new THREE.Color();
   spots.forEach(([x, z, col], i) => { d.position.set(x, sunH(x, z), z); d.rotation.set(0, RF() * 6, 0); d.scale.setScalar(0.7 + RF() * 0.3); d.updateMatrix(); m.setMatrixAt(i, d.matrix); m.setColorAt(i, c.set(col)); });
   root.add(m);
+}
+
+// palms round the lake where you arrive, as in the owner's picture: curving trunks, fronds that arch and droop
+export const PALMS = [];
+{
+  const RP = rng(61), frondTex = canvasTex(256, 64, (g, w, h) => {
+    g.strokeStyle = '#2f5a1e'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, h / 2); g.quadraticCurveTo(w / 2, h / 2 - 2, w, h / 2); g.stroke();
+    for (let x = 6; x < w - 4; x += 5) { const L = (h / 2 - 3) * Math.sin(Math.PI * Math.min(1, (x + 10) / w)) * (0.75 + 0.25 * Math.sin(x)); for (const sgn of [-1, 1]) { const gr = g.createLinearGradient(x, h / 2, x + 9, h / 2 + sgn * L); gr.addColorStop(0, '#3f7a26'); gr.addColorStop(1, '#78b043'); g.strokeStyle = gr; g.lineWidth = 2.6; g.beginPath(); g.moveTo(x, h / 2); g.lineTo(x + 9, h / 2 + sgn * L); g.stroke(); } }
+  });
+  // one frond: a strip that arches up from the crown, then droops toward its tip, and twists a little
+  const frond = new THREE.PlaneGeometry(1, 0.32, 10, 1), fp = frond.attributes.position;
+  for (let v = 0; v < fp.count; v++) { const u = fp.getX(v) + 0.5, y = fp.getY(v); fp.setXYZ(v, u * 3.2, 0.9 * Math.sin(u * 1.6) - 1.6 * u * u, y * (1 - 0.6 * u) * 3); }
+  frond.computeVertexNormals();
+  const trunkM = new Merge(), fronds = new Merge(), spots = [];
+  for (let k = 0; k < 400 && spots.length < 26; k++) {
+    const a = RP() * Math.PI * 2, e = 1.45 + RP() * 0.9, x = LAKE.x + Math.cos(a) * LAKE.rx * e, z = LAKE.z + Math.sin(a) * LAKE.rz * e;
+    if (Math.abs(x) < 4.5 && z < 45) continue;
+    if (z < FIELD.z0 + 2 && Math.abs(x) < 36) continue;
+    if (spots.some(p => Math.hypot(p[0] - x, p[1] - z) < 4.2)) continue;
+    spots.push([x, z]);
+  }
+  spots.forEach(([x, z]) => {
+    const y0 = sunH(x, z), H = 6.5 + RP() * 3.5, lean = (RP() - 0.5) * 0.5, la = RP() * 6.28, N = 7, pts = [];
+    for (let s = 0; s <= N; s++) { const t = s / N, off = lean * H * t * t; pts.push(new V3(x + Math.cos(la) * off, y0 + H * t, z + Math.sin(la) * off)); }
+    for (let s = 0; s < N; s++) trunkM.limb(pts[s], pts[s + 1], 0.26 - 0.1 * s / N, 0.25 - 0.1 * (s + 1) / N, C(s % 2 ? '#8a7354' : '#7a6448'));
+    const top = pts[N];
+    for (let f = 0; f < 11; f++) { const yaw = f / 11 * Math.PI * 2 + RP() * 0.3, q = new THREE.Quaternion().setFromEuler(new THREE.Euler((RP() - 0.5) * 0.4, yaw, (RP() - 0.3) * 0.35, 'YXZ')); fronds.add(frond, top, new V3(0.95 + RP() * 0.3, 1, 1), C('#ffffff'), q); }
+    trunkM.add(GEO.sph, top.clone().add(new V3(0, -0.15, 0)), new V3(0.42, 0.35, 0.42), C('#6a5a3a'));
+    PALMS.push({ x, z });
+  });
+  root.add(new THREE.Mesh(trunkM.build(), new THREE.MeshLambertMaterial({ vertexColors: true })));
+  root.add(new THREE.Mesh(fronds.build(), windify(new THREE.MeshLambertMaterial({ map: frondTex, alphaTest: 0.45, side: THREE.DoubleSide }), 0.06, 'flower')));
 }
 
 /* ---------- water: the lake and the lagoon, catching the fair's lights in long streaks at night ---------- */
@@ -968,6 +1030,7 @@ worlds.sun = {
     if (Math.hypot(lx - SWING.x, lz - SWING.z) < SWING.r) return true;
     if (Math.hypot((lx - CANAL.x) / (CANAL.rx + 3), (lz - CANAL.z) / (CANAL.rz + 3)) < 1) return true;
     if (Math.hypot(lx - KIOSK.x, lz - KIOSK.z) < 1.1) return true;
+    if (PALMS.some(p => Math.hypot(lx - p.x, lz - p.z) < 0.55)) return true;
     return false;
   },
   enter() { closeDoor(); announced = false; },
