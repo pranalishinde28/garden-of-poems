@@ -310,6 +310,25 @@
   <div class="bk-help"><p>Choose <b>Save as PDF</b> in the print window to keep your book. Its pages are 6 × 9 inches, the size most print-on-demand services use for poetry: upload the PDF to <b>Lulu</b> or <b>Blurb</b> to order printed copies. The trees are pictured in the garden’s light as it is now: choose day, sunset or night before you make the book.</p><p id="bk-wish-row"><button id="bk-wish" class="g-link">Tell me when printed copies can be ordered here</button></p></div>
   <div id="bk-pages"></div>
 </div>
+<div id="library" hidden role="dialog" aria-modal="true" aria-labelledby="lb-title">
+  <div class="lb-top"><h2 id="lb-title">The Library</h2><button class="xc" id="lb-close" aria-label="Close the library">×</button></div>
+  <div id="lb-shelves"></div>
+  <div id="lb-open" hidden>
+    <div class="lb-bar"><button id="lb-back" class="lb-btn">← The shelves</button><span class="lb-bt"><b id="lb-btitle"></b> <i id="lb-bby"></i></span><button id="lb-edit" class="lb-btn" hidden>Revise</button><button id="lb-remove" class="lb-btn quiet" hidden>Remove</button></div>
+    <div class="lb-book"><div class="lb-pages"><div id="lb-flow"></div></div><div id="lb-leaf" aria-hidden="true"></div></div>
+    <div class="lb-nav"><button id="lb-prev" class="lb-btn">← Turn back</button><span id="lb-pg"></span><button id="lb-next" class="lb-btn">Turn the page →</button></div>
+  </div>
+  <div id="lb-write" hidden>
+    <h3 id="lb-w-head">A new book</h3>
+    <div class="lb-wrow"><label for="lb-w-title">Title</label><input id="lb-w-title" maxlength="120" autocomplete="off" placeholder="What will you call it?"></div>
+    <div class="lb-wrow"><label for="lb-w-author">By</label><input id="lb-w-author" maxlength="80" autocomplete="off" placeholder="Your name, as it will stand on the spine"></div>
+    <label for="lb-w-body" class="lb-wl">Your book</label>
+    <textarea id="lb-w-body" maxlength="200000" placeholder="Begin anywhere. Leave an empty line between paragraphs."></textarea>
+    <p id="lb-w-count" class="lb-note" aria-live="off"></p>
+    <label id="lb-w-privrow" class="lb-check"><input type="checkbox" id="lb-w-private"> Keep this book private, even if my garden is public.</label>
+    <div class="lb-wacts"><button id="lb-w-cancel" class="lb-btn">Not now</button><button id="lb-w-save" class="lb-btn go">Put it on my shelf</button></div>
+  </div>
+</div>
 <section id="helpsheet" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
   <button class="xc x" id="help-close" aria-label="Close">×</button>
   <h2 id="help-title">Finding your way</h2>

@@ -2,6 +2,7 @@ import { $, V3 } from '../core/util.js';
 import { addTick } from '../core/things.js';
 import { isTyping, jv, keys } from './input.js';
 import { castleFront, hallArrive, showHall } from '../world/castleHall.js';
+import { libArrive, libLeaveTo, showLibrary } from '../world/libraryHall.js';
 import { state } from '../core/state.js';
 import { camera, renderer, scene, view } from '../world/renderer.js';
 import { worlds } from '../core/worlds.js';
@@ -11,7 +12,7 @@ import { moveFigureTo } from '../player/figure.js';
 import { setCue, showRegion, toast } from './helpers.js';
 import { late, provide } from '../core/late.js';
 
-provide({ get hopTo() { return hopTo; }, get enterHallFromMap() { return enterHallFromMap; }, get enterHall() { return enterHall; }, get leaveHall() { return leaveHall; }, get startRide() { return startRide; }, get enterSunWorld() { return enterSunWorld; }, get leaveSunWorld() { return leaveSunWorld; }, get setVeil() { return setVeil; } });
+provide({ get hopTo() { return hopTo; }, get enterHallFromMap() { return enterHallFromMap; }, get enterLibrary() { return enterLibrary; }, get leaveLibrary() { return leaveLibrary; }, get enterLibraryFromMap() { return enterLibraryFromMap; }, get enterHall() { return enterHall; }, get leaveHall() { return leaveHall; }, get startRide() { return startRide; }, get enterSunWorld() { return enterSunWorld; }, get leaveSunWorld() { return leaveSunWorld; }, get setVeil() { return setVeil; } });
 
 /* ================= between worlds ================= */
 // Rowing into the light at the end of the cave behind Manai Falls carries you to the Sunflower Garden;
@@ -107,6 +108,16 @@ function enterHall() {
   cross('Through the castle doors…', () => { showHall(true); place(hallArrive.pos, hallArrive.yaw); },
     () => showRegion({ name: 'The Hall of Mirrors', sub: 'Walk the gallery. The door at the far end leads back out to the fair.' }));
 }
+function enterLibrary() {
+  if (state.world !== 'sun' || state.mode !== 'walk') return;
+  cross('Into the library…', () => { showLibrary(true); place(libArrive.pos, libArrive.yaw); },
+    () => showRegion({ name: 'The Library', sub: 'Go up to the shelves to read, or sit at the desk to write a book of your own.' }));
+}
+function leaveLibrary() {
+  if (state.mode !== 'walk') return;
+  cross('Back to the Hall of Mirrors…', () => { showLibrary(false); showHall(true); place(libLeaveTo.pos, libLeaveTo.yaw); });
+}
+function enterLibraryFromMap() { if (state.world !== 'sun') return; state.mode = 'walk'; enterLibrary(); }
 function leaveHall() {
   if (state.mode !== 'walk') return;
   cross('Back out under the sky…', () => { showHall(false); place(castleFront.pos, castleFront.yaw); });
@@ -117,6 +128,6 @@ function hopTo(pos, yaw, name) {
   if (state.world !== 'sun') return;
   state.mode = 'cinematic'; setCue(null); veil.querySelector('.t').textContent = name || ''; veil.hidden = false;
   requestAnimationFrame(() => veil.classList.add('on'));
-  setTimeout(() => { showHall(false); place(pos, yaw); state.mode = 'walk'; setTimeout(() => { veil.classList.remove('on'); setTimeout(() => { if (!veil.classList.contains('on')) veil.hidden = true; }, 1800); }, 300); }, 1300);
+  setTimeout(() => { showHall(false); showLibrary(false); place(pos, yaw); state.mode = 'walk'; setTimeout(() => { veil.classList.remove('on'); setTimeout(() => { if (!veil.classList.contains('on')) veil.hidden = true; }, 1800); }, 300); }, 1300);
 }
 function enterHallFromMap() { if (state.world !== 'sun') return; state.mode = 'walk'; enterHall(); }

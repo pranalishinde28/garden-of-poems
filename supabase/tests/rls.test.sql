@@ -200,7 +200,7 @@ reset role;
 select pg_temp.as_anon();
 select lives_ok($$select record_visit('00000000-0000-0000-0000-0000000000a1', 'browser-key-one')$$, 'a visit to a private garden without a link is ignored, quietly');
 reset role;
-select is((select count(*) from public.garden_visits), 0::bigint, 'so nothing was counted');
+select is((select count(*) from public.garden_visits where garden_owner = '00000000-0000-0000-0000-0000000000a1'), 0::bigint, 'so nothing was counted');
 update public.gardens set is_public = true where owner = '00000000-0000-0000-0000-0000000000a1';
 select pg_temp.as_anon();
 select record_visit('00000000-0000-0000-0000-0000000000a1', 'browser-key-one');
@@ -225,6 +225,30 @@ select throws_ok($$insert into public.waitlist (person, wish) values ('00000000-
 select throws_ok($$insert into public.waitlist (person, wish) values ('00000000-0000-0000-0000-0000000000b2', 'yacht')$$, '23514', null, 'only known wishes');
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000c3');
 select is((select count(*) from public.waitlist), 0::bigint, 'nobody sees another person''s wishes');
+reset role;
+
+-- ---------- the library: your books, and a public garden's shared books ----------
+reset role;
+update public.gardens set is_public = false where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$insert into public.books (id, title, author, body) values ('b1', 'My First Book', 'Ada', 'Once, in a garden…')$$, 'a poet writes a book');
+select lives_ok($$insert into public.books (id, title, body, private) values ('b2', 'Diary', 'only mine', true)$$, 'and a private one');
+select throws_ok($$insert into public.books (owner, id, title, body) values ('00000000-0000-0000-0000-0000000000b2', 'x', 'Forged', 'x')$$, '42501', null, 'not in someone else''s name');
+select throws_ok($$insert into public.books (id, title, body) values ('b3', '   ', 'x')$$, '23514', null, 'a book needs a title');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select is((select count(*) from public.books where owner = '00000000-0000-0000-0000-0000000000a1'), 0::bigint, 'a private garden''s books stay hidden');
+reset role;
+update public.gardens set is_public = true where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_anon();
+select results_eq($$select id from public.books where owner = '00000000-0000-0000-0000-0000000000a1'$$, $$values ('b1')$$, 'a public garden shows its books, never a private one');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+update public.books set title = 'Taken' where owner = '00000000-0000-0000-0000-0000000000a1';
+delete from public.books where owner = '00000000-0000-0000-0000-0000000000a1';
+reset role;
+select is((select title from public.books where id = 'b1'), 'My First Book', 'nobody else changes or removes a book');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$update public.books set body = 'Once, in a garden, a tree grew.' where id = 'b1'$$, 'the writer revises it');
+select lives_ok($$delete from public.books where id = 'b2'$$, 'and takes one off the shelf');
 reset role;
 
 -- ---------- accounts ----------

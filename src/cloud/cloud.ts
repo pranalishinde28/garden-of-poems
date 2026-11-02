@@ -403,3 +403,25 @@ export async function setWish(wish: Wish, on: boolean) {
   const { error } = on ? await t.insert({ person: Cloud.user.id, wish }) : await t.delete().eq('person', Cloud.user.id).eq('wish', wish);
   return !error || error.code === '23505';
 }
+
+// ---------- the library: books people write ----------
+// Signed in, books live in the account (table books); otherwise on this device. null: the database has no
+// books yet (before the update), so they stay on this device for now.
+export type BookRow = Database['public']['Tables']['books']['Row'];
+export async function listBooks(owner: string): Promise<BookRow[] | null> {
+  if (!Cloud.sb) return null;
+  const { data, error } = await Cloud.sb.from('books').select('*').eq('owner', owner).order('created_at');
+  if (missing(error)) return null;
+  if (error) throw error;
+  return data || [];
+}
+export async function saveBook(b: { id: string; title: string; author: string; body: string; private: boolean }) {
+  if (!Cloud.sb || !Cloud.user) throw new Error('Sign in to keep books in your account.');
+  const { error } = await Cloud.sb.from('books').upsert({ owner: Cloud.user.id, ...b });
+  if (error) throw new Error(missing(error) ? NEEDS_UPDATE : error.message);
+}
+export async function removeBook(id: string) {
+  if (!Cloud.sb || !Cloud.user) return false;
+  const { error } = await Cloud.sb.from('books').delete().eq('owner', Cloud.user.id).eq('id', id);
+  return !error;
+}

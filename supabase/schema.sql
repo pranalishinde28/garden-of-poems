@@ -26,6 +26,22 @@ COMMENT ON SCHEMA "public" IS 'standard public schema';
 
 
 
+CREATE OR REPLACE FUNCTION "public"."books_guard"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  if tg_op = 'INSERT' and (select count(*) from public.books where owner = new.owner) >= 200 then
+    raise exception 'a shelf holds at most 200 books' using errcode = 'P0001';
+  end if;
+  new.updated_at := now();
+  return new;
+end $$;
+
+
+ALTER FUNCTION "public"."books_guard"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."change_username"("new_name" "text") RETURNS "text"
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public'
@@ -534,6 +550,25 @@ end $_$;
 ALTER FUNCTION "public"."valid_settings"("s" "jsonb") OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."books" (
+    "owner" "uuid" DEFAULT "auth"."uid"() NOT NULL,
+    "id" "text" NOT NULL,
+    "title" "text" NOT NULL,
+    "author" "text" DEFAULT ''::"text" NOT NULL,
+    "body" "text" NOT NULL,
+    "private" boolean DEFAULT false NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "books_author_check" CHECK (("char_length"("author") <= 80)),
+    CONSTRAINT "books_body_check" CHECK ((("char_length"("body") >= 1) AND ("char_length"("body") <= 200000))),
+    CONSTRAINT "books_id_check" CHECK ((("char_length"("id") >= 1) AND ("char_length"("id") <= 64))),
+    CONSTRAINT "books_title_check" CHECK ((("char_length"("btrim"("title")) >= 1) AND ("char_length"("btrim"("title")) <= 120)))
+);
+
+
+ALTER TABLE "public"."books" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."garden_visits" (
     "garden_owner" "uuid" NOT NULL,
     "visitor" "text" NOT NULL,
@@ -593,6 +628,11 @@ CREATE TABLE IF NOT EXISTS "public"."waitlist" (
 
 
 ALTER TABLE "public"."waitlist" OWNER TO "postgres";
+
+
+ALTER TABLE ONLY "public"."books"
+    ADD CONSTRAINT "books_pkey" PRIMARY KEY ("owner", "id");
+
 
 
 ALTER TABLE ONLY "public"."garden_shares"
@@ -732,6 +772,10 @@ CREATE INDEX "profiles_username_trgm" ON "public"."profiles" USING "gin" ("usern
 
 
 
+CREATE OR REPLACE TRIGGER "books_guard" BEFORE INSERT OR UPDATE ON "public"."books" FOR EACH ROW EXECUTE FUNCTION "public"."books_guard"();
+
+
+
 CREATE OR REPLACE TRIGGER "notes_only_hide" BEFORE UPDATE ON "public"."notes" FOR EACH ROW EXECUTE FUNCTION "public"."notes_only_hide"();
 
 
@@ -749,6 +793,11 @@ CREATE OR REPLACE TRIGGER "poems_touch" BEFORE INSERT OR UPDATE ON "public"."poe
 
 
 CREATE OR REPLACE TRIGGER "poems_touch_garden" AFTER INSERT OR DELETE OR UPDATE ON "public"."poems" FOR EACH ROW EXECUTE FUNCTION "public"."touch_garden"();
+
+
+
+ALTER TABLE ONLY "public"."books"
+    ADD CONSTRAINT "books_owner_fkey" FOREIGN KEY ("owner") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 
@@ -813,6 +862,13 @@ ALTER TABLE ONLY "public"."waitlist"
 
 
 CREATE POLICY "add your own wish" ON "public"."waitlist" FOR INSERT WITH CHECK (("person" = "auth"."uid"()));
+
+
+
+ALTER TABLE "public"."books" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "change your own books" ON "public"."books" FOR UPDATE USING (("owner" = "auth"."uid"())) WITH CHECK (("owner" = "auth"."uid"()));
 
 
 
@@ -886,11 +942,21 @@ CREATE POLICY "read public or own garden" ON "public"."gardens" FOR SELECT USING
 
 
 
+CREATE POLICY "read your books, or the shared books of a public garden" ON "public"."books" FOR SELECT USING ((("owner" = "auth"."uid"()) OR ((NOT "private") AND (EXISTS ( SELECT 1
+   FROM "public"."gardens" "g"
+  WHERE (("g"."owner" = "books"."owner") AND "g"."is_public"))))));
+
+
+
 CREATE POLICY "read your hearts, or the hearts on your poems" ON "public"."poem_likes" FOR SELECT USING ((("liker" = "auth"."uid"()) OR ("garden_owner" = "auth"."uid"())));
 
 
 
 CREATE POLICY "remove notes" ON "public"."notes" FOR DELETE USING ((("author" = "auth"."uid"()) OR ("garden_owner" = "auth"."uid"())));
+
+
+
+CREATE POLICY "remove your own books" ON "public"."books" FOR DELETE USING (("owner" = "auth"."uid"()));
 
 
 
@@ -937,10 +1003,20 @@ CREATE POLICY "withdraw your own links" ON "public"."garden_shares" FOR DELETE U
 
 
 
+CREATE POLICY "write your own books" ON "public"."books" FOR INSERT WITH CHECK (("owner" = "auth"."uid"()));
+
+
+
 GRANT USAGE ON SCHEMA "public" TO "postgres";
 GRANT USAGE ON SCHEMA "public" TO "anon";
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
 GRANT USAGE ON SCHEMA "public" TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."books_guard"() TO "anon";
+GRANT ALL ON FUNCTION "public"."books_guard"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."books_guard"() TO "service_role";
 
 
 
@@ -1113,6 +1189,12 @@ GRANT ALL ON FUNCTION "public"."username_available"("name" "text") TO "service_r
 GRANT ALL ON FUNCTION "public"."valid_settings"("s" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."valid_settings"("s" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."valid_settings"("s" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."books" TO "anon";
+GRANT ALL ON TABLE "public"."books" TO "authenticated";
+GRANT ALL ON TABLE "public"."books" TO "service_role";
 
 
 

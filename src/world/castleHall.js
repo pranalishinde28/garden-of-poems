@@ -611,3 +611,6 @@ addTick(() => {
     return Math.abs(lx) > HALL.hw - 2.9 || Math.abs(lz) > HALL.hl - 1.4;
   };
 }
+
+// the painting helpers and the hall itself, for the library (world/library.js)
+export { artTex, cover, img, frame, baroque, loadArt, hall };

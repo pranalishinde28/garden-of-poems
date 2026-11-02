@@ -23,7 +23,21 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "garden_shares": {
+            "books": {
+                  Row: {
+                    "author": string,"body": string,"created_at": string,"id": string,"owner": string,"private": boolean,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "author"?: string,"body": string,"created_at"?: string,"id": string,"owner"?: string,"private"?: boolean,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "author"?: string,"body"?: string,"created_at"?: string,"id"?: string,"owner"?: string,"private"?: boolean,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"garden_shares": {
                   Row: {
                     "created_at": string,"label": string,"last_opened": string | null,"opened": number,"owner": string,"token": string
                   }

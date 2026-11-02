@@ -68,6 +68,7 @@ const PLACES = () => [
   ['The Ferris wheel', 'see the whole fair', P.WHEEL.x, P.WHEEL.z, P.WHEEL.x, P.WHEEL.z + 6.5, 0, 'l'],
   ['The roller coaster', 'hold on tight', 50, -142, 29, -118, -Math.PI / 2, 'r'],
   ['The Hall of Mirrors', 'inside the castle', P.CASTLE.x, P.CASTLE.z, null, null, 0, 'r'],
+  ['The Library', 'read, or write a book', P.CASTLE.x - 12, P.CASTLE.z + 4, 'library', null, 0, 'l'],
   ['The water slide', 'twist down into the pool', P.WP.tower.x, P.WP.tower.z, P.WP.tower.x - 4, P.WP.tower.z - 4.5, Math.PI * 0.75, 'b'],
   ['The wave pool', 'float on the waves', P.WP.wave.x, P.WP.wave.z, P.WP.wave.x, P.WP.wave.z - P.WP.wave.rz - 2.6, Math.PI, 't'],
   ['Jet skis', 'out on the lagoon', P.DOCK.x, P.DOCK.z1 + 2, P.DOCK.x, P.DOCK.z0 + 2.2, Math.PI, 'b'],
@@ -81,7 +82,7 @@ function build() {
     btn.className = 'sm-place side-' + side; btn.style.left = (a / W * 100) + '%'; btn.style.top = (b / H * 100) + '%';
     btn.innerHTML = `<span class="dot"></span><span class="t"><em>${name}</em><small>${hint}</small></span>`;
     btn.setAttribute('aria-label', `${name}: ${hint}`);
-    btn.onclick = () => { close(); if (sx === null) late.enterHallFromMap && late.enterHallFromMap(); else late.hopTo && late.hopTo(O.clone().add(new V3(sx, 0, sz)), yaw, name); };
+    btn.onclick = () => { close(); if (sx === 'library') late.enterLibraryFromMap && late.enterLibraryFromMap(); else if (sx === null) late.enterHallFromMap && late.enterHallFromMap(); else late.hopTo && late.hopTo(O.clone().add(new V3(sx, 0, sz)), yaw, name); };
     marks.appendChild(btn);
   });
   // you are here
