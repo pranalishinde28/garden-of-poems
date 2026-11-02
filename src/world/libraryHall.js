@@ -8,17 +8,19 @@ import { addTick, regThing } from '../core/things.js';
 import { late } from '../core/late.js';
 import { player } from '../player/camera.js';
 import { O, sunScene } from './sunWorld.js';
-import { HALL, artTex, baroque, cover, frame, hall, img, loadArt } from './castleHall.js';
+import { HALL, OPEN_BAY, artTex, baroque, cover, frame, hall, img, loadArt } from './castleHall.js';
 
 /* ================= the Library, inside the castle: after the State Hall of the Austrian National Library ================= */
-// Through a door at the south end of the Hall of Mirrors: a long hall of two storeys of walnut bookcases, a gallery
+// Down a hallway from the Hall of Mirrors (one bay of its east wall opens into it): a long hall of two storeys of walnut bookcases, a gallery
 // running round on gilded brackets, library ladders, display cases down the middle, pairs of marble columns, and at
 // its heart a great oval dome painted with a sky of figures, ringed with round windows, over a white marble statue.
 // The shelves open (ui/library.js): famous books to read, and a shelf of your own where the books you write stand.
 // Like the Hall of Mirrors it sits far below the fair, shown only while you are inside.
 
 const R = rng(2468);
-export const LIB = { x: 560, z: -60, y: -90, hw: 7.5, hl: 38, rx: 15, rz: 12.5, wall: 13.6, gal: 6.5 };
+export const LIB = { x: 489, z: -56, y: -90, hw: 7.5, hl: 38, rx: 15, rz: 12.5, wall: 13.6, gal: 6.5 };
+// the hallway: from the Hall of Mirrors' east wall (x 452) to the dome's west side, 6 m wide, on the library's axis
+const HW = { x0: HALL.x + HALL.hw - LIB.x, x1: -LIB.rx + 0.4, half: 3, h: 7.5 };
 const lib = new THREE.Group(); lib.position.set(O.x + LIB.x, O.y + LIB.y, O.z + LIB.z); lib.visible = false; sunScene.add(lib);
 const J = Math.sqrt(1 - (LIB.hw / LIB.rx) ** 2) * LIB.rz; // where the wings' walls meet the dome's oval
 const WALNUT = C('#6b3d1d'), WAL2 = C('#82502a'), WAL3 = C('#4f2c14'), GOLD = C('#d4a63a'), GOLD2 = C('#e8c25a'), CREAM = C('#efe6d2');
@@ -119,27 +121,19 @@ function shelfFaces(list, y0, y1, d) {
   const { hw, hl } = LIB;
   for (const s of [-1, 1]) for (const e of [-1, 1]) caseRun(s * hw, e * J, s * hw, e * (hl - 0.2), -s, 0);
   // the end walls: bookcases either side of a doorway (south) or a painted window (north)
-  for (const e of [-1, 1]) { caseRun(-hw, e * hl, -2, e * hl, 0, -e); caseRun(2, e * hl, hw, e * hl, 0, -e); }
+  for (const e of [-1, 1]) e < 0 ? (caseRun(-hw, e * hl, -2, e * hl, 0, -e), caseRun(2, e * hl, hw, e * hl, 0, -e)) : caseRun(-hw, e * hl, hw, e * hl, 0, -e);
   // the dome's walls: bookcases round the oval, in short straight runs
   const arc = (a0, a1, n) => { for (let k = 0; k < n; k++) { const t0 = a0 + (a1 - a0) * k / n, t1 = a0 + (a1 - a0) * (k + 1) / n, ax = Math.cos(t0) * LIB.rx, az = Math.sin(t0) * LIB.rz, bx = Math.cos(t1) * LIB.rx, bz = Math.sin(t1) * LIB.rz, tm = (t0 + t1) / 2, nx = -Math.cos(tm) / LIB.rx, nz = -Math.sin(tm) / LIB.rz, nl = Math.hypot(nx, nz); caseRun(ax, az, bx, bz, nx / nl, nz / nl); } };
   const aj = Math.atan2(J / LIB.rz, LIB.hw / LIB.rx);
   // round the dome's two sides (east and west); the north and south of the oval open into the wings
-  arc(-aj, aj, 8); arc(Math.PI - aj, Math.PI + aj, 8);
+  arc(-aj, aj, 8); arc(Math.PI - aj, Math.PI - aj / 4, 3); arc(Math.PI + aj / 4, Math.PI + aj, 3);
   lib.add(new THREE.Mesh(cases.build(), wood));
   shelfFaces(shelvesLo, 0.45, 6.2, 0.05); shelfFaces(shelvesHi, 6.9, 13.1, 0.05);
 }
 
-/* ---------- the doorway out (south) and a painted window (north) ---------- */
+/* ---------- a painted window above the gallery at the north end ---------- */
 {
-  const m = new Merge(), hl = LIB.hl;
-  for (const x of [-2, 2]) m.add(GEO.box, new V3(x, 3.1, hl - 0.25), new V3(0.5, 6.2, 0.5), WAL3);
-  m.add(GEO.box, new V3(0, 6.35, hl - 0.25), new V3(4.5, 0.4, 0.5), GOLD);
-  m.add(GEO.box, new V3(0, 5.2, hl - 0.05), new V3(3.5, 2.2, 0.1), C('#2a1a10'));
-  lib.add(new THREE.Mesh(m.build(), wood));
-  // through the doorway, the Hall of Mirrors' warm light
-  const glow = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 4.6), new THREE.MeshBasicMaterial({ color: '#fff1d0', fog: false })); glow.position.set(0, 2.3, hl - 0.02); glow.rotation.y = Math.PI; lib.add(glow);
-  const sign = canvasTex(512, 128, (g, w, h) => { g.fillStyle = '#2a1a10'; g.fillRect(0, 0, w, h); g.strokeStyle = '#d4a63a'; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, h - 16); g.fillStyle = '#f0d890'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '700 58px "Cormorant Garamond", Georgia, serif'; g.fillText('The Hall of Mirrors', w / 2, h / 2 + 4); });
-  const sg = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 0.82), new THREE.MeshBasicMaterial({ map: sign, fog: false })); sg.position.set(0, 5.2, hl - 0.12); sg.rotation.y = Math.PI; lib.add(sg);
+  const hl = LIB.hl;
   // north: a tall window above the gallery, pale with daylight
   const win = canvasTex(256, 512, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#eef4fa'); gr.addColorStop(1, '#c8d8e6'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = '#e8dcc4'; for (let i = 0; i <= 4; i++) g.fillRect(i * w / 4 - 4, 0, 8, h); for (let j = 0; j <= 8; j++) g.fillRect(0, j * h / 8 - 3, w, 6); });
   const wm = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 6), new THREE.MeshBasicMaterial({ map: win, fog: false })); wm.position.set(0, 10, -hl + 0.05); lib.add(wm);
@@ -264,11 +258,70 @@ const desk = new THREE.Group();
   desk.add(new THREE.Mesh(dm.build(), wood)); desk.position.set(0, 0, 7.6); desk.rotation.y = Math.PI; lib.add(desk);
 }
 
+/* ---------- the hallway from the Hall of Mirrors: marble walls, paintings, a painted vault, a red carpet ---------- */
+const wayLamps = [];
+{
+  const { x0, x1, half, h } = HW, L = x1 - x0, xm = (x0 + x1) / 2, way = new THREE.Group(); lib.add(way);
+  // the walls: cream marble with a green dado, framed panels between gilded pilasters
+  const wallTex = canvasTex(512, 512, (g, w, hh) => {
+    const RS = rng(13); g.fillStyle = '#efe6d2'; g.fillRect(0, 0, w, hh);
+    for (let k = 0; k < 40; k++) { g.strokeStyle = `rgba(160,140,110,${0.08 + RS() * 0.1})`; g.lineWidth = 1.2; g.beginPath(); let x = RS() * w, y = RS() * hh; g.moveTo(x, y); for (let q = 0; q < 5; q++) { x += (RS() - 0.5) * 50; y += 15 + RS() * 30; g.lineTo(x, y); } g.stroke(); }
+    g.fillStyle = '#5a7a62'; g.fillRect(0, hh - 110, w, 110); g.fillStyle = '#d4a63a'; g.fillRect(0, hh - 114, w, 6); g.fillRect(0, hh - 8, w, 8);
+    g.strokeStyle = '#d4a63a'; g.lineWidth = 5; g.strokeRect(60, 50, w - 120, hh - 220);
+  }, true);
+  wallTex.repeat.set(Math.round(L / 4.4), 1);
+  for (const sz of [-1, 1]) { const wm = new THREE.Mesh(new THREE.PlaneGeometry(L, h), lit(wallTex, 0.42)); wm.position.set(xm, h / 2, sz * half); wm.rotation.y = sz > 0 ? Math.PI : 0; way.add(wm); }
+  // the floor, and a long red carpet with a gold border down its middle
+  const ft = floorTex.clone(); ft.needsUpdate = true; ft.repeat.set(L / 2.5, half * 2 / 2.5);
+  const fl = new THREE.Mesh(new THREE.PlaneGeometry(L + 1, half * 2).rotateX(-Math.PI / 2), new THREE.MeshPhongMaterial({ map: ft, shininess: 60, specular: '#4a3a2a', emissive: '#ffffff', emissiveMap: ft, emissiveIntensity: 0.32, color: '#bdb2a0', fog: false })); fl.position.set(xm, 0.005, 0); way.add(fl);
+  const carpet = canvasTex(64, 256, (g, w, hh) => { g.fillStyle = '#8a1f24'; g.fillRect(0, 0, w, hh); g.fillStyle = '#d4a63a'; g.fillRect(0, 0, 5, hh); g.fillRect(w - 5, 0, 5, hh); g.fillStyle = 'rgba(212,166,58,.35)'; for (let y = 16; y < hh; y += 32) { g.beginPath(); g.moveTo(w / 2, y - 8); g.lineTo(w / 2 + 8, y); g.lineTo(w / 2, y + 8); g.lineTo(w / 2 - 8, y); g.closePath(); g.fill(); } }, true);
+  carpet.repeat.set(1, L / 4);
+  const cp = new THREE.Mesh(new THREE.PlaneGeometry(2.2, L + 6).rotateX(-Math.PI / 2).rotateY(Math.PI / 2), lit(carpet, 0.35)); cp.position.set(xm + 1.5, 0.015, 0); way.add(cp);
+  // a painted barrel vault: coffers with gold rosettes
+  const vaultTex = canvasTex(512, 256, (g, w, hh) => { g.fillStyle = '#efe4c8'; g.fillRect(0, 0, w, hh); for (let y = 0; y < hh; y += 64) for (let x = 0; x < w; x += 64) { g.fillStyle = '#e2d0a4'; g.fillRect(x + 6, y + 6, 52, 52); g.fillStyle = '#d4a63a'; g.beginPath(); g.arc(x + 32, y + 32, 9, 0, 7); g.fill(); } }, true);
+  vaultTex.repeat.set(L / 6, 1);
+  const vg = new THREE.CylinderGeometry(half, half, L, 24, 1, true, 0, Math.PI);
+  const vt = new THREE.Mesh(vg, lit(vaultTex, 0.55, { side: THREE.BackSide })); vt.rotation.z = Math.PI / 2; vt.scale.set(1, 1, 1); vt.position.set(xm, h, 0); way.add(vt);
+  // gilded pilasters, a cornice, framed paintings between, a lamp on the wall beside each
+  const m = new Merge(), bays = Math.round(L / 4.4), pics = ['sky', 'peace', 'victory', 'sun'];
+  for (let k = 0; k <= bays; k++) { const x = x0 + k / bays * L; for (const sz of [-1, 1]) { m.add(GEO.box, new V3(x, h / 2, sz * (half - 0.15)), new V3(0.5, h, 0.3), GOLD); m.add(GEO.box, new V3(x, 0.4, sz * (half - 0.2)), new V3(0.7, 0.8, 0.4), CREAM); } }
+  for (const sz of [-1, 1]) m.add(GEO.box, new V3(xm, h - 0.2, sz * (half - 0.2)), new V3(L, 0.4, 0.4), GOLD2);
+  let pk = 0;
+  for (let k = 0; k < bays; k++) {
+    const x = x0 + (k + 0.5) / bays * L;
+    for (const sz of [-1, 1]) {
+      const which = pics[pk++ % pics.length], pw = 2.6, ph = 2.0, t = artTex(512, 400, (g, w, hh) => baroque(g, 0, 0, w, hh, 90 + pk), (g, w, hh) => cover(g, img[which], 0, 0, w, hh));
+      const pm = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), lit(t, 0.5)); pm.position.set(x, 4.1, sz * (half - 0.04)); pm.rotation.y = sz > 0 ? Math.PI : 0; way.add(pm);
+      for (const [fx, fy, fw, fh] of [[x, 4.1 + ph / 2 + 0.1, pw + 0.4, 0.2], [x, 4.1 - ph / 2 - 0.1, pw + 0.4, 0.2], [x - pw / 2 - 0.1, 4.1, 0.2, ph], [x + pw / 2 + 0.1, 4.1, 0.2, ph]]) m.add(GEO.box, new V3(fx, fy, sz * (half - 0.08)), new V3(fw, fh, 0.12), GOLD);
+      m.limb(new V3(x0 + k / bays * L + 0.01, 5.6, sz * (half - 0.3)), new V3(x0 + k / bays * L + 0.01, 5.9, sz * (half - 0.7)), 0.04, 0.04, GOLD);
+      wayLamps.push(x0 + k / bays * L, 6.0, sz * (half - 0.75));
+    }
+  }
+  // gilded arches at both ends; over the library end, its name
+  for (const ex of [x0 + 0.15, x1 - 0.15]) m.add(new THREE.TorusGeometry(half, 0.28, 8, 32, Math.PI).rotateY(Math.PI / 2), new V3(ex, h, 0), new V3(1, 1, 1), GOLD);
+  way.add(new THREE.Mesh(m.build(), gilt));
+  const sign = canvasTex(512, 128, (g, w, hh) => { g.fillStyle = '#2a1a10'; g.fillRect(0, 0, w, hh); g.strokeStyle = '#d4a63a'; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, hh - 16); g.fillStyle = '#f0d890'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '700 64px "Cormorant Garamond", Georgia, serif'; g.fillText('The Library', w / 2, hh / 2 + 4); });
+  const sg = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: sign, fog: false })); sg.position.set(x1 - 0.5, h - 1.2, 0); sg.rotation.y = -Math.PI / 2; way.add(sg);
+  // walls closing round the hallway's ends: above it where it meets the dome, and the open bay of the hall above and beside it
+  const cream = new THREE.MeshLambertMaterial({ color: '#e8dcc4', emissive: '#efe6d2', emissiveIntensity: 0.38, fog: false }), dark = new THREE.MeshLambertMaterial({ color: '#3a2210', emissive: '#2a1608', emissiveIntensity: 0.6, fog: false });
+  const box = (mat, x, y, z, w, hh, d) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), mat); b.position.set(x, y, z); way.add(b); };
+  // the library end: dark walnut above the arch, to the drum, and either side to the dome's bookcases
+  box(dark, x1 + 0.2, (h + LIB.wall + 1) / 2 + 0.1, 0, 0.5, LIB.wall + 1 - h, half * 2 + 1.4);
+  for (const sz of [-1, 1]) box(dark, x1 + 0.2, LIB.wall / 2, sz * (half + 0.45), 0.5, LIB.wall, 0.9);
+  // the hall's end: its open bay, filled above the hallway and beside it, in the hall's own cream and gold
+  const bz = HALL.bay / 2;
+  box(cream, x0 - 0.15, (h + HALL.wall) / 2, 0, 0.3, HALL.wall - h, HALL.bay);
+  for (const sz of [-1, 1]) box(cream, x0 - 0.15, HALL.wall / 2, sz * (half + (bz - half) / 2), 0.3, HALL.wall, bz - half);
+  // and a sign over the way in, seen from the Hall of Mirrors
+  const sg2 = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: sign, fog: false, polygonOffset: true, polygonOffsetFactor: -1 })); sg2.position.set(x0 - 0.5, h + 0.75, 0); sg2.rotation.y = -Math.PI / 2; sg2.scale.setScalar(1.3); way.add(sg2);
+}
+
 /* ---------- warm light: flickering lamps on the gallery rail ---------- */
 {
   const pos = [];
   for (const s of [-1, 1]) for (let z = -LIB.hl + 3; z <= LIB.hl - 3; z += 3.4) if (Math.abs(z) > J) pos.push(s * (LIB.hw - 1.55), 7.85, z);
   for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2; if (Math.abs(Math.cos(a) * LIB.rx) > LIB.hw + 0.5) pos.push(Math.cos(a) * (LIB.rx - 1.55), 7.85, Math.sin(a) * (LIB.rz - 1.55)); }
+  pos.push(...wayLamps);
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   const pts = new THREE.Points(g, new THREE.ShaderMaterial({ uniforms: { uTime: { value: 0 } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
     vertexShader: 'uniform float uTime;varying float vF;void main(){vF=.85+.15*sin(uTime*7.+position.x*3.+position.z*5.);vec4 mv=modelViewMatrix*vec4(position,1.);gl_PointSize=clamp(500./-mv.z,2.,28.);gl_Position=projectionMatrix*mv;}',
@@ -277,46 +330,35 @@ const desk = new THREE.Group();
 }
 addTick(() => { if (lib.visible) lib.userData.pts.material.uniforms.uTime.value = T; }, true);
 
-/* ---------- the door into the library, at the south end of the Hall of Mirrors ---------- */
-export const LIB_DOOR = { x: -16 };
-{
-  const m = new Merge(), x = LIB_DOOR.x, z = HALL.hl - 0.3;
-  for (const dx of [-1.4, 1.4]) m.add(GEO.box, new V3(x + dx, 2.1, z), new V3(0.3, 4.2, 0.3), GOLD);
-  m.add(GEO.box, new V3(x, 4.3, z), new V3(3.2, 0.3, 0.3), GOLD);
-  m.add(GEO.box, new V3(x, 2.05, z + 0.12), new V3(2.5, 4.1, 0.06), C('#3a2414'));
-  hall.add(new THREE.Mesh(m.build(), gilt));
-  const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 3.9), new THREE.MeshBasicMaterial({ color: '#e8b878', transparent: true, opacity: 0.7, fog: false })); glow.position.set(x, 2.0, z - 0.02); glow.rotation.y = Math.PI; hall.add(glow);
-  const sign = canvasTex(512, 128, (g, w, h) => { g.fillStyle = '#2a1a10'; g.fillRect(0, 0, w, h); g.strokeStyle = '#d4a63a'; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, h - 16); g.fillStyle = '#f0d890'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '700 64px "Cormorant Garamond", Georgia, serif'; g.fillText('The Library', w / 2, h / 2 + 4); });
-  const sg = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 0.7), new THREE.MeshBasicMaterial({ map: sign, fog: false, polygonOffset: true, polygonOffsetFactor: -1 })); sg.position.set(x, 3.75, z - 0.2); sg.rotation.y = Math.PI; hall.add(sg);
-}
-
 /* ---------- arriving, leaving, what is touchable ---------- */
 const LW = (x, z) => new V3(O.x + LIB.x + x, O.y + LIB.y, O.z + LIB.z + z);
-export const libArrive = { pos: LW(0, LIB.hl - 5), yaw: 0 };
-export const libLeaveTo = { pos: new V3(O.x + HALL.x + LIB_DOOR.x, O.y + HALL.y, O.z + HALL.z + HALL.hl - 6), yaw: 0 };
-export function showLibrary(on) { lib.visible = on; if (on) { loadArt(); hall.visible = false; } }
+// from the secret map: straight into the dome, looking north up the wing
+export const libArrive = { pos: LW(0, 14), yaw: 0 };
+// the library and its hallway are shown whenever the Hall of Mirrors is: you walk from one into the other
+export function showLibrary(on) { hall.visible = on; lib.visible = on; if (on) loadArt(); }
+addTick(() => { if (lib.visible !== hall.visible) lib.visible = hall.visible; }, true);
 export const inLibrary = (x, z) => Math.abs(x - (O.x + LIB.x)) < LIB.rx + 4 && Math.abs(z - (O.z + LIB.z)) < LIB.hl + 4;
 // the shelves (each wing, and each side of the dome) and the desk
 const browse = () => late.openLibrary && late.openLibrary();
-for (const [x, z] of [[-LIB.hw + 1.6, 24], [LIB.hw - 1.6, 24], [-LIB.hw + 1.6, -24], [LIB.hw - 1.6, -24], [-LIB.rx + 2.6, 0], [LIB.rx - 2.6, 0], [0, LIB.hl - 1.8], [0, -LIB.hl + 1.8]]) {
+for (const [x, z] of [[-LIB.hw + 1.6, 24], [LIB.hw - 1.6, 24], [-LIB.hw + 1.6, -24], [LIB.hw - 1.6, -24], [-LIB.rx + 3, 6], [-LIB.rx + 3, -6], [LIB.rx - 2.6, 0], [0, LIB.hl - 1.8], [0, -LIB.hl + 1.8]]) {
   const p = LW(x, z); regThing(lib, 'Browse the shelves', browse, { x: p.x, z: p.z, r: 3.4 });
 }
 { const p = LW(0, 7.6); regThing(desk, 'Write a book', () => late.openLibrary && late.openLibrary('write'), { x: p.x, z: p.z + 1.2, r: 2.4 }); }
 
-addTick(() => {
-  if (state.world !== 'sun' || state.mode !== 'walk') return;
-  const lx = player.pos.x - O.x, lz = player.pos.z - O.z;
-  if (hall.visible && !lib.visible) { if (Math.abs(lx - (HALL.x + LIB_DOOR.x)) < 1.5 && lz - HALL.z > HALL.hl - 3.2) late.enterLibrary && late.enterLibrary(); }
-  else if (lib.visible && Math.abs(lx - LIB.x) < 1.8 && lz - LIB.z > LIB.hl - 2.4) late.leaveLibrary && late.leaveLibrary();
-}, true);
 
 /* ---------- walking inside: a level floor; the bookcases, columns, cases, statue and desk stop you ---------- */
 {
   const f = worlds.sun.floorH, b = worlds.sun.blocked;
-  worlds.sun.floorH = (x, z) => inLibrary(x, z) ? O.y + LIB.y : f(x, z);
+  // the hallway: from just inside the Hall of Mirrors to just inside the dome
+  const inWay = (lx, lz) => lx > HW.x0 - 4 && lx < HW.x1 + 3 && Math.abs(lz) < HW.half + 1;
+  worlds.sun.floorH = (x, z) => inLibrary(x, z) || inWay(x - O.x - LIB.x, z - O.z - LIB.z) ? O.y + LIB.y : f(x, z);
   worlds.sun.blocked = (x, z) => {
+    const wx = x - O.x - LIB.x, wz = z - O.z - LIB.z;
+    if (inWay(wx, wz)) { if (Math.abs(wz) < HW.half - 0.75) return false; if (wx < HW.x0 - 0.1) return b(x, z); if (wx > HW.x1 + 0.4) return blockedLib(wx, wz); return true; }
     if (!inLibrary(x, z)) return b(x, z);
-    const lx = x - O.x - LIB.x, lz = z - O.z - LIB.z;
+    return blockedLib(wx, wz);
+  };
+  function blockedLib(lx, lz) {
     const wing = Math.abs(lx) < LIB.hw - 1.3 && Math.abs(lz) < LIB.hl - 1.1, domeIn = (lx / (LIB.rx - 1.6)) ** 2 + (lz / (LIB.rz - 1.6)) ** 2 < 1;
     if (!wing && !domeIn) return true;
     if (Math.hypot(lx / 1.6, lz / 1.4) < 1.15) return true;
