@@ -367,6 +367,18 @@ async function main() {
       console.log(`  bell cue "${bcue}", drum cue "${dcue}", way-out cue "${ocue}", after: ${back}`);
       if (!/bell/i.test(bcue) || !/taiko/i.test(dcue) || !/outside/i.test(ocue) || back !== 'garden') errors.push('the shrine walk failed');
     }
+    else if (FLOW === 'gallery') { // the Hall of Paintings: both walls, the vault, the salon of your own
+      const shot = async n => { await sleep(500); await page.screenshot({ path: join(root, `dev/shots/gallery-${n}.png`) }); };
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); window.__garden.late.enterSunWorld(); });
+      await page.waitForFunction(() => window.__garden.state.world === 'sun' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 });
+      await sleep(1500); await page.evaluate(() => { window.__garden.late.enterHallFromMap(); });
+      await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.camera.position.y < -50, { timeout: 30000, polling: 300 }); await sleep(2500);
+      const at = async (n, x, z, yaw, pitch) => { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden, G = g.GAL, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + G.x + x, 0, O.z - 34.8 + G.z + z); g.player.yaw = yaw; g.player.pitch = pitch; }, x, z, yaw, pitch); await sleep(2500); await shot(n); };
+      const G = await page.evaluate(() => ({ L: window.__garden.GAL.L, hw: window.__garden.GAL.hw }));
+      await at('long', 3, 0, -Math.PI / 2, 0.12); await at('north', G.L * 0.35, G.hw - 7, 0, 0.32); await at('south', G.L * 0.35, -G.hw + 7, Math.PI, 0.32);
+      await at('north2', G.L * 0.6, G.hw - 7, 0, 0.32); await at('dome', 120, 3.5, -Math.PI / 2, 1.35); await at('crossing', 98, 0, -Math.PI / 2, 0.22); await at('salon', G.L - 18, 0, -Math.PI / 2, 0.18); await at('salon-near', G.L - 7, 0, -Math.PI / 2, 0.3); await at('last-bay', 100, -G.hw + 6, Math.PI, 0.2);
+    }
     else if (FLOW === 'sunmap') { // the secret world's map: open with M, go to the drop tower, then the Hall of Mirrors; and running
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); });
