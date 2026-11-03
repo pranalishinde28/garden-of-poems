@@ -7,6 +7,18 @@ export const V3 = THREE.Vector3;
 // the site's own address, including the base path it is served from (e.g. /garden-of-poems/ on GitHub Pages);
 // auth emails link back here, so it must match a Redirect URL in Supabase
 export const siteURL = () => new URL(import.meta.env.BASE_URL, location.origin).href;
+// a garden's own address, …/garden-of-poems/deep (public/404.html sends that path to the app on GitHub Pages),
+// and a private link, …/garden-of-poems/s/<token>
+export const gardenURL = name => siteURL() + encodeURIComponent(name);
+export const shareURL = token => siteURL() + 's/' + encodeURIComponent(token);
+// what the address bar asked for: ?garden= / ?share=, or the pretty paths above
+export function linkTarget() {
+  const q = new URLSearchParams(location.search), base = new URL(import.meta.env.BASE_URL, location.origin).pathname;
+  const rest = decodeURIComponent(location.pathname.startsWith(base) ? location.pathname.slice(base.length) : '').replace(/\/+$/, '');
+  const share = q.get('share') || (/^s\/([A-Za-z0-9_-]{16,40})$/.exec(rest) || [])[1];
+  const garden = q.get('garden') || (/^[a-z0-9_]{3,24}$/i.test(rest) ? rest : null);
+  return share ? { share } : garden ? { garden: garden.toLowerCase() } : null;
+}
 
 /* ================= utilities ================= */
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

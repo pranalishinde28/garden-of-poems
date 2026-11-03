@@ -14,7 +14,7 @@ export function camTween(toPos, toLook, dur, done) {
   setTween({ fp: camera.position.clone(), tp: toPos.clone(), fl: curLook.clone(), tl: toLook.clone(), t: 0, dur: reduceMotion ? Math.min(dur, 0.6) : dur, done });
 }
 export function blocked(x, z) {
-  if (state.world === 'sun') return worlds.sun.blocked(x, z);
+  if (worlds[state.world]) return worlds[state.world].blocked(x, z);
   const r = Math.hypot(x, z);
   // by the sea the garden opens onto the beach: walk on down to the water and wade in, up to about a metre;
   // with the hills, the hedge's gap opens onto the meadow down to Takachiho Gorge
@@ -24,7 +24,7 @@ export function blocked(x, z) {
   if (decor.some(o => o.collide > 0 && (!o.key || featOn(o.key)) && Math.hypot(o.x - x, o.z - z) < o.collide + 0.25)) return true;
   return false;
 }
-export const floorH = (x, z) => { if (state.world === 'sun') return worlds.sun.floorH(x, z); const j = gorgeJettyH(x, z); if (j !== null) return j; const b = bridgeH(x, z); if (b !== null) return b; if (shore.on && Math.hypot(x, z) > 68) return beachH(x, z); return Math.max(groundH(x, z), WATER_Y); };
+export const floorH = (x, z) => { if (worlds[state.world]) return worlds[state.world].floorH(x, z); const j = gorgeJettyH(x, z); if (j !== null) return j; const b = bridgeH(x, z); if (b !== null) return b; if (shore.on && Math.hypot(x, z) > 68) return beachH(x, z); return Math.max(groundH(x, z), WATER_Y); };
 export function syncPlayerFromCamera() {
   const dir = new V3().subVectors(curLook, camera.position).normalize();
   player.pos.set(camera.position.x, 0, camera.position.z);

@@ -785,5 +785,6 @@ addTick(() => {
   glows.forEach(g => { g.material.opacity = k * 0.85; });
 }, true);
 
-// autumn turns the gorge's forest; spring and the monsoon keep it green
-export function setGorgeSeason(season) { autumnU.value = season === 'autumn' ? 1 : 0; }
+// the gorge's wooded ridges keep their green in every season: the owner found the autumn patchwork of
+// red and orange crowns on them off (asked after round 52), so autumn no longer turns them
+export function setGorgeSeason(season) { autumnU.value = 0; }

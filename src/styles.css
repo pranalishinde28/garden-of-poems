@@ -708,7 +708,7 @@ body.panel-open #visitbar{opacity:0;pointer-events:none}
 #spray{position:fixed;inset:0;z-index:8;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.55),rgba(236,246,248,.92));transition:opacity .15s}
 #boatui .sw-hint,#rideui .sw-hint{opacity:.8}
 @media (max-width:1100px){#boatui .sw-hint,#rideui .sw-hint{display:none}}
-body.otherworld #h-write,body.otherworld #h-gardens,body.otherworld #h-home,body.otherworld #minimap-btn,body.otherworld #minimap-show,body.otherworld #minimap-hide,body.otherworld #h-view-horizon,body.otherworld #h-home-garden{display:none!important}
+body.otherworld #h-write,body.otherworld #h-gardens,body.otherworld #h-home,body.otherworld #h-view-horizon,body.otherworld #h-home-garden{display:none!important}
 
 /* the guide: tabs, then grids of cards and keys */
 #helpsheet{width:min(900px,94vw)}
@@ -759,24 +759,6 @@ body.walking #run-btn{display:inline-flex}
 body.panel-open #run-btn{opacity:0;pointer-events:none}
 @media (pointer:coarse){#run-btn{bottom:calc(env(safe-area-inset-bottom,0px) + 160px);left:calc(env(safe-area-inset-left,0px) + 30px)}}
 /* the secret world's map */
-#sunmap{left:50%;top:50%;width:min(720px,94vw);max-height:92vh;overflow:auto;transform:translate(-50%,-47%);border-radius:6px;padding:1.4rem 1.6rem 1.2rem}
-#sunmap.open{transform:translate(-50%,-50%)}
-#sunmap h2{margin:0;font-style:italic;font-weight:600;font-size:1.9rem}
-#sunmap .sm-sub{margin:.2rem 0 .8rem;color:var(--ink-soft);font-style:italic}
-.sm-stage{position:relative;width:100%;aspect-ratio:800/1040;max-height:72vh;margin:0 auto}
-.sm-stage canvas{width:100%;height:100%;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(120,92,60,.3)}
-#sm-marks{position:absolute;inset:0}
-.sm-place{position:absolute;transform:translate(-12px,-50%);display:flex;align-items:center;gap:.35rem;background:none;border:0;padding:0;cursor:pointer;text-align:left}
-.sm-place .dot{width:18px;height:18px;border-radius:50%;background:#2f5a3a;border:3px solid #fffaf0;box-shadow:0 2px 6px rgba(0,0,0,.35);flex:0 0 auto}
-.sm-place .t{background:rgba(255,250,240,.92);border:1px solid rgba(120,92,60,.35);border-radius:8px;padding:.1rem .45rem .15rem;line-height:1.15;box-shadow:0 2px 8px rgba(0,0,0,.12)}
-.sm-place em{display:block;font-style:normal;font-weight:700;font-size:.98rem;color:#2a1a0c;white-space:nowrap}
-.sm-place small{display:block;font-style:italic;font-size:.8rem;color:#6a5a44;white-space:nowrap}
-.sm-place:hover .dot,.sm-place:focus-visible .dot{background:#a8232e}
-.sm-me{position:absolute;color:#a8232e;font-size:1.4rem;text-shadow:0 0 4px #fff;pointer-events:none}
-@media (max-width:640px){.sm-place small{display:none}.sm-place em{font-size:.85rem}}
-.sm-place.side-l{flex-direction:row-reverse;transform:translate(calc(-100% + 12px),-50%);text-align:right}
-.sm-place.side-b{flex-direction:column;transform:translate(-50%,-12px);text-align:center}
-.sm-place.side-t{flex-direction:column-reverse;transform:translate(-50%,calc(-100% + 12px));text-align:center}
 
 /* a poem from the Hall of Mirrors, large and easy to read */
 #wallpoem{left:50%;top:50%;width:min(880px,94vw);max-height:90vh;overflow:auto;transform:translate(-50%,-47%);border-radius:6px;padding:1.8rem 2.2rem 1.4rem;text-align:center}
@@ -894,3 +876,185 @@ body.panel-open #run-btn{opacity:0;pointer-events:none}
 /* the welcome buttons grow with the text: their width is in rem (as their type is), never wider than the screen;
    if a label still cannot fit (very large text on a narrow screen) it wraps onto a second line, never cut */
 #intro .enter,#intro .alt{width:min(29rem,92vw);white-space:normal;text-wrap:balance;line-height:1.2}
+
+/* ---------- your garden's address, its visitors, and private links (Gardens panel) ---------- */
+.g-addr{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-top:.2rem}
+#g-addr-url{font-weight:600;font-size:1.08rem;word-break:break-all}
+.g-chip{padding:.2rem .85rem .28rem;border-radius:999px;border:1px solid var(--line);font-size:1rem;font-weight:600;color:var(--ink);background:rgba(255,248,228,.35)}
+.g-chip:hover{background:rgba(255,248,228,.75)}
+.g-chip.quiet{color:var(--ink-soft)}
+.g-acts{display:flex;gap:.4rem;flex:none}
+.g-visits{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin:.3rem 0 .4rem}
+.g-vc{display:flex;flex-direction:column;align-items:center;padding:.45rem .3rem;border:1px solid var(--line);border-radius:10px;background:rgba(255,248,228,.3)}
+.g-vc b{font-size:1.6rem;font-weight:700;line-height:1.1;color:var(--ink)}
+.g-vc span{font-size:.92rem;font-style:italic;color:var(--ink-soft)}
+.g-mklink{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin:.4rem 0 .2rem}
+.g-mklink input{flex:1 1 14rem;min-width:0}
+.g-mklink .g-btn{margin-top:0}
+
+/* ---------- become a patron ---------- */
+#patron{left:50%;top:50%;width:min(620px,94vw);max-height:90vh;overflow:auto;transform:translate(-50%,-47%);padding:2rem 2.2rem 1.6rem}
+#patron.open{transform:translate(-50%,-50%)}
+#patron p{font-size:1.15rem;line-height:1.55;margin:.6rem 0}
+#patron .pt-soon{font-style:italic}
+#patron .pt-acts{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+#patron .pt-acts .g-link{margin-top:1rem}
+
+/* ---------- a book of your poems: a preview of 6 × 9 inch pages, and those pages in print ---------- */
+#book{position:fixed;inset:0;z-index:60;background:#262b25;overflow:auto;display:flex;flex-direction:column;align-items:center;user-select:text;-webkit-user-select:text}
+#book[hidden]{display:none}
+#book .bk-bar{position:sticky;top:0;align-self:stretch;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;padding:.75rem 1.4rem;background:rgba(28,34,28,.94);color:#f3ead6;z-index:2;box-shadow:0 4px 18px rgba(0,0,0,.3)}
+#book .bk-bar h2{margin:0 auto 0 0;font-family:var(--fell);font-weight:400;font-size:1.7rem}
+#bk-status{font-style:italic;font-size:1.05rem;opacity:.85}
+#book .bk-bar .g-btn{margin:0;background:#f3ead6;color:#2b2214}
+#book .bk-bar .g-btn:disabled{opacity:.5}
+#book .bk-bar .g-link{margin:0;color:#f3ead6}
+#book .bk-help{max-width:6.6in;padding:.9rem 1rem .2rem;color:#e7dcc3;text-align:center;font-size:1.08rem;line-height:1.5}
+#book .bk-help .g-link{color:#f1d9a0;margin:0}
+#bk-pages{display:flex;flex-direction:column;align-items:center;gap:28px;padding:14px 0 70px}
+.bp{width:6in;min-height:9in;box-sizing:border-box;padding:.8in .75in .7in;background:#fbf6ea;color:#231a0e;box-shadow:0 12px 40px rgba(0,0,0,.45);font-family:"Cormorant Garamond",Georgia,serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.bp h2{font-family:"IM Fell English",Georgia,serif;font-weight:400;font-size:24pt;text-align:center;margin:0 0 .3in}
+.bp .sm{font-size:11pt;font-style:italic;opacity:.8}
+.bp.cover{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:radial-gradient(90% 70% at 50% 40%,#2f4a38,#1f3227);color:#f1e3bc;box-shadow:0 12px 40px rgba(0,0,0,.45),inset 0 0 0 .22in #1f3227,inset 0 0 0 .24in rgba(241,227,188,.5)}
+.bp.cover .orn{font-size:20pt;color:#f2b9cb;margin-bottom:.25in}
+.bp.cover h1{font-family:"IM Fell English",Georgia,serif;font-weight:400;font-size:34pt;line-height:1.08;margin:0 0 .25in}
+.bp.cover .by{font-style:italic;font-size:16pt;margin:0 0 .5in}
+.bp.mapp{display:flex;flex-direction:column;justify-content:center}
+.bp.mapp img{width:100%;aspect-ratio:1;border-radius:3px;box-shadow:0 2px 10px rgba(60,40,10,.25)}
+.bp .cap{font-style:italic;font-size:11pt;text-align:center;margin:.25in .2in 0;color:#5a4628}
+.bp.contents ol{list-style:none;padding:0;margin:0;font-size:12.5pt}
+.bp.contents li{display:flex;justify-content:space-between;gap:.2in;padding:.05in 0;border-bottom:1px dotted rgba(90,70,40,.35)}
+.bp.contents li i{color:#6a5638;font-size:10.5pt;white-space:nowrap}
+.bp.poem figure{width:76%;margin:0 auto .2in}
+.bp.poem img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:2px;box-shadow:0 2px 12px rgba(60,40,10,.25)}
+.bp.poem h3{font-family:"IM Fell English",Georgia,serif;font-style:italic;font-weight:400;font-size:21pt;text-align:center;margin:0 0 .04in}
+.bp .meta{text-align:center;font-style:italic;font-size:10.5pt;color:#6a5638;margin:0 0 .2in}
+.bp .text{white-space:pre-wrap;font-size:12.5pt;line-height:1.55;font-weight:500;padding:0 .1in}
+.bp.colophon{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;font-style:italic;font-size:13pt}
+@page{size:6in 9in;margin:0}
+@media print{
+  html,body{overflow:visible!important;height:auto!important;background:#fff!important}
+  body>*:not(#book){display:none!important}
+  #book{position:static!important;display:block!important;background:none!important;overflow:visible!important}
+  #book .bk-bar,#book .bk-help{display:none!important}
+  #bk-pages{display:block;padding:0}
+  .bp{box-shadow:none!important;margin:0;min-height:0;break-after:page;page-break-after:always}
+  .bp.cover,.bp.full{height:8.98in}
+  .bp.cover{box-shadow:inset 0 0 0 .22in #1f3227,inset 0 0 0 .24in rgba(241,227,188,.5)!important}
+  .bp.poem .text{orphans:3;widows:3}
+}
+/* the notes under a poem keep their room (up to 26vh); the page above gives way instead. The taller page of
+   the bigger card had squeezed the notes to nothing on an 800 px tall window */
+#r-notes{flex:0 0 auto}
+
+/* under the water for a moment at the end of the slide: a blue-green haze, light from above, rising bubbles */
+#underwater{position:fixed;inset:0;z-index:8;pointer-events:none;opacity:0;background:radial-gradient(120% 70% at 50% -10%,rgba(160,240,255,.55),transparent 60%),linear-gradient(180deg,rgba(40,170,200,.55),rgba(8,70,110,.85));backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+#underwater::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 20% 80%,rgba(255,255,255,.55) 0 3px,transparent 4px),radial-gradient(circle at 70% 90%,rgba(255,255,255,.5) 0 4px,transparent 5px),radial-gradient(circle at 45% 70%,rgba(255,255,255,.45) 0 2px,transparent 3px),radial-gradient(circle at 85% 60%,rgba(255,255,255,.4) 0 3px,transparent 4px);background-size:220px 260px;animation:bubbles 1.6s linear infinite}
+@keyframes bubbles{from{background-position:0 0}to{background-position:0 -260px}}
+
+/* ---------- the library's shelves and books (ui/library.js) ---------- */
+#library{position:fixed;inset:0;z-index:55;display:flex;flex-direction:column;background:radial-gradient(120% 90% at 50% 0%,rgba(70,40,18,.92),rgba(24,14,8,.96));color:#f3e6c8;opacity:0;transition:opacity .4s;overflow:auto;user-select:text;-webkit-user-select:text}
+#library.open{opacity:1}
+#library[hidden]{display:none}
+#library .lb-top{display:flex;align-items:center;justify-content:center;position:relative;padding:1.1rem 4rem .4rem}
+#library h2#lb-title{margin:0;font-family:var(--fell);font-weight:400;font-size:clamp(2rem,4vw,2.8rem);color:#f0d890;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+#library .lb-top .xc{position:absolute;right:1.2rem;top:1rem;width:44px;height:44px;border-radius:50%;color:#f3e6c8;background:rgba(255,240,210,.12);border:1px solid rgba(240,216,144,.4)}
+#lb-shelves{max-width:1100px;width:100%;margin:0 auto;padding:.5rem 1.4rem 3rem;box-sizing:border-box}
+.lb-sec h3{font-family:var(--fell);font-weight:400;font-size:1.7rem;margin:1.2rem 0 .1rem;color:#f0d890}
+.lb-note{margin:.1rem 0 .6rem;font-style:italic;font-size:1.08rem;color:rgba(243,230,200,.75)}
+/* a walnut bookcase shelf: books stand on a lit board, with the case's dark back behind them */
+.lb-shelf{display:flex;align-items:flex-end;gap:4px;flex-wrap:wrap;row-gap:30px;padding:18px 18px 0;min-height:200px;background:linear-gradient(180deg,#2a170a,#3a2210);border:10px solid #5a3216;border-bottom:0;box-shadow:inset 0 10px 30px rgba(0,0,0,.6);position:relative;background-image:linear-gradient(180deg,transparent calc(100% - 16px),#7a4a22 calc(100% - 16px),#5a3216 100%),linear-gradient(180deg,#2a170a,#3a2210);padding-bottom:16px}
+.lb-spine{position:relative;display:flex;align-items:center;justify-content:center;border-radius:3px 3px 1px 1px;background:linear-gradient(90deg,rgba(0,0,0,.45),transparent 25%,rgba(255,255,255,.12) 45%,transparent 60%,rgba(0,0,0,.5)),var(--c);box-shadow:0 2px 0 rgba(0,0,0,.4),inset 0 0 0 1px rgba(0,0,0,.35);cursor:pointer;transition:transform .25s ease,box-shadow .25s;padding:0}
+.lb-spine::before,.lb-spine::after{content:"";position:absolute;left:3px;right:3px;height:3px;background:linear-gradient(90deg,#b8902e,#f0d880,#b8902e);box-shadow:0 7px 0 #c9a040}
+.lb-spine::before{top:14px}.lb-spine::after{bottom:22px}
+.lb-spine span{writing-mode:vertical-rl;transform:rotate(180deg);font-family:"Cormorant Garamond",Georgia,serif;font-weight:700;font-size:1rem;letter-spacing:.03em;color:#f6e4a8;text-shadow:0 1px 2px rgba(0,0,0,.7);max-height:calc(100% - 64px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-spine:hover,.lb-spine:focus-visible{transform:translateY(-14px) rotate(-1.5deg);box-shadow:0 12px 18px rgba(0,0,0,.5),inset 0 0 0 1px rgba(240,216,144,.5);outline:none}
+.lb-add{align-self:flex-end;height:150px;width:120px;margin-left:8px;border:2px dashed rgba(240,216,144,.55);border-radius:6px;color:#f0d890;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;font-size:1.08rem;font-style:italic;background:rgba(255,240,210,.05);cursor:pointer;transition:background .2s}
+.lb-add b{font-size:2.2rem;font-style:normal;line-height:1}
+.lb-add:hover{background:rgba(255,240,210,.14)}
+.lb-empty{color:rgba(243,230,200,.6);font-style:italic;align-self:center;margin:0 1rem}
+.lb-btn{padding:.42rem 1.1rem .5rem;border-radius:999px;border:1px solid rgba(240,216,144,.5);color:#f3e6c8;background:rgba(255,240,210,.08);font-size:1.05rem;font-weight:600;cursor:pointer}
+.lb-btn:hover:not(:disabled){background:rgba(255,240,210,.2)}
+.lb-btn:disabled{opacity:.35;cursor:default}
+.lb-btn.go{background:#c9a040;color:#2a1808;border-color:#c9a040}
+.lb-btn.quiet{opacity:.8}
+/* an open book: a leather binding, two cream pages, a shadow down the spine, a leaf that turns */
+#lb-open{display:flex;flex-direction:column;align-items:center;gap:.7rem;padding:0 1rem 1.6rem}
+.lb-bar,.lb-nav{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;justify-content:center;width:min(1320px,97vw)}
+#lb-seek{width:min(760px,90vw);accent-color:#c9a040}
+#lb-seek[hidden]{display:none}
+.lb-bt{flex:1;text-align:center;font-size:1.15rem}.lb-bt i{opacity:.75}
+.lb-book{position:relative;width:min(1320px,97vw);height:min(80vh,880px);padding:18px;box-sizing:border-box;border-radius:10px;background:linear-gradient(135deg,#5a1e16,#3a120c);box-shadow:0 30px 70px rgba(0,0,0,.6),inset 0 0 0 3px #b8902e,inset 0 0 0 6px #3a120c;perspective:2000px}
+.lb-pages{position:relative;width:100%;height:100%;overflow:hidden;border-radius:3px;background:linear-gradient(90deg,#efe2c2 0%,#f8efd8 8%,#fbf5e6 46%,#d8c8a4 50%,#fbf5e6 54%,#f8efd8 92%,#efe2c2 100%);box-shadow:inset 0 0 30px rgba(120,80,30,.25)}
+#lb-flow{height:100%;box-sizing:border-box;padding:2.4rem 0;column-gap:6rem;column-fill:auto;transition:transform .01s;color:#2a1c0c;font-family:"Cormorant Garamond",Georgia,serif;font-size:clamp(1.08rem,1.3vw,1.26rem);line-height:1.55;font-weight:500}
+#lb-flow p{margin:0 3rem .9em;text-indent:1.4em;text-align:justify;hyphens:auto}
+#lb-flow .lb-title-page{break-after:column;height:calc(100% - .1px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 2rem}
+#lb-flow .lb-title-page p{text-indent:0;text-align:center;margin:.3rem 0}
+#lb-flow .lb-title-page h2{font-family:var(--fell);font-weight:400;font-size:clamp(2rem,3.4vw,2.9rem);line-height:1.15;margin:.4rem 0 .8rem}
+#lb-flow .lb-title-page .by{font-style:italic;font-size:1.4rem}
+#lb-flow .lb-title-page .yr{font-size:1.1rem;opacity:.75}
+#lb-flow .lb-title-page .note{font-style:italic;opacity:.65;margin-top:1.4rem}
+#lb-flow .orn{color:#b8902e;font-size:1.6rem}
+#lb-flow .lb-end{text-align:center;text-indent:0;margin-top:1.4em;letter-spacing:.4em}
+#lb-flow .lb-more{text-indent:0;text-align:center;font-style:italic}
+#lb-flow a{color:#7a3a1a}
+#lb-leaf{position:absolute;top:18px;bottom:18px;left:50%;width:calc(50% - 18px);transform-origin:left center;background:linear-gradient(90deg,#d8c8a4,#fbf5e6 30%,#f4e8cc);opacity:0;pointer-events:none;border-radius:0 3px 3px 0}
+#lb-leaf.fwd{animation:leafFwd .6s ease-in-out}
+#lb-leaf.back{animation:leafBack .6s ease-in-out}
+@keyframes leafFwd{0%{opacity:1;transform:rotateY(0)}50%{opacity:1;transform:rotateY(-90deg)}100%{opacity:0;transform:rotateY(-180deg)}}
+@keyframes leafBack{0%{opacity:0;transform:rotateY(-180deg)}50%{opacity:1;transform:rotateY(-90deg)}100%{opacity:1;transform:rotateY(0);opacity:0}}
+#lb-pg{font-style:italic;min-width:12ch;text-align:center}
+@media (prefers-reduced-motion:reduce){#lb-leaf.fwd,#lb-leaf.back{animation:none}}
+@media (max-width:760px){#lb-flow{column-gap:2rem}#lb-flow p{margin:0 1rem .9em}.lb-book{height:70vh}}
+/* writing a book */
+#lb-write{width:min(860px,94vw);margin:.4rem auto 2rem;padding:1.6rem 2rem;box-sizing:border-box;border-radius:6px;background:#f6ecd6;color:#2a1c0c;box-shadow:0 20px 60px rgba(0,0,0,.5),inset 0 0 0 1px rgba(120,80,30,.3)}
+#lb-write h3{font-family:var(--fell);font-weight:400;font-size:1.9rem;margin:0 0 .8rem;text-align:center}
+.lb-wrow{display:grid;grid-template-columns:5rem 1fr;align-items:center;gap:.6rem;margin:.4rem 0}
+.lb-wrow label,.lb-wl{font-weight:700;font-size:1.08rem}
+#lb-write input[type=text],#lb-write input:not([type]),#lb-write textarea{font:inherit;font-size:1.2rem;color:#2a1c0c;background:rgba(255,252,240,.7);border:1px solid rgba(110,70,30,.4);border-radius:4px;padding:.4rem .6rem}
+#lb-write textarea{display:block;width:100%;box-sizing:border-box;min-height:44vh;margin-top:.3rem;line-height:1.6;resize:vertical;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent calc(1.6em - 1px),rgba(110,72,30,.15) calc(1.6em - 1px),rgba(110,72,30,.15) 1.6em);background-attachment:local}
+#lb-write .lb-note{color:rgba(42,28,12,.7)}
+.lb-check{display:flex;gap:.5rem;align-items:center;font-size:1.05rem;margin:.4rem 0}
+.lb-wacts{display:flex;justify-content:flex-end;gap:.8rem;margin-top:1rem}
+#lb-write .lb-btn{color:#2a1c0c;border-color:rgba(110,70,30,.5);background:transparent}
+#lb-write .lb-btn.go{background:#5a3417;color:#f8edd4;border-color:#5a3417}
+/* spines: the title read from bottom to top, every glyph turned the same way (an apostrophe stays one) */
+.lb-spine span{text-orientation:sideways;max-height:calc(100% - 58px)}
+.lb-spine.long span{font-size:.76rem}
+body.lib-open #toast{z-index:70}
+body.lib-open #steps{display:none}
+
+/* ---------- looking at a painting, and hanging your own (ui/paintings.js) ---------- */
+#paintview{position:fixed;inset:0;z-index:55;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 100% at 50% 40%,rgba(60,20,22,.94),rgba(16,8,8,.97));color:#f3e6c8;opacity:0;transition:opacity .35s;user-select:text;-webkit-user-select:text;overflow:auto}
+#paintview.open{opacity:1}
+#paintview[hidden]{display:none}
+#paintview .xc{position:absolute;right:1.2rem;top:1rem;width:44px;height:44px;border-radius:50%;color:#f3e6c8;background:rgba(255,240,210,.12);border:1px solid rgba(240,216,144,.4);z-index:2}
+#pv-look{display:flex;gap:2rem;align-items:center;width:min(1400px,96vw);height:min(86vh,900px);padding:1rem}
+#pv-look[hidden]{display:none}
+.pv-stage{flex:1;min-width:0;height:100%;display:flex;align-items:center;gap:.6rem}
+.pv-frame{flex:1;min-width:0;height:100%;display:flex;align-items:center;justify-content:center}
+#pv-img{max-width:100%;max-height:100%;object-fit:contain;border:14px solid #c99a32;border-image:linear-gradient(135deg,#f0d880,#a8801e 40%,#e8c25a 60%,#8a6418) 1;box-shadow:0 20px 60px rgba(0,0,0,.6),inset 0 0 0 2px #5a3a10}
+.pv-arrow{flex:none;width:52px;height:52px;border-radius:50%;font-size:2rem;line-height:1;color:#f3e6c8;background:rgba(255,240,210,.1);border:1px solid rgba(240,216,144,.4);cursor:pointer}
+.pv-arrow:hover{background:rgba(255,240,210,.22)}
+.pv-side{width:min(360px,30vw);flex:none;display:flex;flex-direction:column;gap:1rem}
+#pv-info h2{font-family:var(--fell);font-weight:400;font-size:clamp(1.8rem,2.6vw,2.4rem);line-height:1.15;margin:0 0 .4rem;color:#f0d890}
+#pv-info .pv-by{font-style:italic;font-size:1.3rem;margin:0 0 .3rem}
+#pv-info .pv-where{font-size:1.05rem;opacity:.8;margin:0 0 1rem}
+#pv-info .pv-note{font-size:1.15rem;line-height:1.55;margin:0}
+#pv-info .pv-pd{font-size:.92rem;font-style:italic;opacity:.6;margin-top:1rem}
+.pv-acts{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center}
+#pv-count{font-style:italic;opacity:.75;margin-right:auto}
+#pv-form{width:min(720px,94vw);padding:1.6rem 2rem;border-radius:6px;background:#f6ecd6;color:#2a1c0c;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#pv-form[hidden]{display:none}
+#pv-form h2{font-family:var(--fell);font-weight:400;font-size:2rem;margin:0 0 .2rem;text-align:center}
+#pv-form .lb-note{text-align:center;color:rgba(42,28,12,.7)}
+#pv-form input:not([type=file]):not([type=checkbox]){font:inherit;font-size:1.15rem;color:#2a1c0c;background:rgba(255,252,240,.7);border:1px solid rgba(110,70,30,.4);border-radius:4px;padding:.4rem .6rem}
+#pv-form .lb-wrow{grid-template-columns:7rem 1fr}
+.pv-pick{display:flex;justify-content:center;margin:.8rem 0}
+.pv-pick input{position:absolute;opacity:0;width:1px;height:1px}
+.pv-pick span{padding:.6rem 1.4rem;border-radius:999px;border:2px dashed rgba(110,70,30,.5);font-size:1.1rem;font-weight:600;cursor:pointer}
+.pv-pick:focus-within span,.pv-pick span:hover{background:rgba(110,70,30,.08)}
+#pv-preview{display:block;max-width:100%;max-height:30vh;margin:0 auto .8rem;border:8px solid #c99a32}
+#pv-form .lb-btn{color:#2a1c0c;border-color:rgba(110,70,30,.5);background:transparent}
+#pv-form .lb-btn.go{background:#5a3417;color:#f8edd4;border-color:#5a3417}
+@media (max-width:800px){#pv-look{flex-direction:column;height:auto}.pv-stage{height:56vh;width:100%}.pv-side{width:100%}}

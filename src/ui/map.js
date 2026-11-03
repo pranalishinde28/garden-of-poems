@@ -109,19 +109,54 @@ const GLYPHS = {
   bell: '<path d="M8 17V11a4 4 0 0 1 8 0v6M6 17h12M12 7V5M11 20h2"/>',
   secret: '<path d="M12 4l1.8 4.6 4.9.3-3.8 3.1 1.3 4.8L12 14l-4.2 2.8 1.3-4.8-3.8-3.1 4.9-.3z"/><path d="M12 17v4"/>',
   lantern: '<path d="M12 3v2M9 5h6M9 19h6M8 8c0-1.6 1.8-3 4-3s4 1.4 4 3v8c0 1.6-1.8 3-4 3s-4-1.4-4-3z"/><path d="M8 10h8M8 14h8"/>',
+  // the secret world's places
+  arrival: '<path d="M12 4v15M8 8h8M5 13c0 4 3 6 7 6s7-2 7-6"/><circle cx="12" cy="4" r="1.2"/>', door: '<path d="M7 20V5h10v15M5 20h14M14 13h.6"/>',
+  arch: '<path d="M5 20v-8a7 7 0 0 1 14 0v8M8.5 20v-8a3.5 3.5 0 0 1 7 0v8"/>', sunflower: '<circle cx="12" cy="10" r="2.6"/><path d="M12 4.2v1.6M12 14.2v1.6M6.2 10h1.6M16.2 10h1.6M8 6l1.1 1.1M14.9 12.9 16 14M16 6l-1.1 1.1M9.1 12.9 8 14M12 15.8V21M12 18.5c-1.6-1.2-3-1.2-4 0"/>',
+  terraces: '<path d="M4 8h16M4 13h16M4 18h16"/><circle cx="7" cy="8" r="1"/><circle cx="12" cy="13" r="1"/><circle cx="17" cy="18" r="1"/>',
+  wave: '<path d="M3 11c2-3 4-3 6 0s4 3 6 0 4-3 6 0M3 16c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/>', slide: '<path d="M6 21V5h3M6 9h3M6 13h3M9 5c0 8 4 12 11 14"/>',
+  carousel: '<path d="M4 9l8-5 8 5zM6 9v9M18 9v9M12 9v9M4 18h16"/>', teacup: '<path d="M5 9h11v3a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10h1.5a2 2 0 0 1 0 4H16M4 20h14"/>',
+  fireworks: '<path d="M12 12V4M12 12l5.5-4M12 12l6.5 2M12 12 6.5 8M12 12l-6.5 2M12 12l3.5 6.5M12 12l-3.5 6.5"/>', boat: '<path d="M3 15h18l-3 4H6zM12 15V5l6 8h-6"/>',
+  swingride: '<path d="M12 3v4M5 7h14M7 7l-2 8M17 7l2 8M12 7v8M4 15h2M18 15h2M11 15h2M12 19v2M8 21h8"/>', drop: '<path d="M12 3v18M8 21h8M8 7h8v4H8zM15 15l-3 3-3-3"/>',
+  jetski: '<path d="M3 15h15l3-3H9l-2-3H5zM4 19c3 1 5 1 8 0s5-1 8 0"/>', wheel: '<circle cx="12" cy="10" r="6"/><path d="M12 4v12M6 10h12M7.8 5.8l8.4 8.4M16.2 5.8l-8.4 8.4M9 21l3-5 3 5"/>',
+  coaster: '<path d="M3 17c3-10 6-10 8-2s5 6 10-8M5 21v-4M10 21v-5M15 21v-3M20 21V9"/>', castle: '<path d="M4 20V9l2-2 2 2v3h3V8l1-4 1 4v4h3V9l2-2 2 2v11zM10 20v-4h4v4"/>',
+  bowl: '<path d="M3 8c0 5 4 9 9 9s9-4 9-9M3 8c2 1 5 1.5 9 1.5S19 9 21 8M12 17v4M9 13c1-1.5 4-1.5 6 0"/>',
+  book: '<path d="M4 6c3-1 6-1 8 1v13c-2-2-5-2-8-1zM20 6c-3-1-6-1-8 1v13c2-2 5-2 8-1z"/>',
 };
 const glyphFor = name => /lantern/i.test(name) ? 'lantern' : /bench/i.test(name) ? 'bench' : /pond/i.test(name) ? 'pond' : /swing/i.test(name) ? 'swing' : /gate/i.test(name) ? 'gate' : /tulip/i.test(name) ? 'tulip' : /rose/i.test(name) ? 'rose' : /secret/i.test(name) ? 'secret' : /stream|gorge/i.test(name) ? 'stream' : /fountain/i.test(name) ? 'fountain' : /shrine/i.test(name) ? 'torii' : /pagoda/i.test(name) ? 'pagoda' : /bell/i.test(name) ? 'bell' : 'gate';
-const medal = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${GLYPHS[glyphFor(name)]}</svg>`;
+const medal = key => `<svg viewBox="0 0 24 24" aria-hidden="true">${GLYPHS[GLYPHS[key] ? key : glyphFor(key)]}</svg>`;
 
 // ---- the full map ----
 let P = null, S = 1, prevMode = 'walk', openedFrom = null;
+// in the secret world the sheet shows that world's plan (ui/sunMap.js), upright: you arrive at the bottom and
+// the castle is at the top (the owner asked; sideways put the arrival on the left), with no legend
+const sunPlan = () => state.world === 'sun' && late.sunPlan ? late.sunPlan : null;
+let turn = 0, toMap = (x, z) => [x, z];
 function layout() {
   const r = stage.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
   cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); cv.style.width = r.width + 'px'; cv.style.height = r.height + 'px';
-  S = Math.min(r.width, r.height) / (2 * 78); const cx = r.width / 2, cy = r.height / 2; // the whole garden and its hedge fit
-  P = (x, z) => [cx + x * S, cy + (z - 2) * S];
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, r.width, r.height);
+  const cx = r.width / 2, cy = r.height / 2, sp = sunPlan();
+  if (sp) {
+    const w = sp.x1 - sp.x0, d = sp.z1 - sp.z0, mx = (sp.x0 + sp.x1) / 2, mz = (sp.z0 + sp.z1) / 2, side = false; // always upright: you arrive at the bottom, the castle is at the top
+    S = side ? Math.min(r.width / d, r.height / w) : Math.min(r.width / w, r.height / d);
+    P = side ? (x, z) => [cx + (mz - z) * S, cy + (x - mx) * S] : (x, z) => [cx + (x - mx) * S, cy + (z - mz) * S];
+    turn = side ? Math.PI / 2 : 0; toMap = sp.local;
+    sp.draw(g, P, S, true); return;
+  }
+  turn = 0; toMap = () => [player.pos.x, player.pos.z];
+  S = Math.min(r.width, r.height) / (2 * 78); // the whole garden and its hedge fit
+  P = (x, z) => [cx + x * S, cy + (z - 2) * S];
   drawWorld(g, P, S, true);
+}
+// the garden's plan for the opening page of a book of poems (ui/book.js): parchment, the drawn garden, and a
+// dot for every poem tree in its mood's ink
+export function gardenMapImage(px) {
+  const c = document.createElement('canvas'); c.width = c.height = px; const g = c.getContext('2d');
+  const pg = g.createRadialGradient(px / 2, px / 2, px * 0.2, px / 2, px / 2, px * 0.75); pg.addColorStop(0, '#f6ecd4'); pg.addColorStop(1, '#e8d8b4'); g.fillStyle = pg; g.fillRect(0, 0, px, px);
+  const s = px / (2 * 80), P = (x, z) => [px / 2 + x * s, px / 2 + (z - 2) * s];
+  drawWorld(g, P, s, true);
+  plants.forEach(pl => { if (!onMap(pl)) return; const [x, y] = P(pl.root.position.x, pl.root.position.z); g.beginPath(); g.arc(x, y, Math.max(3, 1.5 * s), 0, 7); g.fillStyle = MOOD_INK[moodOf(pl.poem)]; g.fill(); g.lineWidth = Math.max(1, 0.35 * s); g.strokeStyle = '#3b3428'; g.stroke(); });
+  return c.toDataURL('image/jpeg', 0.92);
 }
 // places to do something, each with a short hint and where to stand
 function places() {
@@ -141,7 +176,7 @@ function places() {
   if (SETTINGS.view !== 'sea') L.push({ name: 'The secret garden', hint: 'sunflowers and a fairground, beyond the falls', x: LOOKOUT.x - 4, z: LOOKOUT.z - 12, stand: [0, 0], face: [0, 0], side: 'l', go: () => late.enterSunWorld && late.enterSunWorld() });
   if (SETTINGS.view !== 'sea') { const r = Math.hypot(LOOKOUT.x, LOOKOUT.z), k = (r - 3) / r; L.push({ name: 'The gorge lookout', hint: 'Takachiho Gorge and its falls', x: LOOKOUT.x, z: LOOKOUT.z, stand: [LOOKOUT.x * k, LOOKOUT.z * k], face: [LOOKOUT.x * 2, LOOKOUT.z * 2], side: 'l' }); }
   before(LANDMARKS.shrine, 15, 'The shrine', 'ring the bell, make a wish', 'r');
-  before(LANDMARKS.pagoda, 9, 'The pagoda', 'three storeys, and a lantern each side', 'r');
+  before(LANDMARKS.pagoda, 9, 'The pagoda', 'step inside: a shrine of bronze lanterns', 'r');
   before(LANDMARKS.bell, 5.5, 'The bell tower', 'strike the temple bell', 'l');
   return L;
 }
@@ -153,14 +188,20 @@ function standNear(x, z, fx, fz) {
 }
 function buildMarks() {
   marks.innerHTML = ''; const list = $('#map-places'); list.innerHTML = '';
+  const sp = sunPlan();
   const add = (cls, x, z, attrs, html) => { const [sx, sy] = P(x, z), b = document.createElement('button'); b.className = cls; b.style.left = sx + 'px'; b.style.top = sy + 'px'; Object.entries(attrs).forEach(([k, v]) => b.setAttribute(k, v)); if (html) b.innerHTML = html; marks.appendChild(b); return b; };
-  places().forEach(pl => {
+  (sp ? sp.places() : places()).forEach(pl => {
     const go = pl.go ? () => { closeMap(false); pl.go(); } : () => { const [x, z] = standNear(pl.stand[0], pl.stand[1], pl.face[0], pl.face[1]); closeMap(false); glideTo(x, z, pl.face[0], pl.face[1]); };
-    const b = add('map-place side-' + pl.side + (pl.small ? ' small' : ''), pl.x, pl.z, { 'aria-label': `${pl.name}: ${pl.hint}`, 'data-side': pl.side }, `<span class="dot">${medal(pl.name)}</span><span class="t"><em>${pl.name}</em><small>${pl.hint}</small></span>`);
+    const b = add('map-place side-' + pl.side + (pl.small ? ' small' : ''), pl.x, pl.z, { 'aria-label': `${pl.name}: ${pl.hint}`, 'data-side': pl.side }, `<span class="dot">${medal(pl.glyph || pl.name)}</span><span class="t"><em>${pl.name}</em><small>${pl.hint}</small></span>`);
     b.onclick = go;
     // on narrow screens the hints live in a row under the map instead of crowding it
     const li = document.createElement('button'); li.setAttribute('role', 'listitem'); li.innerHTML = `<em>${pl.name}</em> <small>${pl.hint}</small>`; li.onclick = go; list.appendChild(li);
   });
+  if (sp) {
+    const [px, pz] = toMap(), [mx, my] = P(px, pz); me.style.left = mx + 'px'; me.style.top = my + 'px'; me.style.transform = `translate(-50%,-50%) rotate(${turn - player.yaw}rad)`;
+    for (const [name, spots] of sp.regions()) { const el = document.createElement('span'); el.className = 'map-region'; el.textContent = name; el.dataset.spots = JSON.stringify(spots.map(([x, z]) => P(x, z))); el.style.fontSize = Math.max(13, Math.min(18, S * 6)) + 'px'; marks.appendChild(el); }
+    settleLabels(); return;
+  }
   [...plants.values()].filter(onMap).forEach(pl => {
     const p = pl.poem, c = pl.root.position, b = add('map-poem', c.x, c.z, { 'aria-label': `Poem: ${p.title}`, 'data-title': p.title });
     b.style.setProperty('--c', MOOD_INK[moodOf(p)]); if (p.important) b.classList.add('big');
@@ -208,14 +249,19 @@ function settleLabels() {
 }
 function legend() {
   // the places with their medallions, then the poem trees by mood, then you
-  const ps = places().map(pl => `<span class="lg-place"><b class="medal">${medal(pl.name)}</b>${(n => n[0].toUpperCase() + n.slice(1))(pl.name.replace(/^The /, ''))}</span>`).join('');
+  const sp = sunPlan(), ps = (sp ? sp.places() : places()).map(pl => `<span class="lg-place"><b class="medal">${medal(pl.glyph || pl.name)}</b>${(n => n[0].toUpperCase() + n.slice(1))(pl.name.replace(/^The /, ''))}</span>`).join('');
+  $('#map-legend').hidden = !!sp; if (sp) { $('#map-legend').innerHTML = ''; return; } // the secret world's places are all named on the plan
   $('#map-legend').innerHTML = `<div class="lg-places">${ps}</div><div class="lg-moods"><span class="lg-h">Poem trees</span>` + MOODS.map(([k, label]) => `<span><i style="background:${MOOD_INK[k]}"></i>${label}</span>`).join('') + '<span class="me-key"><b>▲</b>You</span></div>';
 }
 export function openMap() {
   if (!view.hidden || !(state.mode === 'walk' || state.mode === 'swing')) return;
   late.closePops(); keys.clear(); openedFrom = document.activeElement;
-  $('#map-title').textContent = state.visiting ? (state.visiting.name || 'This garden') : (SETTINGS.name || 'Your garden');
-  view.hidden = false; legend(); layout(); buildMarks(); // the legend first: it changes how much room the map has
+  const sp = sunPlan();
+  $('#map-title').textContent = sp ? sp.title : state.visiting ? (state.visiting.name || 'This garden') : (SETTINGS.name || 'Your garden');
+  $('.map-head p').textContent = sp ? sp.sub : 'Choose a place or a poem, and the garden will carry you there.';
+  // no legend box under the map (removed at the owner's request): every place is named on the map itself
+  $('#map-legend').hidden = true;
+  view.hidden = false; layout(); buildMarks(); // the legend first: it changes how much room the map has
   requestAnimationFrame(() => view.classList.add('open'));
   if (state.mode === 'walk') { prevMode = 'walk'; state.mode = 'map'; } else prevMode = state.mode;
   (marks.querySelector('.map-place') || $('#map-close')).focus({ preventScroll: true });
@@ -226,8 +272,8 @@ export function closeMap(restore = true) {
   if (restore && state.mode === 'map') state.mode = prevMode;
   if (restore && openedFrom && openedFrom.focus) openedFrom.focus({ preventScroll: true });
 }
-// in the secret world the map is that world's own (ui/sunMap.js)
-export const toggleMap = () => state.world === 'sun' ? late.toggleSunMap && late.toggleSunMap() : view.hidden ? openMap() : closeMap();
+// in the secret world the same sheet shows that world's plan (ui/sunMap.js); inside the pagodas there is none
+export const toggleMap = () => (state.world === 'temple' || state.world === 'shrine') ? late.toast && late.toast('Inside there is one way out: the door you came in by.') : view.hidden ? openMap() : closeMap();
 provide({ get toggleMap() { return toggleMap; } });
 
 // ---- gliding to a place: lift, drift, settle ----
@@ -265,16 +311,23 @@ let worldAt = -1e9, miniAt = 0;
 function redrawWorld() { const g = world.getContext('2d'); g.clearRect(0, 0, world.width, world.height); drawWorld(g, (x, z) => [(x + W) * PX, (z + W) * PX], PX, false); }
 const miniFrame = now => {
   requestAnimationFrame(miniFrame);
-  const show = state.minimap && (state.mode === 'walk' || state.mode === 'swing') && !document.body.classList.contains('sr-open');
+  // the garden and the secret world each have one; inside the pagodas there is none
+  const inside = state.world === 'temple' || state.world === 'shrine', sun = state.world === 'sun';
+  const show = state.minimap && (state.mode === 'walk' || state.mode === 'swing') && !document.body.classList.contains('sr-open') && !inside;
   if (miniBtn.hidden === show) miniBtn.hidden = !show;
   // a small × hides it; a little map button brings it back (the same choice as in You)
-  const wantShow = (state.mode === 'walk' || state.mode === 'swing') && !document.body.classList.contains('sr-open') && !document.body.classList.contains('panel-open');
+  const wantShow = (state.mode === 'walk' || state.mode === 'swing') && !document.body.classList.contains('sr-open') && !document.body.classList.contains('panel-open') && !inside;
   hideBtn.hidden = !(show && wantShow); showBtn.hidden = !(wantShow && !state.minimap);
   if (!show || now - miniAt < 110) return; miniAt = now;
-  if (now - worldAt > 5000) { redrawWorld(); worldAt = now; }
+  if (!sun && now - worldAt > 5000) { redrawWorld(); worldAt = now; }
   const g = mini.getContext('2d'), N = mini.width, R = N / 2, span = 26, k = N / (2 * span);
   g.clearRect(0, 0, N, N); g.save(); g.beginPath(); g.arc(R, R, R - 2, 0, 7); g.clip();
   g.fillStyle = 'rgba(239,232,214,.92)'; g.fillRect(0, 0, N, N);
+  if (sun) {
+    const turn = late.drawSunMini ? late.drawSunMini(g, N, 42) : -player.yaw;
+    g.translate(R, R); g.rotate(turn); g.beginPath(); g.moveTo(0, -12); g.lineTo(8, 8); g.lineTo(0, 4); g.lineTo(-8, 8); g.closePath(); g.lineWidth = 4; g.strokeStyle = '#fff8e8'; g.stroke(); g.fillStyle = '#8a2424'; g.fill();
+    g.restore(); g.strokeStyle = 'rgba(44,54,39,.35)'; g.lineWidth = 2; g.beginPath(); g.arc(R, R, R - 2, 0, 7); g.stroke(); return;
+  }
   const px = player.pos.x, pz = player.pos.z;
   g.drawImage(world, (px - span + W) * PX, (pz - span + W) * PX, span * 2 * PX, span * 2 * PX, 0, 0, N, N);
   plants.forEach(pl => { if (!onMap(pl)) return; const x = R + (pl.root.position.x - px) * k, y = R + (pl.root.position.z - pz) * k; if (x < -6 || y < -6 || x > N + 6 || y > N + 6) return; g.fillStyle = MOOD_INK[moodOf(pl.poem)]; g.beginPath(); g.arc(x, y, pl.poem.important ? 5 : 3.6, 0, 7); g.fill(); });
@@ -282,7 +335,7 @@ const miniFrame = now => {
   g.restore(); g.strokeStyle = 'rgba(44,54,39,.35)'; g.lineWidth = 2; g.beginPath(); g.arc(R, R, R - 2, 0, 7); g.stroke();
 };
 requestAnimationFrame(miniFrame);
-miniBtn.onclick = () => openMap();
+miniBtn.onclick = () => toggleMap();
 const hideBtn = $('#minimap-hide'), showBtn = $('#minimap-show');
 const setMini = on => { state.minimap = on; try { localStorage.setItem('garden-of-poems:minimap', on ? '1' : '0'); } catch (e) {} const c = document.getElementById('av-minimap'); if (c) c.checked = on; };
 hideBtn.onclick = () => setMini(false);

@@ -341,3 +341,116 @@ export async function saveGardenSettings(patch: Database['public']['Tables']['ga
   if (error) { toast('Your garden settings could not be saved just now.'); return false; }
   Cloud.garden = data; return true;
 }
+
+// ---------- private links ----------
+export type Share = Database['public']['Tables']['garden_shares']['Row'];
+export async function listShares(): Promise<Share[] | null> {
+  if (!Cloud.sb || !Cloud.user) return [];
+  const { data, error } = await Cloud.sb.from('garden_shares').select('*').order('created_at', { ascending: false });
+  if (missing(error)) return null;
+  if (error) throw error;
+  return data || [];
+}
+export async function createShare(label: string): Promise<Share> {
+  const { data, error } = await Cloud.sb!.rpc('create_share', { p_label: label });
+  if (error) throw new Error(missing(error) ? NEEDS_UPDATE : error.message);
+  return data as Share;
+}
+export async function deleteShare(token: string) {
+  const { error } = await Cloud.sb!.from('garden_shares').delete().eq('token', token);
+  return !error;
+}
+export type SharedGarden = { owner: string; name: string | null; description: string | null; theme: string | null; settings: Json; username: string | null; display_name: string | null; is_public: boolean; poems: PoemRow[] };
+export async function sharedGarden(token: string): Promise<SharedGarden | null> {
+  if (!Cloud.sb) return null;
+  const { data, error } = await Cloud.sb.rpc('shared_garden', { p_token: token });
+  if (error) return null;
+  return (data as unknown as SharedGarden) || null;
+}
+
+// ---------- visitor counts ----------
+// a visitor is a random key this browser keeps (or their account, if signed in); no names are stored
+function visitorKey() {
+  try { let k = localStorage.getItem('garden-of-poems:visitor'); if (!k) { k = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join(''); localStorage.setItem('garden-of-poems:visitor', k); } return k; } catch (e) { return ''; }
+}
+export async function recordVisit(owner: string, token?: string) {
+  if (!Cloud.sb) return;
+  const k = visitorKey(); if (!k) return;
+  try { await Cloud.sb.rpc('record_visit', { p_owner: owner, p_visitor: k, p_token: token || undefined }); } catch (e) { /* a count is a nicety */ }
+}
+export type Visits = { today: number; week: number; month: number; total: number; people: number };
+// null: not signed in, or it failed; 'update': the database does not have visitor counts yet
+export async function myVisits(): Promise<Visits | 'update' | null> {
+  if (!Cloud.sb || !Cloud.user) return null;
+  const { data, error } = await Cloud.sb.rpc('my_visits');
+  if (missing(error)) return 'update';
+  if (error) return null;
+  const r = (data && data[0]) || { today: 0, week: 0, month: 0, total: 0, people: 0 };
+  return { today: Number(r.today), week: Number(r.week), month: Number(r.month), total: Number(r.total), people: Number(r.people) };
+}
+
+// ---------- the waitlist: patrons, and printed books ----------
+export type Wish = 'patron' | 'book';
+export async function myWishes(): Promise<Set<Wish> | null> {
+  if (!Cloud.sb || !Cloud.user) return new Set();
+  const { data, error } = await Cloud.sb.from('waitlist').select('wish');
+  if (missing(error)) return null;
+  return new Set(((data || []) as { wish: Wish }[]).map(r => r.wish));
+}
+export async function setWish(wish: Wish, on: boolean) {
+  if (!Cloud.sb || !Cloud.user) return false;
+  const t = Cloud.sb.from('waitlist');
+  const { error } = on ? await t.insert({ person: Cloud.user.id, wish }) : await t.delete().eq('person', Cloud.user.id).eq('wish', wish);
+  return !error || error.code === '23505';
+}
+
+// ---------- the library: books people write ----------
+// Signed in, books live in the account (table books); otherwise on this device. null: the database has no
+// books yet (before the update), so they stay on this device for now.
+export type BookRow = Database['public']['Tables']['books']['Row'];
+export async function listBooks(owner: string): Promise<BookRow[] | null> {
+  if (!Cloud.sb) return null;
+  const { data, error } = await Cloud.sb.from('books').select('*').eq('owner', owner).order('created_at');
+  if (missing(error)) return null;
+  if (error) throw error;
+  return data || [];
+}
+export async function saveBook(b: { id: string; title: string; author: string; body: string; private: boolean }) {
+  if (!Cloud.sb || !Cloud.user) throw new Error('Sign in to keep books in your account.');
+  const { error } = await Cloud.sb.from('books').upsert({ owner: Cloud.user.id, ...b });
+  if (error) throw new Error(missing(error) ? NEEDS_UPDATE : error.message);
+}
+export async function removeBook(id: string) {
+  if (!Cloud.sb || !Cloud.user) return false;
+  const { error } = await Cloud.sb.from('books').delete().eq('owner', Cloud.user.id).eq('id', id);
+  return !error;
+}
+
+// ---------- the Hall of Paintings: paintings people hang ----------
+export type PaintingRow = Database['public']['Tables']['paintings']['Row'];
+export async function listPaintings(owner: string): Promise<PaintingRow[] | null> {
+  if (!Cloud.sb) return null;
+  const { data, error } = await Cloud.sb.from('paintings').select('*').eq('owner', owner).order('created_at');
+  if (missing(error)) return null;
+  if (error) throw error;
+  return data || [];
+}
+export async function paintingBlob(path: string): Promise<Blob | null> {
+  if (!Cloud.sb) return null;
+  const { data, error } = await Cloud.sb.storage.from('paintings').download(path);
+  return error ? null : data;
+}
+export async function savePainting(p: { id: string; title: string; artist: string; note: string; private: boolean; width: number; height: number }, file: Blob | null) {
+  if (!Cloud.sb || !Cloud.user) throw new Error('Sign in to keep paintings in your account.');
+  const path = `${Cloud.user.id}/${p.id}.jpg`;
+  if (file) { const up = await Cloud.sb.storage.from('paintings').upload(path, file, { contentType: 'image/jpeg', upsert: true }); if (up.error) throw new Error(/bucket|not found/i.test(up.error.message) ? NEEDS_UPDATE : up.error.message); }
+  const { error } = await Cloud.sb.from('paintings').upsert({ owner: Cloud.user.id, path, ...p });
+  if (error) throw new Error(missing(error) ? NEEDS_UPDATE : error.message);
+}
+export async function removePainting(id: string) {
+  if (!Cloud.sb || !Cloud.user) return false;
+  const path = `${Cloud.user.id}/${id}.jpg`;
+  const { error } = await Cloud.sb.from('paintings').delete().eq('owner', Cloud.user.id).eq('id', id);
+  if (!error) await Cloud.sb.storage.from('paintings').remove([path]);
+  return !error;
+}

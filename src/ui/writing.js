@@ -74,6 +74,7 @@ $('#e-fresh').onclick = () => { clearDraft(); eTitle.value = eBody.value = eThem
 export function openEditor(p) {
   if (state.visiting) { toast('You are visiting someone else\'s garden. Return home to write.'); return; }
   if (state.world === 'sun') { toast('Poems grow in your own garden. The white door leads home.'); return; }
+  if (state.world === 'temple' || state.world === 'shrine') { toast('Poems grow out in the garden. The door behind you leads back.'); return; }
   // writing from a swing: get off it first, and put its poems away, so no other page stays open behind this one
   if (state.swing) { late.closeSwingReader(); document.body.classList.remove('on-swing'); state.swing = null; }
   late.hideSwingUI();

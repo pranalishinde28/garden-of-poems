@@ -23,7 +23,49 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "gardens": {
+            "books": {
+                  Row: {
+                    "author": string,"body": string,"created_at": string,"id": string,"owner": string,"private": boolean,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "author"?: string,"body": string,"created_at"?: string,"id": string,"owner"?: string,"private"?: boolean,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "author"?: string,"body"?: string,"created_at"?: string,"id"?: string,"owner"?: string,"private"?: boolean,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"garden_shares": {
+                  Row: {
+                    "created_at": string,"label": string,"last_opened": string | null,"opened": number,"owner": string,"token": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"label"?: string,"last_opened"?: string | null,"opened"?: number,"owner": string,"token"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"label"?: string,"last_opened"?: string | null,"opened"?: number,"owner"?: string,"token"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"garden_visits": {
+                  Row: {
+                    "day": string,"garden_owner": string,"visitor": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "day"?: string,"garden_owner": string,"visitor": string
+                  }
+                  Update: {
+                    "day"?: string,"garden_owner"?: string,"visitor"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"gardens": {
                   Row: {
                     "description": string,"is_public": boolean,"name": string,"owner": string,"settings": NonNullable<Json>,"theme": string,"updated_at": string
                   }
@@ -95,6 +137,20 @@ isOneToOne: false
       referencedColumns: ["owner","id"]
     }
                   ]
+                },"paintings": {
+                  Row: {
+                    "artist": string,"created_at": string,"height": number,"id": string,"note": string,"owner": string,"path": string,"private": boolean,"title": string,"width": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "artist"?: string,"created_at"?: string,"height"?: number,"id": string,"note"?: string,"owner"?: string,"path": string,"private"?: boolean,"title": string,"width"?: number
+                  }
+                  Update: {
+                    "artist"?: string,"created_at"?: string,"height"?: number,"id"?: string,"note"?: string,"owner"?: string,"path"?: string,"private"?: boolean,"title"?: string,"width"?: number
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"poem_likes": {
                   Row: {
                     "created_at": string,"garden_owner": string,"liker": string,"poem_id": string
@@ -149,6 +205,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"waitlist": {
+                  Row: {
+                    "created_at": string,"person": string,"wish": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"person": string,"wish": string
+                  }
+                  Update: {
+                    "created_at"?: string,"person"?: string,"wish"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 }
           }
           Views: {
@@ -172,6 +242,21 @@ isOneToOne: true
             "change_username":
 { Args: { "new_name": string }; Returns: string
                            },
+"create_share":
+{ Args: { "p_label"?: string }; Returns: {
+              "created_at": string,
+"label": string,
+"last_opened": string | null,
+"opened": number,
+"owner": string,
+"token": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "garden_shares"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "delete_my_account":
 { Args: Record<PropertyKey, never>; Returns: undefined
                            },
@@ -193,6 +278,11 @@ isOneToOne: true
         isOneToOne: false
         isSetofReturn: true
       } },
+"my_visits":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "month": number,"people": number,"today": number,"total": number,"week": number
+            }[]
+                           },
 "only_keys":
 { Args: { "allowed": (string)[],"obj": Json }; Returns: boolean
                            },
@@ -203,6 +293,9 @@ isOneToOne: true
                            },
 "poem_visible":
 { Args: { "p_id": string,"p_owner": string }; Returns: boolean
+                           },
+"record_visit":
+{ Args: { "p_owner": string,"p_token"?: string,"p_visitor": string }; Returns: undefined
                            },
 "remove_poem":
 { Args: { "poem_id": string }; Returns: {
@@ -250,6 +343,9 @@ isOneToOne: true
       } },
 "save_poem":
 { Args: { "base"?: string,"p": Json }; Returns: Json
+                           },
+"shared_garden":
+{ Args: { "p_token": string }; Returns: Json
                            },
 "show_limit":
 { Args: Record<PropertyKey, never>; Returns: number

@@ -22,6 +22,17 @@ import { CASTLE, FAIR_RIDES, O, rides, sunH, sunScene } from './sunWorld.js';
 
 const R = rng(9191);
 export const HALL = { x: 420, z: -60, y: -90, hw: 32, hl: 88, wall: 17, vault: 32, rise: 0.5, bay: 8 };
+// bays open into hallways: on the west wall (your left as you come in through the castle's gate, facing up the
+// gallery) to the library (world/libraryHall.js); on the east wall (your right) to the Hall of Paintings
+// (world/paintingHall.js). The third bay from the entrance on each side.
+// Each opening spans two bays (16 m), with no pilaster between them.
+export const OPEN_BAY = 18, OPEN_SIDE = -1, OPENINGS = [[-1, 18, 19], [1, 18, 19]];
+export const isOpen = (side, i) => OPENINGS.some(([s, b0, b1]) => s === side && i >= b0 && i <= b1);
+// the pilaster (and candelabrum) at the boundary before bay i stands between two open bays: leave it out
+const midOpen = (side, i) => isOpen(side, i - 1) && isOpen(side, i);
+// the poems that would have hung in the open bays hang instead in bay 1 at the far end (no curtains there)
+const POEM_BAY_ALSO = 1;
+export const OPEN_Z = HALL.z - HALL.hl + (OPENINGS[0][1] + OPENINGS[0][2] + 1) / 2 * HALL.bay, OPEN_HALF = (OPENINGS[0][2] - OPENINGS[0][1] + 1) * HALL.bay / 2;
 const hall = new THREE.Group(); hall.position.set(O.x + HALL.x, O.y + HALL.y, O.z + HALL.z); hall.visible = false; sunScene.add(hall);
 const W = (x, z) => new V3(O.x + HALL.x + x, O.y + HALL.y, O.z + HALL.z + z);
 const gilt = new THREE.MeshPhongMaterial({ vertexColors: true, color: '#d8c49a', specular: '#8a6a2a', shininess: 40, emissive: '#2a1c08', emissiveIntensity: 0.6, fog: false });
@@ -128,18 +139,23 @@ const marbleTex = canvasTex(128, 512, (g, w, h) => {
 {
   const bays = Math.round(HALL.hl * 2 / HALL.bay), m = new Merge(), pil = new Merge();
   for (const [side, mirror] of [[-1, true], [1, false]]) {
-    const t = bayTex(mirror); t.repeat.set(bays, 1);
-    const wall = new THREE.Mesh(new THREE.PlaneGeometry(HALL.hl * 2, HALL.wall), new THREE.MeshLambertMaterial({ map: t, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: mirror ? 0.28 : 0.42, color: '#d8ccb4', fog: false }));
-    wall.position.set(side * HALL.hw, HALL.wall / 2, 0); wall.rotation.y = -side * Math.PI / 2; hall.add(wall);
+    // the painted wall, in runs of whole bays; on the open side it stops either side of the open bay
+    const runs = []; { let b0 = 0; for (let i = 0; i < bays; i++) if (isOpen(side, i)) { if (i > b0) runs.push([b0, i]); b0 = i + 1; } if (b0 < bays) runs.push([b0, bays]); }
+    for (const [b0, b1] of runs) {
+      const t = bayTex(mirror); t.repeat.set(b1 - b0, 1);
+      const wall = new THREE.Mesh(new THREE.PlaneGeometry((b1 - b0) * HALL.bay, HALL.wall), new THREE.MeshLambertMaterial({ map: t, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: mirror ? 0.28 : 0.42, color: '#d8ccb4', fog: false }));
+      wall.position.set(side * HALL.hw, HALL.wall / 2, -HALL.hl + (b0 + b1) / 2 * HALL.bay); wall.rotation.y = -side * Math.PI / 2; hall.add(wall);
+    }
     const x = side * HALL.hw;
     for (let i = 0; i <= bays; i++) {
       const z = -HALL.hl + i * HALL.bay;
+      if (midOpen(side, i)) continue;
       // a pilaster of red marble standing out from the wall: white marble base, gilded capital with volutes
       pil.add(GEO.box, new V3(x - side * 0.28, HALL.wall / 2 - 0.3, z), new V3(0.56, HALL.wall - 2.4, 1.5), C('#ffffff'));
       m.add(GEO.box, new V3(x - side * 0.34, 0.75, z), new V3(0.7, 1.5, 1.8), IVORY);
       m.add(GEO.box, new V3(x - side * 0.36, HALL.wall - 1.7, z), new V3(0.72, 0.9, 1.9), GOLD);
       for (const o of [-0.8, 0.8]) m.add(GEO.sph, new V3(x - side * 0.6, HALL.wall - 1.5, z + o), new V3(0.22, 0.28, 0.22), GOLD2);
-      if (i === bays) continue;
+      if (i === bays || isOpen(side, i)) continue;
       // the arch's gilded frame, a trophy of arms above it, and gilded leaves either side
       const zc = z + HALL.bay / 2, ar = 2.7 * HALL.bay / 8, spring = HALL.wall * 0.62;
       m.add(new THREE.TorusGeometry(ar, 0.16, 6, 28, Math.PI).rotateY(Math.PI / 2), new V3(x - side * 0.08, spring, zc), new V3(1, 1, 1), GOLD);
@@ -295,7 +311,7 @@ function poemTex([title, poet, year, text]) {
 export const POEM_SPOTS = [];
 {
   const m = new Merge(), bays = Math.round(HALL.hl * 2 / HALL.bay), spots = [];
-  for (const side of [-1, 1]) for (let i = 0; i < bays; i += 2) spots.push({ side, z: -HALL.hl + i * HALL.bay + HALL.bay / 2 });
+  for (const side of [-1, 1]) { for (let i = 0; i < bays; i += 2) if (!isOpen(side, i)) spots.push({ side, z: -HALL.hl + i * HALL.bay + HALL.bay / 2 }); if (OPENINGS.some(([sd, b0, b1]) => sd === side && b0 % 2 === 0)) spots.push({ side, z: -HALL.hl + POEM_BAY_ALSO * HALL.bay + HALL.bay / 2 }); }
   spots.forEach((sp, k) => {
     const P = POEMS[k % POEMS.length], t = poemTex(P), pw = 6.1, ph = 9.6, x = sp.side * (HALL.hw - 0.45), y = 6.6;
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshBasicMaterial({ map: t, color: '#ddd2ba', fog: false }));
@@ -365,7 +381,7 @@ export const POEM_SPOTS = [];
     m.add(GEO.box, new V3(cx + nx * (off + 0.05), top + 0.25, cz + nz * (off + 0.05)), new V3(Math.abs(ax) * (2 * half + 0.6) + Math.abs(nx) * 0.3, 0.4, Math.abs(az) * (2 * half + 0.6) + Math.abs(nz) * 0.3), GOLD);
     for (let k = 0; k <= 24; k++) { const u = k / 24, along = -half - 0.15 + (2 * half + 0.3) * u, sag = 0.9 + 0.8 * Math.abs(Math.sin(u * Math.PI * 2)); m.add(GEO.cone, new V3(cx + ax * along + nx * (off + 0.2), top + 0.1 - sag - 0.12, cz + az * along + nz * (off + 0.2)), new V3(0.06, 0.24, 0.06), GOLD); }
   };
-  for (const side of [-1, 1]) for (let i = 1; i < bays; i += 2) hang(side * HALL.hw, -HALL.hl + i * HALL.bay + HALL.bay / 2, 0, 1, -side, 0, 3.1, 14.6, 4.6, 0.55);
+  for (const side of [-1, 1]) for (let i = 1; i < bays; i += 2) if (!isOpen(side, i) && i !== POEM_BAY_ALSO) hang(side * HALL.hw, -HALL.hl + i * HALL.bay + HALL.bay / 2, 0, 1, -side, 0, 3.1, 14.6, 4.6, 0.55);
   // either side of the door at the south end, and the great painting at the north end
   hang(0, HALL.hl, 1, 0, 0, -1, 5.2, 11.6, 3.8, 0.7, 0.75);
   hang(0, -HALL.hl, 1, 0, 0, 1, 14, 15.2, 5.0, 0.9, 0.86);
@@ -416,29 +432,45 @@ export const POEM_SPOTS = [];
     const sh = g.createLinearGradient(0, 0, w, h); sh.addColorStop(0, 'rgba(255,230,190,.14)'); sh.addColorStop(1, 'rgba(255,230,190,0)'); g.fillStyle = sh; g.fillRect(0, 0, w, h);
   }, true);
   pt.repeat.set(HALL.hw / 4, HALL.hl / 4);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(HALL.hw * 2, HALL.hl * 2).rotateX(-Math.PI / 2), new THREE.MeshPhongMaterial({ map: pt, color: '#c8a888', shininess: 80, specular: '#4a3a28', emissive: '#100a04', fog: false }));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(HALL.hw * 2, HALL.hl * 2).rotateX(-Math.PI / 2), new THREE.MeshPhongMaterial({ map: pt, color: '#b89a7c', shininess: 30, specular: '#241c12', emissive: '#100a04', fog: false }));
   hall.add(floor);
-  for (let z = -72; z <= 72; z += 24) for (const x of [-14, 14]) { const l = new THREE.PointLight('#ffe6c0', 0.4, 60, 1.5); l.position.set(x, 14, z); hall.add(l); }
+  for (let z = -72; z <= 72; z += 24) for (const x of [-14, 14]) { const l = new THREE.PointLight('#ffe6c0', z === 0 ? 0.18 : 0.3, 60, 1.5); l.position.set(x, 14, z); hall.add(l); }
 }
 
 /* ---------- chandeliers: one great one in the middle, a row of lesser ones; candelabra, busts, benches ---------- */
 {
   const m = new Merge(), top = HALL.wall + HALL.vault * HALL.rise - 0.4;
+  // a real crystal chandelier: a gilded crown, strands of crystal falling from it to a wide ring of curved arms,
+  // each arm ending in a candle cup; under the arms a cascade of crystal drops in a rounded basket, and a crystal
+  // ball at the bottom. No cones or spikes anywhere (asked after round 62: "very pointy, deadly").
+  const drop = new THREE.LatheGeometry([[0.001, 0.0], [0.045, 0.03], [0.06, 0.08], [0.04, 0.15], [0.012, 0.2], [0.001, 0.22]].map(([r, y]) => new THREE.Vector2(r, y - 0.22)), 6);
+  const GLASS = C('#eaf2ff'), GLASS2 = C('#fff6e2');
   const chandelier = (z, S) => {
-    const y = 12.5 + (S > 2 ? -1 : 0);
-    m.limb(new V3(0, top, z), new V3(0, y + 3.4 * S, z), 0.05, 0.05, GOLD);
-    m.add(GEO.sph, new V3(0, y + 3.3 * S, z), new V3(0.35 * S, 0.35 * S, 0.35 * S), GOLD2);
-    for (const [ty, tr] of [[3.0, 0.45], [2.2, 0.85], [1.4, 1.2], [0.6, 1.0], [0, 0.55]]) {
-      const yy = y + ty * S, r = tr * S;
-      m.add(new THREE.TorusGeometry(r, 0.06 * S, 6, 32).rotateX(Math.PI / 2), new V3(0, yy, z), new V3(1, 1, 1), GOLD);
-      const n = Math.round(r * 16);
-      for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2; for (let d = 0; d < 4; d++) bulb(Math.cos(a) * r, yy - 0.15 - d * 0.22 * S, z + Math.sin(a) * r, d ? '#eef4ff' : '#fff2d0'); }
-      // candles on the widest tier
-      if (tr >= 1.2) for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; m.limb(new V3(Math.cos(a) * r, yy, z + Math.sin(a) * r), new V3(Math.cos(a) * r, yy + 0.35 * S, z + Math.sin(a) * r), 0.05 * S, 0.05 * S, C('#fffaf0')); bulb(Math.cos(a) * r, yy + 0.5 * S, z + Math.sin(a) * r, '#ffd890'); }
+    const y = 12.5 + (S > 2 ? -1 : 0), arm = 1.25 * S, armY = y + 1.0 * S, crown = y + 2.7 * S;
+    m.limb(new V3(0, top, z), new V3(0, crown + 0.4 * S, z), 0.05, 0.05, GOLD);
+    // the stem: a column of gilded knops
+    for (const [yy, r] of [[crown + 0.25 * S, 0.16], [crown - 0.5 * S, 0.12], [armY + 0.45 * S, 0.18], [armY, 0.26]]) m.add(GEO.sph, new V3(0, yy, z), new V3(r * S, r * S * 0.8, r * S), GOLD2);
+    m.limb(new V3(0, crown, z), new V3(0, armY, z), 0.06 * S, 0.08 * S, GOLD);
+    // the crown ring and the strands of crystal swagged from it out to the arms
+    m.add(new THREE.TorusGeometry(0.45 * S, 0.04 * S, 6, 24).rotateX(Math.PI / 2), new V3(0, crown, z), new V3(1, 1, 1), GOLD);
+    const NS = 12;
+    for (let k = 0; k < NS; k++) { const a = k / NS * Math.PI * 2; for (let t = 1; t < 9; t++) { const f = t / 9, rr = 0.45 * S + (arm * 0.92 - 0.45 * S) * f, yy = crown - (crown - armY - 0.15 * S) * f - Math.sin(f * Math.PI) * 0.25 * S; m.add(drop, new V3(Math.cos(a) * rr, yy, z + Math.sin(a) * rr), new V3(0.6 * S, 0.6 * S, 0.6 * S), GLASS); } }
+    // the arms: each curves out and up from the stem to its candle cup
+    const NA = 10;
+    for (let k = 0; k < NA; k++) {
+      const a = (k + 0.5) / NA * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a), p0 = new V3(c * 0.2 * S, armY - 0.1 * S, z + sn * 0.2 * S), p1 = new V3(c * arm * 0.6, armY - 0.32 * S, z + sn * arm * 0.6), p2 = new V3(c * arm, armY + 0.12 * S, z + sn * arm);
+      m.limb(p0, p1, 0.035 * S, 0.03 * S, GOLD); m.limb(p1, p2, 0.03 * S, 0.028 * S, GOLD);
+      m.add(new THREE.CylinderGeometry(0.09 * S, 0.05 * S, 0.08 * S, 10), p2.clone().add(new V3(0, 0.04 * S, 0)), new V3(1, 1, 1), GOLD2);
+      m.limb(p2.clone().add(new V3(0, 0.08 * S, 0)), p2.clone().add(new V3(0, 0.36 * S, 0)), 0.03 * S, 0.03 * S, C('#fffaf0'));
+      bulb(p2.x, p2.y + 0.46 * S, p2.z, '#ffd890');
+      // a drop hanging under each cup
+      m.add(drop, p2.clone().add(new V3(0, -0.06 * S, 0)), new V3(0.9 * S, 0.9 * S, 0.9 * S), GLASS2);
     }
-    // strings of crystal looping between the tiers, and a crystal drop at the bottom
-    for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; for (let t = 0; t <= 8; t++) { const f = t / 8, rr = (0.85 + 0.35 * Math.sin(f * Math.PI)) * S; bulb(Math.cos(a) * rr, y + (2.2 - f * 1.6) * S, z + Math.sin(a) * rr, '#f4f8ff'); } }
-    m.add(GEO.cone, new V3(0, y - 0.7 * S, z), new V3(0.35 * S, 1.2 * S, 0.35 * S), C('#eef4ff'), new THREE.Quaternion().setFromAxisAngle(new V3(1, 0, 0), Math.PI));
+    m.add(new THREE.TorusGeometry(arm * 0.6, 0.025 * S, 6, 40).rotateX(Math.PI / 2), new V3(0, armY - 0.32 * S, z), new V3(1, 1, 1), GOLD);
+    // the basket under the arms: rings of drops narrowing to a crystal ball
+    for (const [f, n] of [[0.0, 22], [0.25, 18], [0.5, 14], [0.75, 9]]) { const rr = arm * 0.55 * (1 - f * 0.8), yy = armY - 0.4 * S - f * 0.9 * S; for (let k = 0; k < n; k++) { const a = (k + f * 3) / n * Math.PI * 2; m.add(drop, new V3(Math.cos(a) * rr, yy, z + Math.sin(a) * rr), new V3(0.7 * S, 0.7 * S, 0.7 * S), GLASS); } }
+    m.add(GEO.sph, new V3(0, armY - 1.45 * S, z), new V3(0.16 * S, 0.16 * S, 0.16 * S), GLASS);
+    for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, rr = 0.55 * S; bulb(Math.cos(a) * rr, armY - 0.5 * S, z + Math.sin(a) * rr, '#f4f8ff'); }
   };
   chandelier(0, 2.6);
   for (let z = -80; z <= 80; z += 10) if (Math.abs(z) > 12) chandelier(z, 1.2);
@@ -446,6 +478,7 @@ export const POEM_SPOTS = [];
   const bays = Math.round(HALL.hl * 2 / HALL.bay);
   for (let i = 0; i <= bays; i++) for (const s of [-1, 1]) {
     const z = -HALL.hl + i * HALL.bay, x = s * (HALL.hw - 1.6);
+    if (midOpen(s, i)) continue;
     m.add(GEO.box, new V3(x, 0.7, z), new V3(1.0, 1.4, 1.0), C('#5a7a62'));
     m.add(GEO.box, new V3(x, 1.45, z), new V3(1.2, 0.12, 1.2), GOLD);
     // a gilded figure, arms raised, holding a branch of eight candles
@@ -454,7 +487,7 @@ export const POEM_SPOTS = [];
     m.limb(new V3(x, 4.2, z), new V3(x, 5.0, z), 0.08, 0.08, GOLD);
     for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, r = k % 2 ? 0.7 : 0.45, cy = 5.0 + (k % 2 ? 0 : 0.35); m.limb(new V3(x, 5.0, z), new V3(x + Math.cos(a) * r, cy, z + Math.sin(a) * r), 0.04, 0.04, GOLD); m.limb(new V3(x + Math.cos(a) * r, cy, z + Math.sin(a) * r), new V3(x + Math.cos(a) * r, cy + 0.35, z + Math.sin(a) * r), 0.05, 0.05, C('#fffaf0')); bulb(x + Math.cos(a) * r, cy + 0.5, z + Math.sin(a) * r, '#ffcf80'); }
     // busts of white marble on columns between the candelabra, and a crimson bench by every other one
-    if (i < bays && i % 2 === 1) {
+    if (i < bays && i % 2 === 1 && !isOpen(s, i) && i !== POEM_BAY_ALSO) {
       const zb = z + HALL.bay / 2, xb = s * (HALL.hw - 2.2);
       m.add(new THREE.CylinderGeometry(0.4, 0.45, 1.6, 12), new V3(xb, 0.8, zb), new V3(1, 1, 1), C('#e8e2d8'));
       m.add(GEO.sph, new V3(xb, 1.95, zb), new V3(0.42, 0.32, 0.3), C('#f2eee6'));
@@ -544,7 +577,10 @@ const TEA = FAIR_RIDES.tea, teaTop = new THREE.Group(), teaSubs = [], cups = [];
 // the drop tower: 56 metres, the tallest thing at the fair. The ring of seats creeps up for fifteen seconds,
 // hangs at the top over the whole secret garden, then falls freely for nearly three seconds before the brakes catch it
 const TOW = FAIR_RIDES.drop, H = 56, ringSeat = new THREE.Group();
-let dropY = 3;
+let dropY = 3, braking = false;
+// the fall, worked out once: from the top (50 m) it falls freely for three quarters of the way to the stopping
+// point (1 m above its rest), then the brakes take the last quarter at 3 g
+const G = 9.8, DROP = (() => { const top = H - 6, stop = 4, a = 3 * G, fall = (top - stop) * a / (a + G), v = Math.sqrt(2 * G * fall); return { top, stop, a, v, yb: top - fall, tf: v / G, tb: v / a }; })();
 {
   const gy = sunH(TOW.x, TOW.z), m = new Merge();
   m.add(new THREE.CylinderGeometry(4.2, 4.8, 1, 32), new V3(TOW.x, gy + 0.5, TOW.z), new V3(1, 1, 1), C('#efe6d2'));
@@ -563,7 +599,8 @@ let dropY = 3;
   for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2; r.add(GEO.box, new V3(Math.cos(a) * 3.2, -0.25, Math.sin(a) * 3.2), new V3(0.9, 0.2, 0.8), C('#3b78d0'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), -a)); r.add(GEO.box, new V3(Math.cos(a) * 2.8, 0.45, Math.sin(a) * 2.8), new V3(0.9, 1.3, 0.15), C('#3b78d0'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), -a + Math.PI / 2)); r.limb(new V3(Math.cos(a) * 2.75, 1.1, Math.sin(a) * 2.75), new V3(Math.cos(a) * 3.35, 0.2, Math.sin(a) * 3.35), 0.05, 0.05, C('#f2c12e')); }
   ringSeat.add(new THREE.Mesh(r.build(), toy));
   ride({ key: 'drop', label: 'Ride the drop tower', name: 'On the drop tower: hold on!', exit: exitAt(TOW.x - 6.5, TOW.z + 2),
-    seat(v) { ringSeat.localToWorld(v.set(3.4, 1.05, 0)); }, fwd(v) { const a = ringSeat.rotation.y; v.set(Math.cos(a), dropY > 40 ? -0.55 : -0.25, -Math.sin(a)); } }, ringSeat, { x: O.x + TOW.x, z: O.z + TOW.z, r: 7 });
+    // the brakes buzz through the seat as they bite
+    seat(v) { ringSeat.localToWorld(v.set(3.4, 1.05, 0)); if (braking) { v.x += (Math.random() - 0.5) * 0.05; v.y += (Math.random() - 0.5) * 0.07; } }, fwd(v) { const a = ringSeat.rotation.y; v.set(Math.cos(a), dropY > 40 ? -0.55 : -0.25, -Math.sin(a)); } }, ringSeat, { x: O.x + TOW.x, z: O.z + TOW.z, r: 7 });
 }
 // all the rides' bulbs: dim by day, bright after dark
 const fairGlow = { value: 0.15 };
@@ -579,12 +616,16 @@ addTick(() => {
   if (state.world !== 'sun') return;
   fairGlow.value = Math.max(state.night, (state.dusk || 0) * 0.6, 0.18);
   teaTop.rotation.y = T * 0.35; teaSubs.forEach((s, i) => { s.rotation.y = -T * 0.9 + i; }); cups.forEach((c, i) => { c.rotation.y = T * (1.4 + (i % 3) * 0.3); });
-  // a 26-second cycle: creep up to the top (15 s), hang there (4 s), free fall (2.6 s), brake and bounce, rest
-  const t = T % 26, top = H - 6;
-  if (t < 15) dropY = 3 + smooth(0, 15, t) * (top - 3);
-  else if (t < 19) dropY = top + Math.sin((t - 15) * 3) * 0.05;
-  else if (t < 21.6) { const f = t - 19; dropY = Math.max(10, top - 0.5 * 9.8 * f * f); }
-  else if (t < 23) { const f = (t - 21.6) / 1.4; dropY = 10 - 7 * smooth(0, 1, f) + Math.sin(f * 9) * (1 - f) * 0.6; }
+  // a 26-second cycle: creep up to the top (15 s) and hang there (4 s); then a true free fall, at g, for about
+  // 2.7 s, until magnetic brakes take the ring at about 3 g and slow it, smoothly, to a stop 1 m above the
+  // platform, where it settles. Position and speed never jump, so there is no jolt at the bottom.
+  const t = T % 26, d = DROP;
+  braking = false;
+  if (t < 15) dropY = 3 + smooth(0, 15, t) * (d.top - 3);
+  else if (t < 19) dropY = d.top + Math.sin((t - 15) * 3) * 0.05;
+  else if (t < 19 + d.tf) { const f = t - 19; dropY = d.top - 0.5 * G * f * f; }
+  else if (t < 19 + d.tf + d.tb) { const f = t - 19 - d.tf; dropY = d.yb - d.v * f + 0.5 * d.a * f * f; braking = true; }
+  else if (t < 19 + d.tf + d.tb + 1.6) dropY = d.stop - (d.stop - 3) * smooth(0, 1.6, t - 19 - d.tf - d.tb);
   else dropY = 3;
   ringSeat.position.y = sunH(TOW.x, TOW.z) + dropY; if (t < 19) ringSeat.rotation.y = T * 0.12;
 });
@@ -600,6 +641,11 @@ addTick(() => {
       return b(x, z);
     }
     const lx = x - O.x - HALL.x, lz = z - O.z - HALL.z;
+    // through the open bay the way runs on into the hallway (libraryHall.js takes over there)
+    if (OPENINGS.some(([sd, b0, b1]) => lx * sd > 0 && Math.abs(lz - (-HALL.hl + (b0 + b1 + 1) / 2 * HALL.bay)) < (b1 - b0 + 1) * HALL.bay / 2 - 0.8) && Math.abs(lz) < HALL.hl - 1.4) return false;
     return Math.abs(lx) > HALL.hw - 2.9 || Math.abs(lz) > HALL.hl - 1.4;
   };
 }
+
+// the painting helpers and the hall itself, for the library (world/library.js)
+export { artTex, cover, img, frame, baroque, loadArt, hall };

@@ -163,6 +163,116 @@ select throws_ok($$update public.profiles set avatar = '{"kind":"cat","coat":"pl
 select lives_ok($$update public.profiles set avatar = '{"outfit":"kimono","skin":"#d9a77f","height":1.02}' where id = auth.uid()$$, 'a valid avatar saves');
 select throws_ok($$insert into public.poems (owner, id, title, content, mood) values (auth.uid(), 'odd', 'Odd', 'x', 'furious')$$, '23514', null, 'moods are known values');
 
+-- ---------- private links: a private garden opened for whoever holds the link ----------
+reset role;
+update public.gardens set is_public = false where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$select create_share('For my sister')$$, 'the poet makes a private link');
+select is((select count(*) from public.garden_shares), 1::bigint, 'the poet sees their own link');
+select is((select char_length(token) from public.garden_shares limit 1), 24, 'a link is 24 random characters');
+reset role;
+create temp table t_share as select token from public.garden_shares where owner = '00000000-0000-0000-0000-0000000000a1';
+grant select on t_share to anon, authenticated;
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select is((select count(*) from public.garden_shares), 0::bigint, 'nobody else can list a poet''s links');
+select throws_ok($$insert into public.garden_shares (owner) values ('00000000-0000-0000-0000-0000000000b2')$$, '42501', null, 'links are made only through create_share');
+select pg_temp.as_anon();
+select is(shared_garden('not-a-real-link-at-all00'), null, 'a made-up link opens nothing');
+select is((select shared_garden(token)->>'name' from t_share), 'A quiet garden', 'the link opens the private garden''s sign');
+select is((select jsonb_path_exists(shared_garden(token)->'poems', '$[*] ? (@.id == "secret")') from t_share), false, 'the link never shows a private poem');
+select is((select count(*) from public.poems where owner = '00000000-0000-0000-0000-0000000000a1'), 0::bigint, 'the link does not open the poems table itself');
+reset role;
+select is((select jsonb_array_length(shared_garden(token)->'poems') from t_share), (select count(*)::int from public.poems where owner = '00000000-0000-0000-0000-0000000000a1' and not private and deleted_at is null), 'and it shows every poem that is not private');
+update public.garden_shares set opened = 0;
+select pg_temp.as_anon();
+select shared_garden(token) from t_share;
+select shared_garden(token) from t_share;
+select throws_ok($$select create_share('x')$$, '42501', null, 'anonymous visitors cannot make links');
+reset role;
+select is((select opened from public.garden_shares where owner = '00000000-0000-0000-0000-0000000000a1'), 2, 'each opening is counted');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+delete from public.garden_shares;
+select pg_temp.as_anon();
+select is((select shared_garden(token) from t_share), null, 'a withdrawn link opens nothing');
+
+-- ---------- visitor counts: anonymous, public or shared gardens only, never your own walks ----------
+reset role;
+select pg_temp.as_anon();
+select lives_ok($$select record_visit('00000000-0000-0000-0000-0000000000a1', 'browser-key-one')$$, 'a visit to a private garden without a link is ignored, quietly');
+reset role;
+select is((select count(*) from public.garden_visits where garden_owner = '00000000-0000-0000-0000-0000000000a1'), 0::bigint, 'so nothing was counted');
+update public.gardens set is_public = true where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_anon();
+select record_visit('00000000-0000-0000-0000-0000000000a1', 'browser-key-one');
+select record_visit('00000000-0000-0000-0000-0000000000a1', 'browser-key-one');
+select record_visit('00000000-0000-0000-0000-0000000000a1', 'browser-key-two');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select record_visit('00000000-0000-0000-0000-0000000000a1', 'ignored-for-accounts');
+select record_visit('00000000-0000-0000-0000-0000000000a1', 'another-key-same-person');
+select is((select count(*) from public.garden_visits), 0::bigint, 'nobody reads the visit rows directly');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select record_visit('00000000-0000-0000-0000-0000000000a1', 'my-own-walk-key');
+select results_eq($$select today, week, month, total, people from my_visits()$$, $$values (3::bigint, 3::bigint, 3::bigint, 3::bigint, 3::bigint)$$, 'the poet sees three visitors today: two browsers and one account, counted once each, and not their own walk');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select results_eq($$select total from my_visits()$$, $$values (0::bigint)$$, 'others see only their own garden''s visits');
+select pg_temp.as_anon();
+select throws_ok($$select * from my_visits()$$, '42501', null, 'anonymous visitors see no counts');
+
+-- ---------- the waitlist ----------
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select lives_ok($$insert into public.waitlist (person, wish) values ('00000000-0000-0000-0000-0000000000b2', 'patron')$$, 'a person joins the patrons'' list');
+select throws_ok($$insert into public.waitlist (person, wish) values ('00000000-0000-0000-0000-0000000000c3', 'book')$$, '42501', null, 'not in someone else''s name');
+select throws_ok($$insert into public.waitlist (person, wish) values ('00000000-0000-0000-0000-0000000000b2', 'yacht')$$, '23514', null, 'only known wishes');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c3');
+select is((select count(*) from public.waitlist), 0::bigint, 'nobody sees another person''s wishes');
+reset role;
+
+-- ---------- the library: your books, and a public garden's shared books ----------
+reset role;
+update public.gardens set is_public = false where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$insert into public.books (id, title, author, body) values ('b1', 'My First Book', 'Ada', 'Once, in a garden…')$$, 'a poet writes a book');
+select lives_ok($$insert into public.books (id, title, body, private) values ('b2', 'Diary', 'only mine', true)$$, 'and a private one');
+select throws_ok($$insert into public.books (owner, id, title, body) values ('00000000-0000-0000-0000-0000000000b2', 'x', 'Forged', 'x')$$, '42501', null, 'not in someone else''s name');
+select throws_ok($$insert into public.books (id, title, body) values ('b3', '   ', 'x')$$, '23514', null, 'a book needs a title');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select is((select count(*) from public.books where owner = '00000000-0000-0000-0000-0000000000a1'), 0::bigint, 'a private garden''s books stay hidden');
+reset role;
+update public.gardens set is_public = true where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_anon();
+select results_eq($$select id from public.books where owner = '00000000-0000-0000-0000-0000000000a1'$$, $$values ('b1')$$, 'a public garden shows its books, never a private one');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+update public.books set title = 'Taken' where owner = '00000000-0000-0000-0000-0000000000a1';
+delete from public.books where owner = '00000000-0000-0000-0000-0000000000a1';
+reset role;
+select is((select title from public.books where id = 'b1'), 'My First Book', 'nobody else changes or removes a book');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$update public.books set body = 'Once, in a garden, a tree grew.' where id = 'b1'$$, 'the writer revises it');
+select lives_ok($$delete from public.books where id = 'b2'$$, 'and takes one off the shelf');
+reset role;
+
+-- ---------- the Hall of Paintings: your paintings, and a public garden's shared ones ----------
+reset role;
+update public.gardens set is_public = false where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$insert into public.paintings (id, title, artist, path) values ('p1', 'Dawn', 'Ada', '00000000-0000-0000-0000-0000000000a1/p1.jpg')$$, 'a painter hangs a painting');
+select lives_ok($$insert into public.paintings (id, title, path, private) values ('p2', 'Sketch', '00000000-0000-0000-0000-0000000000a1/p2.jpg', true)$$, 'and a private one');
+select throws_ok($$insert into public.paintings (id, title, path) values ('p3', 'Elsewhere', 'someone/p3.jpg')$$, '23514', null, 'a picture lives only in its painter''s own folder');
+select throws_ok($$insert into public.paintings (owner, id, title, path) values ('00000000-0000-0000-0000-0000000000b2', 'x', 'Forged', '00000000-0000-0000-0000-0000000000b2/x.jpg')$$, '42501', null, 'not in someone else''s name');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select is((select count(*) from public.paintings where owner = '00000000-0000-0000-0000-0000000000a1'), 0::bigint, 'a private garden''s paintings stay hidden');
+reset role;
+update public.gardens set is_public = true where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_anon();
+select results_eq($$select id from public.paintings where owner = '00000000-0000-0000-0000-0000000000a1'$$, $$values ('p1')$$, 'a public garden shows its paintings, never a private one');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+delete from public.paintings where owner = '00000000-0000-0000-0000-0000000000a1';
+reset role;
+select is((select count(*) from public.paintings where owner = '00000000-0000-0000-0000-0000000000a1'), 2::bigint, 'nobody else takes them down');
+select ok(exists (select 1 from storage.buckets where id = 'paintings' and not public), 'the pictures are kept in a private bucket');
+-- the accounts tests below run as Ada, as the library's block left them
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+
 -- ---------- accounts ----------
 select is(username_available('bob'), false, 'a taken username is not available');
 select is(username_available('ada_two'), true, 'a free username is available');

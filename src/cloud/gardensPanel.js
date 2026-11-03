@@ -1,7 +1,7 @@
-import { $, siteURL } from '../core/util.js';
+import { $, gardenURL, shareURL, siteURL } from '../core/util.js';
 import { toast } from '../ui/helpers.js';
 import { closePanel, openPanel } from '../ui/reading.js';
-import { Cloud, NEEDS_UPDATE, db, changeUsername, deleteAccount, exportGarden, listGardens, ownPoems, removedPoems, restoreRemoved, saveGardenSettings, suggestedGardens, syncNow, usernameAvailable } from './cloud.ts';
+import { Cloud, NEEDS_UPDATE, db, changeUsername, createShare, deleteAccount, deleteShare, exportGarden, listGardens, listShares, myVisits, ownPoems, removedPoems, restoreRemoved, saveGardenSettings, suggestedGardens, syncNow, usernameAvailable } from './cloud.ts';
 import { state } from '../core/state.js';
 import { captchaOn, mountCaptcha, resetCaptcha } from './captcha.js';
 import { late, provide } from '../core/late.js';
@@ -102,8 +102,10 @@ function renderAccount() {
   $('#g-mine').hidden = false;
   $('#g-status').textContent = g.is_public ? 'Your garden is public. Anyone can walk through it and read the poems you have not kept private.' : 'Your garden is private. Only you can see it.';
   $('#g-toggle').textContent = g.is_public ? 'Make my garden private' : 'Make my garden public';
-  $('#g-copy').hidden = !(g.is_public && p.username);
-  renderRemoved(); renderAcct();
+  // its address: …/garden-of-poems/username, shown once it is open to visitors
+  $('#g-address').hidden = !(g.is_public && p.username);
+  if (p.username) $('#g-addr-url').textContent = gardenURL(p.username).replace(/^https?:\/\//, '');
+  renderRemoved(); renderAcct(); renderVisits(); renderShares();
 }
 
 // ---- recently removed: bring a poem back within 30 days ----
@@ -152,10 +154,52 @@ $('#g-toggle').onclick = async () => {
   if (await saveGardenSettings({ is_public: pub })) toast(pub ? 'Your garden is open to visitors now.' : 'Your garden is private again.');
   renderAccount();
 };
-$('#g-copy').onclick = async () => {
-  const url = siteURL() + '?garden=' + encodeURIComponent(Cloud.profile.username);
-  try { await navigator.clipboard.writeText(url); toast('The link to your garden is copied.'); } catch (e) { prompt('Copy the link to your garden:', url); }
+const copy = async (url, said, ask) => { try { await navigator.clipboard.writeText(url); toast(said); } catch (e) { prompt(ask, url); } };
+$('#g-copy').onclick = () => copy(gardenURL(Cloud.profile.username), 'Your garden\u2019s address is copied.', 'Copy your garden\u2019s address:');
+
+// ---- visitors: counted without names; shown as a quiet line ----
+async function renderVisits() {
+  const box = $('#g-visits'); box.textContent = 'Counting…';
+  const v = await myVisits();
+  if (v === 'update') { box.textContent = NEEDS_UPDATE; return; }
+  if (!v) { box.textContent = 'The visitors could not be counted just now.'; return; }
+  const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+  if (!v.total) { box.textContent = Cloud.garden && Cloud.garden.is_public ? 'No visitors yet. Share your garden\u2019s address, and they will come.' : 'No visitors yet. They are counted once your garden is public, or opened by a private link.'; return; }
+  box.innerHTML = '';
+  const row = el('div', 'g-visits');
+  [[v.today, 'today'], [v.week, 'this week'], [v.month, 'this month'], [v.total, 'in all']].forEach(([k, l]) => { const c = el('div', 'g-vc'); c.append(el('b', '', String(k)), el('span', '', l)); row.append(c); });
+  box.append(row, el('p', 'g-m', `${n(v.people, 'person has', 'people have')} walked here. Each visitor counts once a day; no names are kept.`));
+}
+
+// ---- private links: share a garden with chosen people, even while it is private ----
+async function renderShares() {
+  const box = $('#g-shares'); box.textContent = '';
+  let rows; try { rows = await listShares(); } catch (e) { rows = []; }
+  const make = $('#g-share-make'); make.disabled = rows === null;
+  if (rows === null) { box.append(el('p', 'g-m', NEEDS_UPDATE)); return; }
+  rows.forEach(r => {
+    const row = el('div', 'g-row'), t = el('div', 'g-t');
+    const made = new Date(r.created_at).toLocaleDateString('en', { day: 'numeric', month: 'short' });
+    t.append(el('div', 'g-n', r.label || 'A private link'), el('div', 'g-m', `opened ${r.opened} time${r.opened === 1 ? '' : 's'} \u00b7 made ${made}`));
+    const acts = el('div', 'g-acts'), c = el('button', 'g-chip', 'Copy'), w = el('button', 'g-chip quiet', 'Withdraw');
+    c.onclick = () => copy(shareURL(r.token), 'The private link is copied.', 'Copy the private link:');
+    w.onclick = async () => { w.disabled = true; if (await deleteShare(r.token)) { row.remove(); toast('That link no longer opens your garden.'); } else w.disabled = false; };
+    acts.append(c, w); row.append(t, acts); box.append(row);
+  });
+}
+$('#g-share-make').onclick = async () => {
+  const b = $('#g-share-make'), input = $('#g-share-label'); b.disabled = true;
+  try {
+    if (!ownPoems().some(p => !p.private)) { toast('Write a poem first (or plant the samples), so there is something to read.'); return; }
+    await syncNow();
+    const r = await createShare(input.value); input.value = '';
+    await copy(shareURL(r.token), 'A private link is made and copied. Send it to whoever you choose.', 'Your private link:');
+    renderShares();
+  } catch (e) { toast(e.message || 'That did not work. Try again.'); }
+  finally { b.disabled = false; }
 };
+$('#g-book').onclick = () => { closeGardens(); late.openBook && late.openBook(); };
+$('#g-patron').onclick = () => { closeGardens(); late.openPatron && late.openPatron(); };
 let lastGarden = null, gq = '';
 async function loadGardens(more) {
   const list = $('#g-list'), empty = $('#g-empty'), moreBtn = $('#g-morelist');

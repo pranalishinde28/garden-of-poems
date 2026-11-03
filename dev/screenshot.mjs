@@ -122,6 +122,7 @@ const VIEWS = {
   'gorge-deck': { pos: [68.5, 1.8, 8.2], look: [119, 10, 14.4], season: 'spring' },
   'gorge-in': { pos: [96.8, 3, 15.7], look: [145.6, 12, 12.2], season: 'spring' },
   'gorge-in-autumn': { pos: [96.8, 3, 15.7], look: [145.6, 12, 12.2], season: 'autumn' },
+  'gorge-ridge-autumn': { pos: [74, 2.2, 0], look: [100, 6, -16], season: 'autumn' },
   'gorge-in-night': { pos: [96.8, 3, 15.7], look: [145.6, 12, 12.2], season: 'spring', light: 'night' },
   'gorge-high': { pos: [40, 34, -14], look: [130, 8, 22], season: 'spring' },
   'gorge-bird': { pos: [55, 70, -60], look: [150, 0, 30], season: 'spring' },
@@ -322,6 +323,84 @@ async function main() {
       } console.log(`  walked in, rides all started; walked back out: ${outside}`); if (!outside) errors.push('walking to the door did not take you out');
       if (!/castle/i.test(cue)) errors.push('no castle cue at the gate');
     }
+    else if (FLOW === 'temple') { // walk up to the pagoda, step in, the hall, the dome, the sanctum, the Buddha, a candle, and out
+      const shot = async n => { await sleep(500); await page.screenshot({ path: join(root, `dev/shots/temple-${n}.png`) }); };
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); });
+      await page.evaluate(() => { const g = window.__garden, d = g.worlds.temple.doors[1], o = d.out.pos; g.setAvatar && g.setAvatar({ kind: 'bird' }); g.player.pos.set(o.x, 0, o.z); g.player.alt = 2.5; g.player.cruise = 2.5; g.player.flying = true; g.player.yaw = d.out.yaw + Math.PI; g.player.pitch = 0.18; });
+      await sleep(1800); await shot('pagoda');
+      const cue = await page.$eval('#cue', e => e.textContent.trim()); await page.keyboard.press('KeyE');
+      await page.waitForFunction(() => window.__garden.state.world === 'temple' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 }).catch(() => {});
+      await sleep(3500); await shot('entry');
+      const at = async (n, x, z, yaw, pitch) => { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden, O = g.worlds.temple.arrive.pos; g.player.pos.set(O.x + x, 0, O.z - 21.4 + z); g.player.yaw = yaw; g.player.pitch = pitch; }, x, z, yaw, pitch); await sleep(1500); await shot(n); };
+      await at('hall', -8, 24, -0.25, 0.05); await at('dome', 0, 12, 0, 1.25); await at('mandala', 0, 19.5, 0, -0.5); await at('pillar', -4.5, 9, 0.9, 0.2);
+      await at('arch', 0, 7, 0, 0.12); await at('sanctum', 0, -4, 0, 0.18); await at('buddha', 0, -12, 0, 0.32); await at('buddha-side', -7.5, -15.5, -0.62, 0.28);
+      await at('face', 0, -15.6, 0, 0.42); await at('chandelier', 3, -12, 0.4, 0.55); await at('back', 0, -12, Math.PI, 0.08);
+      await page.evaluate(() => { const g = window.__garden, O = g.worlds.temple.arrive.pos; g.player.pos.set(O.x, 0, O.z - 21.4 - 15.6); g.player.yaw = 0; g.player.pitch = 0.2; }); await sleep(1200);
+      const ccue = await page.$eval('#cue', e => e.textContent.trim()); for (let i = 0; i < 6; i++) { await page.keyboard.press('KeyE'); await sleep(300); } await shot('candles');
+      await page.evaluate(() => { const g = window.__garden, O = g.worlds.temple.arrive.pos; g.player.pos.set(O.x, 0, O.z + 2.4); g.player.yaw = Math.PI; }); await sleep(1200);
+      const ocue = await page.$eval('#cue', e => e.textContent.trim()); await page.keyboard.press('KeyE');
+      await page.waitForFunction(() => window.__garden.state.world === 'garden' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 }).catch(() => {});
+      await sleep(2600); await sleep(3000); await shot('out');
+      const back = await page.evaluate(() => window.__garden.state.world);
+      console.log(`  door cue "${cue}", candle cue "${ccue}", way-out cue "${ocue}", after: ${back}`);
+      if (!/inside the pagoda/i.test(cue) || !/candle/i.test(ccue) || !/outside/i.test(ocue) || back !== 'garden') errors.push('the temple walk failed');
+    }
+    else if (FLOW === 'shrine') { // the garden's pagoda opens onto the Japanese shrine: the hall, the lanterns, the ceiling, the altar, the bell, the drum, out
+      const shot = async n => { await sleep(500); await page.screenshot({ path: join(root, `dev/shots/shrine-${n}.png`) }); };
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); });
+      await page.evaluate(() => { const g = window.__garden, d = g.worlds.temple.doors[0], o = d.out.pos; g.player.pos.set(o.x, 0, o.z); g.player.yaw = d.out.yaw + Math.PI; g.player.pitch = 0.1; });
+      await sleep(1500); await page.keyboard.press('KeyE');
+      await page.waitForFunction(() => window.__garden.state.world === 'shrine' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 }).catch(() => {});
+      await sleep(3500); await shot('entry');
+      const at = async (n, x, z, yaw, pitch) => { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden, O = g.worlds.shrine.arrive.pos; g.player.pos.set(O.x + x, 0, O.z - 8.8 + z); g.player.yaw = yaw; g.player.pitch = pitch; }, x, z, yaw, pitch); await sleep(1500); await shot(n); };
+      await at('hall', -8, 11.5, -0.35, 0.12); await at('lanterns', -2.5, 6, 0.7, 0.3); await at('ceiling', 0, 0, 0, 1.3); await at('altar', 0, -3, 0, 0.12); await at('altar-near', 1.5, -6.6, 0.1, 0.18); await at('side', 9.5, -5.5, 0.9, 0.08);
+      await page.evaluate(() => { const g = window.__garden, O = g.worlds.shrine.arrive.pos; g.player.pos.set(O.x, 0, O.z - 8.8 - 7.2); g.player.yaw = 0; g.player.pitch = 0.2; }); await sleep(1000);
+      const bcue = await page.$eval('#cue', e => e.textContent.trim()); await page.keyboard.press('KeyE'); await sleep(900); await shot('bell');
+      await page.evaluate(() => { const g = window.__garden, O = g.worlds.shrine.arrive.pos; g.player.pos.set(O.x + 6.1, 0, O.z - 8.8 - 7.0); g.player.yaw = 0.3; g.player.pitch = 0.1; }); await sleep(1000);
+      const dcue = await page.$eval('#cue', e => e.textContent.trim());
+      await page.evaluate(() => { const g = window.__garden, O = g.worlds.shrine.arrive.pos; g.player.pos.set(O.x, 0, O.z + 2.6); g.player.yaw = Math.PI; }); await sleep(1200);
+      const ocue = await page.$eval('#cue', e => e.textContent.trim()); await page.keyboard.press('KeyE');
+      await page.waitForFunction(() => window.__garden.state.world === 'garden' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 }).catch(() => {});
+      const back = await page.evaluate(() => window.__garden.state.world);
+      console.log(`  bell cue "${bcue}", drum cue "${dcue}", way-out cue "${ocue}", after: ${back}`);
+      if (!/bell/i.test(bcue) || !/taiko/i.test(dcue) || !/outside/i.test(ocue) || back !== 'garden') errors.push('the shrine walk failed');
+    }
+    else if (FLOW === 'gallery') { // the Hall of Paintings: both walls, the vault, the salon of your own
+      const shot = async n => { await sleep(500); await page.screenshot({ path: join(root, `dev/shots/gallery-${n}.png`) }); };
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); window.__garden.late.enterSunWorld(); });
+      await page.waitForFunction(() => window.__garden.state.world === 'sun' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 });
+      await sleep(1500); await page.evaluate(() => { window.__garden.late.enterHallFromMap(); });
+      await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.camera.position.y < -50, { timeout: 30000, polling: 300 }); await sleep(2500);
+      const at = async (n, x, z, yaw, pitch) => { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden, G = g.GAL, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + G.x + x, 0, O.z - 34.8 + G.z + z); g.player.yaw = yaw; g.player.pitch = pitch; }, x, z, yaw, pitch); await sleep(2500); await shot(n); };
+      const G = await page.evaluate(() => ({ L: window.__garden.GAL.L, hw: window.__garden.GAL.hw }));
+      await at('long', 3, 0, -Math.PI / 2, 0.12); await at('north', G.L * 0.35, G.hw - 7, 0, 0.32); await at('south', G.L * 0.35, -G.hw + 7, Math.PI, 0.32);
+      await at('north2', G.L * 0.6, G.hw - 7, 0, 0.32); await at('dome', 120, 3.5, -Math.PI / 2, 1.35); await at('crossing', 98, 0, -Math.PI / 2, 0.22); await at('salon', G.L - 20, 0, -Math.PI / 2, 0.2); await at('salon-near', G.L - 7, 0, -Math.PI / 2, 0.3); await at('statue', 31, 3.2, -0.9, 0.32); await at('statue-side', 38.5, -2.5, 2.2, 0.32); await at('vault-up', 30, 0, -Math.PI / 2, 0.9); await at('last-bay', 100, -G.hw + 6, Math.PI, 0.2);
+    }
+    else if (FLOW === 'library') { // the library's statues, a whole famous book read deep into; the Hall of Mirrors' chandeliers
+      const shot = async n => { await sleep(500); await page.screenshot({ path: join(root, `dev/shots/library-${n}.png`) }); };
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); window.__garden.late.enterSunWorld(); });
+      await page.waitForFunction(() => window.__garden.state.world === 'sun' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 }); await sleep(1500);
+      await page.evaluate(() => window.__garden.late.enterLibraryFromMap()); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.camera.position.y < -50, { timeout: 30000, polling: 300 }); await sleep(2500);
+      const p0 = await page.evaluate(() => { const p = window.__garden.player.pos; return [p.x, p.z]; });
+      const at = async (n, dx, dz, yaw, pitch) => { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden; g.player.pos.set(x, 0, z); g.player.yaw = yaw; g.player.pitch = pitch; }, p0[0] + dx, p0[1] + dz, yaw, pitch); await sleep(1800); await shot(n); };
+      await at('statue', 0, -8, 0, 0.12); await at('statue-near', 3, -10.5, 0.6, 0.18); await at('statue-small', -4, -9, 1.2, 0.1);
+      await page.evaluate(() => window.__garden.late.openLibrary()); await sleep(1500);
+      await page.evaluate(() => [...document.querySelectorAll('.lb-spine')].find(b => /Pride/.test(b.textContent)).click()); await sleep(4000); await shot('book');
+      for (let i = 0; i < 14; i++) { await page.keyboard.press('ArrowRight'); await sleep(420); }
+      await sleep(800); await shot('book-on');
+      await page.evaluate(() => { const s = document.querySelector('#lb-seek'); s.value = String(Math.round(+s.max * 0.95)); s.dispatchEvent(new Event('input')); }); await sleep(1200); await shot('book-end');
+      const info = await page.evaluate(() => [document.querySelector('#lb-pg').textContent, document.querySelector('#lb-seek').max, document.querySelector('#lb-flow').textContent.length]);
+      console.log('  book:', info.join(' | ')); if (+info[1] < 20) errors.push('the whole book did not load');
+      await page.keyboard.press('Escape'); await sleep(500); await page.keyboard.press('Escape'); await sleep(800);
+      await page.evaluate(() => window.__garden.late.enterHallFromMap()); await sleep(5000);
+      await page.evaluate(() => { const g = window.__garden; g.player.yaw = 0; g.player.pitch = 0.32; }); await sleep(1500); await shot('hall');
+      await page.evaluate(() => { const g = window.__garden, p = g.player.pos; p.z -= 66; g.player.pitch = 0.5; }); await sleep(1500); await shot('chandelier');
+      await page.evaluate(() => { const g = window.__garden, p = g.player.pos; p.z -= 6; g.player.pitch = -0.2; }); await sleep(1500); await shot('floor');
+    }
     else if (FLOW === 'sunmap') { // the secret world's map: open with M, go to the drop tower, then the Hall of Mirrors; and running
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); });
@@ -335,13 +414,33 @@ async function main() {
       console.log(`  sprinted ${sprinted.toFixed(1)} m; pace ${pace}`); if (pace !== 2 || sprinted < ran * 1.4) errors.push('a second tap of Shift did not sprint');
       await page.keyboard.press('ShiftLeft'); await sleep(300); if (await page.evaluate(() => window.__garden.state.pace) !== 0) errors.push('a third tap of Shift did not go back to walking');
       await page.evaluate(() => window.__garden.late.enterSunWorld()); await page.waitForFunction(() => window.__garden.state.world === 'sun' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 }); await sleep(2500);
+      // the corner map: facing the castle (north on the plan is the field), then turned east
+      for (const [n, yaw] of [['n', 0], ['e', -Math.PI / 2]]) { await page.evaluate(y => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + 4, 0, O.z - 40); g.player.yaw = y; }, yaw); await sleep(900); await page.screenshot({ path: join(root, `dev/shots/sunmap-corner-${n}.png`) }); }
+      // the lawn, close and wide
+      for (const [n, x, z, yaw, pitch] of [['lawn', -45, 45, 1.0, -0.25], ['lawn-wide', 50, 45, -1.2, -0.06], ['lawn-west', -70, -42, 0.3, -0.12], ['field-east', 36, 36, 0.15, -0.25], ['field-west', -40, 36, -0.4, -0.15]]) { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + x, 0, O.z - 34.8 + z); g.player.yaw = yaw; g.player.pitch = pitch; }, x, z, yaw, pitch); await sleep(1200); await page.screenshot({ path: join(root, `dev/shots/sun-${n}.png`) }); }
+      // from above, as a bird: the whole field to the woods
+      await page.evaluate(() => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.setAvatar({ kind: 'bird' }); g.player.pos.set(O.x + 30, 0, O.z - 34.8 + 40); g.player.alt = 14; g.player.cruise = 14; g.player.flying = true; g.player.yaw = 0.35; g.player.pitch = -0.55; }); await sleep(2500); await page.screenshot({ path: join(root, 'dev/shots/sun-field-above.png') });
+      await page.evaluate(() => { const g = window.__garden; g.player.alt = 0; g.player.cruise = 0; g.player.flying = false; g.setAvatar({ kind: 'girl' }); }); await sleep(800);
+      // the Thunder Bowl: seen from the deck, then ridden: in the tube, in the bowl, falling through
+      await page.evaluate(() => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + 50, 0, O.z - 34.8 - 42); g.player.yaw = -2.2; g.player.pitch = 0.22; }); await sleep(1800); await page.screenshot({ path: join(root, 'dev/shots/bowl.png') });
+      await page.evaluate(() => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + 60, 0, O.z - 34.8 - 90); g.player.yaw = -2.6; g.player.pitch = 0.3; }); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/bowl-2.png') });
+      for (const [n, x, z, yaw, pitch] of [['names-fair', 0, -30, 0, 0.18], ['names-park', 20, -40, -1.2, 0.15], ['names-bowl', 48, -20, -2.2, 0.2], ['bowl-board', 47, -52, -1.57, 0.12]]) { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + x, 0, O.z - 34.8 + z); g.player.yaw = yaw; g.player.pitch = pitch; }, x, z, yaw, pitch); await sleep(1500); await page.screenshot({ path: join(root, `dev/shots/${n}.png`) }); }
+      await page.evaluate(() => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + 76, 0, O.z - 34.8 - 71); g.player.yaw = Math.PI - 0.35; g.player.pitch = 0.3; }); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/bowl-chute.png') });
+      await page.evaluate(() => { const g = window.__garden; g.state.mode = 'walk'; g.late.startRide(g.rides.find(r => r.key === 'bowl')); });
+      const bowlLog = [];
+      for (const [n, w] of [['tube', 5000], ['tube-2', 7000], ['in', 1500], ['in-2', 2000], ['in-3', 2000], ['in-4', 2000]]) { await sleep(w); await page.screenshot({ path: join(root, `dev/shots/bowl-ride-${n}.png`) }); bowlLog.push(await page.evaluate(() => { const b = window.__garden.late.bowlState; return b ? `${b.phase} s${b.s.toFixed(1)} v${b.v.toFixed(1)} swing${(b.phi * 57.3).toFixed(0)}°` : '?'; })); }
+      for (let i = 0; i < 20; i++) { await sleep(500); const ph = await page.evaluate(() => window.__garden.late.bowlState.phase); if (ph === 'splash' || ph === 'float') break; }
+      await page.screenshot({ path: join(root, 'dev/shots/bowl-ride-pool.png') }); bowlLog.push(await page.evaluate(() => window.__garden.late.bowlState.phase));
+      console.log('  thunder bowl:', bowlLog.join(' | ')); if (!/splash|float/.test(bowlLog[bowlLog.length - 1])) errors.push('the Thunder Bowl ride did not reach the pool');
+      await page.click('#ride-off'); await sleep(800);
+      const cornerOn = await page.evaluate(() => !document.querySelector('#minimap-btn').hidden && getComputedStyle(document.querySelector('#minimap-btn')).display !== 'none'); if (!cornerOn) errors.push('no corner map in the secret world');
       await page.keyboard.press('KeyM'); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/sunmap.png') });
-      const n = await page.$$eval('#sm-marks .sm-place', b => b.length); if (n < 10) errors.push('the secret map has too few places: ' + n);
-      await page.evaluate(() => [...document.querySelectorAll('#sm-marks .sm-place')].find(b => /drop tower/i.test(b.textContent)).click());
+      const n = await page.$$eval('#map-marks .map-place', b => b.length); if (n < 10) errors.push('the secret map has too few places: ' + n);
+      await page.evaluate(() => [...document.querySelectorAll('#map-marks .map-place')].find(b => /drop tower/i.test(b.textContent)).click());
       await sleep(3500); await page.screenshot({ path: join(root, 'dev/shots/sunmap-went.png') });
       const cue = await page.$eval('#cue', e => e.textContent.trim()); if (!/drop tower/i.test(cue)) errors.push('the map did not take you to the drop tower: ' + cue);
       await page.keyboard.press('KeyM'); await sleep(1200);
-      await page.evaluate(() => [...document.querySelectorAll('#sm-marks .sm-place')].find(b => /Hall of Mirrors/i.test(b.textContent)).click());
+      await page.evaluate(() => [...document.querySelectorAll('#map-marks .map-place')].find(b => /Hall of Mirrors/i.test(b.textContent)).click());
       await sleep(4500); const inside = await page.evaluate(() => window.__garden.camera.position.y < -50);
       console.log(`  map places: ${n}; at the tower the cue says "${cue}"; Hall of Mirrors from the map: ${inside}`); if (!inside) errors.push('the map did not take you into the hall');
     }

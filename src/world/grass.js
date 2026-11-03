@@ -10,7 +10,7 @@ import { BENCH, inTulip, stoneNear } from './paths.js';
 export const grassChunks = [];
 const wildflowers = { m: null };
 export const trampleU = { uPlayer: { value: new V3(0, 0, -999) } };
-export let grassMat;
+export let grassMat, grassGeo; // the tuft and its material are shared with the secret world's lawn (sunWorld.js)
 (function buildGrass() {
   const R0 = rng(5), pos = [], col = [], nrm = [], idx = [];
   const base = C('#3f5a2c'), mid = C('#71894a'), tip = C('#bcc48e'), dry = C('#b9ae78'); let vo = 0;
@@ -29,6 +29,7 @@ export let grassMat;
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
   g.setIndex(idx); g.boundingSphere = new THREE.Sphere(new V3(0, 0.5, 0), 17);
+  grassGeo = g;
   grassMat = windify(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.12, 'blade');
   // the grass bends down where you walk (trampleU.uPlayer follows you; core/loop.js)
   const wind = grassMat.onBeforeCompile;

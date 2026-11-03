@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Garden of Poems</title>
+<script>
+// GitHub Pages serves this page for any address that is not a file. A garden's own address
+// (…/garden-of-poems/deep) and a private link (…/garden-of-poems/s/<token>) are sent on to the app,
+// which shows the short address again in the address bar.
+(function () {
+  var parts = location.pathname.split('/').filter(Boolean);
+  var base = /\.github\.io$/.test(location.hostname) ? '/' + (parts.shift() || '') + '/' : '/';
+  var rest = parts.join('/'), to = base;
+  var m = /^s\/([A-Za-z0-9_-]{16,40})$/.exec(rest);
+  if (m) to = base + '?share=' + m[1];
+  else if (/^[A-Za-z0-9_]{3,24}$/.test(rest)) to = base + '?garden=' + rest.toLowerCase();
+  location.replace(to);
+})();
+</script>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#1c2622;color:#efe9dc;font:italic 1.3rem Georgia,serif}</style>
+</head><body><p>Finding the garden…</p></body></html>

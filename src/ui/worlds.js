@@ -2,16 +2,17 @@ import { $, V3 } from '../core/util.js';
 import { addTick } from '../core/things.js';
 import { isTyping, jv, keys } from './input.js';
 import { castleFront, hallArrive, showHall } from '../world/castleHall.js';
+import { libArrive, showLibrary } from '../world/libraryHall.js';
 import { state } from '../core/state.js';
 import { camera, renderer, scene, view } from '../world/renderer.js';
-import { worlds } from '../core/worlds.js';
+import { indoors, worlds } from '../core/worlds.js';
 import { LOOKOUT } from '../world/gorge.js';
 import { curLook, floorH, player } from '../player/camera.js';
-import { moveFigureTo } from '../player/figure.js';
+import { getAvatar, moveFigureTo } from '../player/figure.js';
 import { setCue, showRegion, toast } from './helpers.js';
 import { late, provide } from '../core/late.js';
 
-provide({ get hopTo() { return hopTo; }, get enterHallFromMap() { return enterHallFromMap; }, get enterHall() { return enterHall; }, get leaveHall() { return leaveHall; }, get startRide() { return startRide; }, get enterSunWorld() { return enterSunWorld; }, get leaveSunWorld() { return leaveSunWorld; }, get setVeil() { return setVeil; } });
+provide({ get hopTo() { return hopTo; }, get enterHallFromMap() { return enterHallFromMap; }, get enterLibraryFromMap() { return enterLibraryFromMap; }, get enterHall() { return enterHall; }, get leaveHall() { return leaveHall; }, get startRide() { return startRide; }, get enterSunWorld() { return enterSunWorld; }, get leaveSunWorld() { return leaveSunWorld; }, get setVeil() { return setVeil; }, get enterTemple() { return enterTemple; }, get leaveTemple() { return leaveTemple; } });
 
 /* ================= between worlds ================= */
 // Rowing into the light at the end of the cave behind Manai Falls carries you to the Sunflower Garden;
@@ -63,14 +64,14 @@ function leaveSunWorld() {
 // "Step off" or Esc sets you down beside the ride.
 const rideUI = $('#rideui');
 let ride = null, head = 0;
-const seat = new V3(), prev = new V3(), fwd = new V3();
+const seat = new V3(), prev = new V3(), fwd = new V3(), look = new V3();
 function startRide(r) {
   if (state.mode !== 'walk' || state.world !== 'sun') return;
   late.closePops && late.closePops(); setCue(null);
-  ride = r; r.board && r.board(); r.seat(prev);
+  ride = r; r.board && r.board(); r.seat(prev); look.ok = false;
   head = r.yaw0 !== undefined ? r.yaw0 : player.yaw; player.yaw = 0; player.pitch = r.fwd ? 0 : -0.05;
   state.mode = 'ride';
-  $('#ride-name').textContent = r.name; rideUI.hidden = false; requestAnimationFrame(() => rideUI.classList.add('show'));
+  $('#ride-name').textContent = r.name; $('#rideui .sw-hint').textContent = r.hint || 'drag to look around'; rideUI.hidden = false; requestAnimationFrame(() => rideUI.classList.add('show'));
   $('#ride-off').focus({ preventScroll: true });
 }
 function stopRide() {
@@ -84,7 +85,8 @@ addTick(dt => {
   // a ride you drive (the bumper cars) reads the keys or the joystick
   if (ride.drive) { let ix = jv.x, iz = jv.y; if (keys.has('KeyW') || keys.has('ArrowUp')) iz += 1; if (keys.has('KeyS') || keys.has('ArrowDown')) iz -= 1; if (keys.has('KeyA') || keys.has('ArrowLeft')) ix -= 1; if (keys.has('KeyD') || keys.has('ArrowRight')) ix += 1; ride.ix = Math.max(-1, Math.min(1, ix)); ride.iz = Math.max(-1, Math.min(1, iz)); }
   ride.seat(seat); camera.position.copy(seat);
-  if (ride.fwd) { ride.fwd(fwd); curLook.copy(seat).addScaledVector(fwd, 10); curLook.y -= 0.35; camera.lookAt(curLook); }
+  // the way you look follows the ride's direction gently, so a ride that turns sharply never jerks the view
+  if (ride.fwd) { ride.fwd(fwd); if (!look.ok || prev.distanceToSquared(seat) > 25) look.copy(fwd); else look.lerp(fwd, 1 - Math.exp(-dt * 5)).normalize(); look.ok = true; curLook.copy(seat).addScaledVector(look, 10); curLook.y -= 0.35; camera.lookAt(curLook); }
   else {
     if (ride.follow && dt > 0) {
       const vx = (seat.x - prev.x) / dt, vz = (seat.z - prev.z) / dt;
@@ -107,6 +109,13 @@ function enterHall() {
   cross('Through the castle doors…', () => { showHall(true); place(hallArrive.pos, hallArrive.yaw); },
     () => showRegion({ name: 'The Hall of Mirrors', sub: 'Walk the gallery. The door at the far end leads back out to the fair.' }));
 }
+// from the secret map: straight into the library (on foot, it is down the hallway from the Hall of Mirrors)
+function enterLibrary() {
+  if (state.world !== 'sun' || state.mode !== 'walk') return;
+  cross('Into the library…', () => { showLibrary(true); place(libArrive.pos, libArrive.yaw); },
+    () => showRegion({ name: 'The Library', sub: 'Go up to the shelves to read, or sit at the desk to write a book of your own. The hallway leads back to the Hall of Mirrors.' }));
+}
+function enterLibraryFromMap() { if (state.world !== 'sun') return; state.mode = 'walk'; enterLibrary(); }
 function leaveHall() {
   if (state.mode !== 'walk') return;
   cross('Back out under the sky…', () => { showHall(false); place(castleFront.pos, castleFront.yaw); });
@@ -117,6 +126,31 @@ function hopTo(pos, yaw, name) {
   if (state.world !== 'sun') return;
   state.mode = 'cinematic'; setCue(null); veil.querySelector('.t').textContent = name || ''; veil.hidden = false;
   requestAnimationFrame(() => veil.classList.add('on'));
-  setTimeout(() => { showHall(false); place(pos, yaw); state.mode = 'walk'; setTimeout(() => { veil.classList.remove('on'); setTimeout(() => { if (!veil.classList.contains('on')) veil.hidden = true; }, 1800); }, 300); }, 1300);
+  setTimeout(() => { showHall(false); showLibrary(false); place(pos, yaw); state.mode = 'walk'; setTimeout(() => { veil.classList.remove('on'); setTimeout(() => { if (!veil.classList.contains('on')) veil.hidden = true; }, 1800); }, 300); }, 1300);
 }
 function enterHallFromMap() { if (state.world !== 'sun') return; state.mode = 'walk'; enterHall(); }
+
+/* ================= through a pagoda's door into the temple, and out again ================= */
+// The garden's pagoda opens onto a Japanese shrine (world/shrineInterior.js), the two on the hills onto the
+// Buddha's temple (world/templeInterior.js); you come out of the one you went in by.
+// A bird that flew in to a pagoda on the hills comes out flying.
+let templeFrom = null;
+function enterTemple(door) {
+  if (state.mode !== 'walk' || indoors()) return;
+  templeFrom = door; const w = worlds[door.world || 'temple'];
+  cross('Through the pagoda’s doors…', () => {
+    w.enter(); view.scene = w.scene; state.world = door.world || 'temple'; document.body.classList.add('otherworld');
+    moveFigureTo(w.scene); renderer.setClearColor(w.scene.background);
+    place(w.arrive.pos, w.arrive.yaw);
+  }, () => showRegion({ name: w.name, sub: w.sub }));
+}
+function leaveTemple() {
+  if (!indoors() || state.mode !== 'walk') return;
+  cross('Back out under the sky…', () => {
+    worlds[state.world].leave(); view.scene = scene; state.world = 'garden'; document.body.classList.remove('otherworld');
+    moveFigureTo(scene); renderer.setClearColor(scene.fog.color);
+    const o = templeFrom ? templeFrom.out : { pos: new V3(41, 0, -25), yaw: 0 };
+    place(o.pos, o.yaw);
+    if (templeFrom && templeFrom.far && getAvatar().kind === 'bird') { player.alt = 3; player.cruise = 3; player.flying = true; }
+  });
+}
