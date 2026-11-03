@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { museFigure } from './buddha.js';
 import { C, V3, rng } from '../core/util.js';
 import { state, T } from '../core/state.js';
 import { canvasTex } from './textures.js';
@@ -220,22 +221,16 @@ const desk = new THREE.Group();
   m.add(GEO.box, new V3(0, 1.4, 0), new V3(2.4, 2.0, 2.0), C('#3a3a30'));
   m.add(GEO.box, new V3(0, 2.5, 0), new V3(2.7, 0.25, 2.3), CREAM);
   m.add(GEO.box, new V3(0, 1.4, 1.02), new V3(1.4, 0.9, 0.04), GOLD);
-  const W = C('#f4f0e8'), W2 = C('#e6e0d4');
-  for (const sx of [-0.22, 0.22]) m.limb(new V3(sx, 2.65, 0), new V3(sx * 0.9, 3.9, 0), 0.2, 0.17, W);
-  m.add(GEO.cone, new V3(0, 4.2, 0), new V3(0.72, 0.9, 0.55), W2, new THREE.Quaternion().setFromAxisAngle(new V3(1, 0, 0), Math.PI));
-  m.limb(new V3(0, 4.3, 0), new V3(0, 5.2, 0), 0.45, 0.4, W);
-  m.add(GEO.cone, new V3(0, 3.6, -0.3), new V3(0.85, 2.6, 0.45), W2);
-  m.add(GEO.sph, new V3(0, 5.6, 0), new V3(0.3, 0.36, 0.3), W);
-  m.add(GEO.sph, new V3(0, 5.75, -0.08), new V3(0.34, 0.32, 0.32), W2);
-  m.limb(new V3(0.42, 5.0, 0), new V3(0.95, 4.65, 0.55), 0.13, 0.11, W); m.limb(new V3(0.95, 4.65, 0.55), new V3(1.25, 4.6, 1.05), 0.11, 0.09, W);
-  m.limb(new V3(-0.42, 5.0, 0), new V3(-0.62, 4.2, 0.15), 0.13, 0.11, W);
-  // four smaller statues round the dome
+  // the statues themselves are sculpted (world/buddha.js), set on the pedestals below
+  // four smaller statues round the dome, on white pedestals
+  const spots = [[0, 2.62, 0, 3.3, 0]]; // facing the plaque and the way in
   for (let k = 0; k < 4; k++) {
     const a = Math.PI / 4 + k * Math.PI / 2, x = Math.cos(a) * (LIB.rx - 4.2), z = Math.sin(a) * (LIB.rz - 3.6);
-    m.add(GEO.box, new V3(x, 0.7, z), new V3(1.1, 1.4, 1.1), C('#e8e0d0'));
-    m.limb(new V3(x, 1.4, z), new V3(x, 3.1, z), 0.38, 0.3, W); m.add(GEO.sph, new V3(x, 3.4, z), new V3(0.24, 0.28, 0.24), W);
-    m.add(GEO.cone, new V3(x, 2.0, z), new V3(0.55, 1.4, 0.55), W2);
+    m.add(GEO.box, new V3(x, 0.7, z), new V3(1.1, 1.4, 1.1), C('#e8e0d0')); m.add(GEO.box, new V3(x, 1.42, z), new V3(1.25, 0.08, 1.25), CREAM);
+    spots.push([x, 1.46, z, 2.1, Math.atan2(-x, -z)]);
   }
+  { const marbleM = new THREE.MeshPhongMaterial({ color: '#f1ece2', specular: '#ffffff', shininess: 26, emissive: '#6a655c', emissiveIntensity: 0.5, fog: false }), fig = museFigure();
+    spots.forEach(([x, y, z, sc, yaw], i) => { const st = new THREE.Mesh(fig, marbleM); st.scale.set(sc * (i % 2 ? -1 : 1), sc, sc); st.position.set(x, y, z); st.rotation.y = yaw; lib.add(st); }); }
   // display cases down the wings: walnut stands, a glass lid, an old book open inside
   for (const e of [-1, 1]) for (const zz of [18, 26, 33]) for (const sx of [-1, 1]) {
     const x = sx * 2.7, z = e * zz;

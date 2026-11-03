@@ -432,29 +432,45 @@ export const POEM_SPOTS = [];
     const sh = g.createLinearGradient(0, 0, w, h); sh.addColorStop(0, 'rgba(255,230,190,.14)'); sh.addColorStop(1, 'rgba(255,230,190,0)'); g.fillStyle = sh; g.fillRect(0, 0, w, h);
   }, true);
   pt.repeat.set(HALL.hw / 4, HALL.hl / 4);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(HALL.hw * 2, HALL.hl * 2).rotateX(-Math.PI / 2), new THREE.MeshPhongMaterial({ map: pt, color: '#c8a888', shininess: 80, specular: '#4a3a28', emissive: '#100a04', fog: false }));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(HALL.hw * 2, HALL.hl * 2).rotateX(-Math.PI / 2), new THREE.MeshPhongMaterial({ map: pt, color: '#b89a7c', shininess: 30, specular: '#241c12', emissive: '#100a04', fog: false }));
   hall.add(floor);
-  for (let z = -72; z <= 72; z += 24) for (const x of [-14, 14]) { const l = new THREE.PointLight('#ffe6c0', 0.4, 60, 1.5); l.position.set(x, 14, z); hall.add(l); }
+  for (let z = -72; z <= 72; z += 24) for (const x of [-14, 14]) { const l = new THREE.PointLight('#ffe6c0', z === 0 ? 0.18 : 0.3, 60, 1.5); l.position.set(x, 14, z); hall.add(l); }
 }
 
 /* ---------- chandeliers: one great one in the middle, a row of lesser ones; candelabra, busts, benches ---------- */
 {
   const m = new Merge(), top = HALL.wall + HALL.vault * HALL.rise - 0.4;
+  // a real crystal chandelier: a gilded crown, strands of crystal falling from it to a wide ring of curved arms,
+  // each arm ending in a candle cup; under the arms a cascade of crystal drops in a rounded basket, and a crystal
+  // ball at the bottom. No cones or spikes anywhere (asked after round 62: "very pointy, deadly").
+  const drop = new THREE.LatheGeometry([[0.001, 0.0], [0.045, 0.03], [0.06, 0.08], [0.04, 0.15], [0.012, 0.2], [0.001, 0.22]].map(([r, y]) => new THREE.Vector2(r, y - 0.22)), 6);
+  const GLASS = C('#eaf2ff'), GLASS2 = C('#fff6e2');
   const chandelier = (z, S) => {
-    const y = 12.5 + (S > 2 ? -1 : 0);
-    m.limb(new V3(0, top, z), new V3(0, y + 3.4 * S, z), 0.05, 0.05, GOLD);
-    m.add(GEO.sph, new V3(0, y + 3.3 * S, z), new V3(0.35 * S, 0.35 * S, 0.35 * S), GOLD2);
-    for (const [ty, tr] of [[3.0, 0.45], [2.2, 0.85], [1.4, 1.2], [0.6, 1.0], [0, 0.55]]) {
-      const yy = y + ty * S, r = tr * S;
-      m.add(new THREE.TorusGeometry(r, 0.06 * S, 6, 32).rotateX(Math.PI / 2), new V3(0, yy, z), new V3(1, 1, 1), GOLD);
-      const n = Math.round(r * 16);
-      for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2; for (let d = 0; d < 4; d++) bulb(Math.cos(a) * r, yy - 0.15 - d * 0.22 * S, z + Math.sin(a) * r, d ? '#eef4ff' : '#fff2d0'); }
-      // candles on the widest tier
-      if (tr >= 1.2) for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; m.limb(new V3(Math.cos(a) * r, yy, z + Math.sin(a) * r), new V3(Math.cos(a) * r, yy + 0.35 * S, z + Math.sin(a) * r), 0.05 * S, 0.05 * S, C('#fffaf0')); bulb(Math.cos(a) * r, yy + 0.5 * S, z + Math.sin(a) * r, '#ffd890'); }
+    const y = 12.5 + (S > 2 ? -1 : 0), arm = 1.25 * S, armY = y + 1.0 * S, crown = y + 2.7 * S;
+    m.limb(new V3(0, top, z), new V3(0, crown + 0.4 * S, z), 0.05, 0.05, GOLD);
+    // the stem: a column of gilded knops
+    for (const [yy, r] of [[crown + 0.25 * S, 0.16], [crown - 0.5 * S, 0.12], [armY + 0.45 * S, 0.18], [armY, 0.26]]) m.add(GEO.sph, new V3(0, yy, z), new V3(r * S, r * S * 0.8, r * S), GOLD2);
+    m.limb(new V3(0, crown, z), new V3(0, armY, z), 0.06 * S, 0.08 * S, GOLD);
+    // the crown ring and the strands of crystal swagged from it out to the arms
+    m.add(new THREE.TorusGeometry(0.45 * S, 0.04 * S, 6, 24).rotateX(Math.PI / 2), new V3(0, crown, z), new V3(1, 1, 1), GOLD);
+    const NS = 12;
+    for (let k = 0; k < NS; k++) { const a = k / NS * Math.PI * 2; for (let t = 1; t < 9; t++) { const f = t / 9, rr = 0.45 * S + (arm * 0.92 - 0.45 * S) * f, yy = crown - (crown - armY - 0.15 * S) * f - Math.sin(f * Math.PI) * 0.25 * S; m.add(drop, new V3(Math.cos(a) * rr, yy, z + Math.sin(a) * rr), new V3(0.6 * S, 0.6 * S, 0.6 * S), GLASS); } }
+    // the arms: each curves out and up from the stem to its candle cup
+    const NA = 10;
+    for (let k = 0; k < NA; k++) {
+      const a = (k + 0.5) / NA * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a), p0 = new V3(c * 0.2 * S, armY - 0.1 * S, z + sn * 0.2 * S), p1 = new V3(c * arm * 0.6, armY - 0.32 * S, z + sn * arm * 0.6), p2 = new V3(c * arm, armY + 0.12 * S, z + sn * arm);
+      m.limb(p0, p1, 0.035 * S, 0.03 * S, GOLD); m.limb(p1, p2, 0.03 * S, 0.028 * S, GOLD);
+      m.add(new THREE.CylinderGeometry(0.09 * S, 0.05 * S, 0.08 * S, 10), p2.clone().add(new V3(0, 0.04 * S, 0)), new V3(1, 1, 1), GOLD2);
+      m.limb(p2.clone().add(new V3(0, 0.08 * S, 0)), p2.clone().add(new V3(0, 0.36 * S, 0)), 0.03 * S, 0.03 * S, C('#fffaf0'));
+      bulb(p2.x, p2.y + 0.46 * S, p2.z, '#ffd890');
+      // a drop hanging under each cup
+      m.add(drop, p2.clone().add(new V3(0, -0.06 * S, 0)), new V3(0.9 * S, 0.9 * S, 0.9 * S), GLASS2);
     }
-    // strings of crystal looping between the tiers, and a crystal drop at the bottom
-    for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; for (let t = 0; t <= 8; t++) { const f = t / 8, rr = (0.85 + 0.35 * Math.sin(f * Math.PI)) * S; bulb(Math.cos(a) * rr, y + (2.2 - f * 1.6) * S, z + Math.sin(a) * rr, '#f4f8ff'); } }
-    m.add(GEO.cone, new V3(0, y - 0.7 * S, z), new V3(0.35 * S, 1.2 * S, 0.35 * S), C('#eef4ff'), new THREE.Quaternion().setFromAxisAngle(new V3(1, 0, 0), Math.PI));
+    m.add(new THREE.TorusGeometry(arm * 0.6, 0.025 * S, 6, 40).rotateX(Math.PI / 2), new V3(0, armY - 0.32 * S, z), new V3(1, 1, 1), GOLD);
+    // the basket under the arms: rings of drops narrowing to a crystal ball
+    for (const [f, n] of [[0.0, 22], [0.25, 18], [0.5, 14], [0.75, 9]]) { const rr = arm * 0.55 * (1 - f * 0.8), yy = armY - 0.4 * S - f * 0.9 * S; for (let k = 0; k < n; k++) { const a = (k + f * 3) / n * Math.PI * 2; m.add(drop, new V3(Math.cos(a) * rr, yy, z + Math.sin(a) * rr), new V3(0.7 * S, 0.7 * S, 0.7 * S), GLASS); } }
+    m.add(GEO.sph, new V3(0, armY - 1.45 * S, z), new V3(0.16 * S, 0.16 * S, 0.16 * S), GLASS);
+    for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, rr = 0.55 * S; bulb(Math.cos(a) * rr, armY - 0.5 * S, z + Math.sin(a) * rr, '#f4f8ff'); }
   };
   chandelier(0, 2.6);
   for (let z = -80; z <= 80; z += 10) if (Math.abs(z) > 12) chandelier(z, 1.2);

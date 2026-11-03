@@ -980,11 +980,13 @@ body.panel-open #run-btn{opacity:0;pointer-events:none}
 .lb-btn.quiet{opacity:.8}
 /* an open book: a leather binding, two cream pages, a shadow down the spine, a leaf that turns */
 #lb-open{display:flex;flex-direction:column;align-items:center;gap:.7rem;padding:0 1rem 1.6rem}
-.lb-bar,.lb-nav{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;justify-content:center;width:min(1100px,96vw)}
+.lb-bar,.lb-nav{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;justify-content:center;width:min(1320px,97vw)}
+#lb-seek{width:min(760px,90vw);accent-color:#c9a040}
+#lb-seek[hidden]{display:none}
 .lb-bt{flex:1;text-align:center;font-size:1.15rem}.lb-bt i{opacity:.75}
-.lb-book{position:relative;width:min(1100px,96vw);height:min(72vh,720px);padding:18px;box-sizing:border-box;border-radius:10px;background:linear-gradient(135deg,#5a1e16,#3a120c);box-shadow:0 30px 70px rgba(0,0,0,.6),inset 0 0 0 3px #b8902e,inset 0 0 0 6px #3a120c;perspective:2000px}
+.lb-book{position:relative;width:min(1320px,97vw);height:min(80vh,880px);padding:18px;box-sizing:border-box;border-radius:10px;background:linear-gradient(135deg,#5a1e16,#3a120c);box-shadow:0 30px 70px rgba(0,0,0,.6),inset 0 0 0 3px #b8902e,inset 0 0 0 6px #3a120c;perspective:2000px}
 .lb-pages{position:relative;width:100%;height:100%;overflow:hidden;border-radius:3px;background:linear-gradient(90deg,#efe2c2 0%,#f8efd8 8%,#fbf5e6 46%,#d8c8a4 50%,#fbf5e6 54%,#f8efd8 92%,#efe2c2 100%);box-shadow:inset 0 0 30px rgba(120,80,30,.25)}
-#lb-flow{height:100%;box-sizing:border-box;padding:2.4rem 0;column-gap:6rem;column-fill:auto;transition:transform .01s;color:#2a1c0c;font-family:"Cormorant Garamond",Georgia,serif;font-size:clamp(1.15rem,1.6vw,1.38rem);line-height:1.6;font-weight:500}
+#lb-flow{height:100%;box-sizing:border-box;padding:2.4rem 0;column-gap:6rem;column-fill:auto;transition:transform .01s;color:#2a1c0c;font-family:"Cormorant Garamond",Georgia,serif;font-size:clamp(1.08rem,1.3vw,1.26rem);line-height:1.55;font-weight:500}
 #lb-flow p{margin:0 3rem .9em;text-indent:1.4em;text-align:justify;hyphens:auto}
 #lb-flow .lb-title-page{break-after:column;height:calc(100% - .1px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 2rem}
 #lb-flow .lb-title-page p{text-indent:0;text-align:center;margin:.3rem 0}

@@ -1,7 +1,10 @@
 /* ================= the library's famous books: the opening pages of public-domain classics ================= */
-// All in the public domain (published before 1929 in the US; translations too). Each carries its opening pages;
-// the whole book is free at Project Gutenberg (the link under the book). [title, author, year, cover colour, text]
+// All in the public domain (published before 1929 in the US; translations too). Each is read in full here (the
+// text is fetched from public/books when opened); the opening pages below show while it loads. [title, author, year, cover colour, text]
 const Q = s => s;
+// the whole book, as plain text in public/books (CREDITS.md there), fetched when the book is opened; the opening
+// pages below show at once and stand in if the fetch fails
+const FILES = ['pride-and-prejudice', 'alice', 'secret-garden', 'two-cities', 'moby-dick', 'jane-eyre', 'little-women', 'happy-prince', 'gitanjali', 'peter-pan', 'frankenstein', 'walden', 'meditations'];
 export const FAMOUS = [
   ['Pride and Prejudice', 'Jane Austen', 1813, '#7a2e2a', Q(`It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.
 
@@ -101,5 +104,5 @@ You will rejoice to hear that no disaster has accompanied the commencement of an
 I am already far north of London, and as I walk in the streets of Petersburgh, I feel a cold northern breeze play upon my cheeks, which braces my nerves and fills me with delight.`)],
   ['Walden', 'Henry David Thoreau', 1854, '#5a6a3a', Q(`I went to the woods because I wished to live deliberately, to front only the essential facts of life, and see if I could not learn what it had to teach, and not, when I came to die, discover that I had not lived. I did not wish to live what was not life, living is so dear; nor did I wish to practise resignation, unless it was quite necessary. I wanted to live deep and suck out all the marrow of life.`)],
   ['Meditations', 'Marcus Aurelius (tr. George Long, 1862)', '170', '#6a4a2a', Q(`Begin the morning by saying to thyself, I shall meet with the busy-body, the ungrateful, arrogant, deceitful, envious, unsocial. All these things happen to them by reason of their ignorance of what is good and evil.`)],
-].map(([title, author, year, color, text]) => ({ id: 'f:' + title, title, author, year, color, text, famous: true }));
+].map(([title, author, year, color, text], i) => ({ id: 'f:' + title, title, author, year, color, text, famous: true, file: FILES[i] }));
 export const gutenberg = b => 'https://www.gutenberg.org/ebooks/search/?query=' + encodeURIComponent(b.title + ' ' + b.author.replace(/\s*\(.*\)/, ''));

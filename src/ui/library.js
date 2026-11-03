@@ -1,4 +1,4 @@
-import { $, uid } from '../core/util.js';
+import { $, siteURL, uid } from '../core/util.js';
 import { state } from '../core/state.js';
 import { toast } from './helpers.js';
 import { keys } from './input.js';
@@ -60,7 +60,7 @@ function shelf(title, sub, list, empty, extra) {
 async function renderShelves() {
   view = 'shelves'; shelvesEl.hidden = false; openEl.hidden = true; writeEl.hidden = true;
   shelvesEl.innerHTML = '';
-  shelvesEl.append(shelf('Famous books', 'The opening pages of each, to read here; the whole book is free online.', FAMOUS, ''));
+  shelvesEl.append(shelf('Famous books', 'Each one whole, to read here from the first page to the last.', FAMOUS, ''));
   const loading = shelf(state.visiting ? `${state.visiting.by}’s shelf` : 'Your shelf', '', [], 'Finding your books…');
   shelvesEl.append(loading);
   mine = await loadMine();
@@ -70,15 +70,36 @@ async function renderShelves() {
   loading.replaceWith(shelf(state.visiting ? `${state.visiting.by}’s shelf` : 'Your shelf', sub, mine, state.visiting ? 'No books here yet.' : 'Nothing on your shelf yet.', add));
 }
 
-// ---- an open book: the text flows into columns two pages wide; a turn moves on two pages ----
-const flow = $('#lb-flow'), leaf = $('#lb-leaf');
+// ---- an open book: whole books are read here, so the text is laid out a part at a time ----
+// The paragraphs are grouped into parts of about 20,000 characters; the open part flows into columns two pages
+// wide and a turn moves on two pages; turning past the last spread opens the next part (and back). The slider
+// under the book goes anywhere in it; where you stopped in each book is remembered on this device.
+const flow = $('#lb-flow'), leaf = $('#lb-leaf'), seek = $('#lb-seek'), PART = 20000, MARK = 'garden-of-poems:bookmark:';
+const fullText = {};
+let parts = [], part = 0, partStart = [], total = 1;
+const mark = { get(id) { try { return JSON.parse(localStorage.getItem(MARK + id) || 'null'); } catch (e) { return null; } }, set(id, v) { try { localStorage.setItem(MARK + id, JSON.stringify(v)); } catch (e) { /* no storage */ } } };
+function split(text) {
+  const ps = text.replace(/\r/g, '').split(/\n{2,}/).filter(p => p.trim()); parts = []; partStart = []; let cur = [], n = 0, at = 0;
+  for (const p of ps) { cur.push(p); n += p.length; if (n >= PART) { parts.push(cur); partStart.push(at); at += n; cur = []; n = 0; } }
+  if (cur.length || !parts.length) { parts.push(cur); partStart.push(at); at += n; }
+  total = Math.max(1, at);
+}
+function renderPart() {
+  const b = book, last = part === parts.length - 1;
+  const html = parts[part].map(p => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
+  flow.innerHTML = (part === 0 ? `<div class="lb-title-page"><span class="orn">✿</span><h2>${esc(b.title)}</h2>${b.author ? `<p class="by">${esc(b.author)}</p>` : ''}${b.year ? `<p class="yr">${esc(b.year)}</p>` : ''}${b.loading ? '<p class="note">the whole book is on its way…</p>' : ''}</div>` : '') + html + (last ? '<p class="lb-end">✿ ✿ ✿</p>' : '');
+  measure();
+}
 function openBook(b) {
   book = b; view = 'book'; shelvesEl.hidden = true; writeEl.hidden = true; openEl.hidden = false;
   $('#lb-btitle').textContent = b.title; $('#lb-bby').textContent = [b.author, b.year].filter(Boolean).join(', ');
-  const paras = b.text.replace(/\r/g, '').split(/\n{2,}/).map(p => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
-  flow.innerHTML = `<div class="lb-title-page"><span class="orn">✿</span><h2>${esc(b.title)}</h2>${b.author ? `<p class="by">${esc(b.author)}</p>` : ''}${b.year ? `<p class="yr">${esc(b.year)}</p>` : ''}${b.famous ? '<p class="note">the opening pages</p>' : ''}</div>${paras}${b.famous ? `<p class="lb-end">· · ·</p><p class="lb-more">The book goes on. Read all of it, free, at <a href="${gutenberg(b)}" target="_blank" rel="noopener">Project Gutenberg</a>.</p>` : '<p class="lb-end">· · ·</p>'}`;
   $('#lb-edit').hidden = $('#lb-remove').hidden = !b.own;
-  spread = 0; requestAnimationFrame(() => { measure(); show(); });
+  const begin = text => { split(text); seek.max = String(parts.length - 1); seek.hidden = parts.length < 2; const m = mark.get(b.id); part = m && m.part < parts.length ? m.part : 0; spread = m && m.part < parts.length ? m.spread : 0; requestAnimationFrame(() => { renderPart(); show(); }); };
+  if (b.famous && b.file && !fullText[b.file]) {
+    b.loading = true; begin(b.text);
+    fetch(siteURL() + 'books/' + b.file + '.txt').then(r => r.ok ? r.text() : Promise.reject(r.status)).then(t => { fullText[b.file] = t; b.loading = false; if (book === b && view === 'book') begin(t); })
+      .catch(() => { b.loading = false; if (book === b) toast('The whole book could not be fetched just now; here are its opening pages.', 4200); });
+  } else begin(b.famous && b.file ? fullText[b.file] : b.text);
 }
 function measure() {
   const pw = flow.parentElement.clientWidth, gap = parseFloat(getComputedStyle(flow).columnGap) || 0;
@@ -87,17 +108,29 @@ function measure() {
 }
 function show() {
   const pw = flow.parentElement.clientWidth, gap = parseFloat(getComputedStyle(flow).columnGap) || 0, last = Math.max(0, Math.ceil(pages / 2) - 1);
+  if (spread < 0) spread = last; // came back from the next part: its last spread
   spread = Math.max(0, Math.min(spread, last));
   flow.style.transform = `translateX(${-spread * (pw + gap)}px)`;
-  $('#lb-pg').textContent = `pages ${spread * 2 + 1}–${Math.min(pages, spread * 2 + 2)} of ${pages}`;
-  $('#lb-prev').disabled = spread === 0; $('#lb-next').disabled = spread >= last;
+  const len = parts[part].reduce((n, p) => n + p.length, 0), pct = Math.min(100, Math.round((partStart[part] + len * (spread + 1) / (last + 1)) / total * 100));
+  $('#lb-pg').textContent = parts.length > 1 ? `${pct}% through` + (book.loading ? ' · the rest is on its way' : '') : `pages ${spread * 2 + 1}–${Math.min(pages, spread * 2 + 2)} of ${pages}`;
+  seek.value = String(part);
+  $('#lb-prev').disabled = spread === 0 && part === 0; $('#lb-next').disabled = spread >= last && part === parts.length - 1;
+  if (!book.loading) mark.set(book.id, { part, spread });
 }
 function turn(dir) {
-  const last = Math.max(0, Math.ceil(pages / 2) - 1); if ((dir > 0 && spread >= last) || (dir < 0 && spread <= 0)) return;
+  const last = Math.max(0, Math.ceil(pages / 2) - 1);
+  if (dir > 0 && spread >= last && part >= parts.length - 1) return;
+  if (dir < 0 && spread <= 0 && part <= 0) return;
   // a leaf of paper turns over the spine; the pages change as it passes the middle
   leaf.classList.remove('fwd', 'back'); void leaf.offsetWidth; leaf.classList.add(dir > 0 ? 'fwd' : 'back');
-  setTimeout(() => { spread += dir; show(); }, 300);
+  setTimeout(() => {
+    if (dir > 0 && spread >= last) { part++; spread = 0; renderPart(); }
+    else if (dir < 0 && spread <= 0) { part--; spread = -1; renderPart(); }
+    else spread += dir;
+    show();
+  }, 300);
 }
+seek.oninput = () => { part = +seek.value; spread = 0; renderPart(); show(); };
 $('#lb-prev').onclick = () => turn(-1); $('#lb-next').onclick = () => turn(1);
 $('#lb-back').onclick = () => renderShelves();
 addEventListener('resize', () => { if (view === 'book') { measure(); show(); } });

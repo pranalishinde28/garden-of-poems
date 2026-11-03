@@ -379,6 +379,28 @@ async function main() {
       await at('long', 3, 0, -Math.PI / 2, 0.12); await at('north', G.L * 0.35, G.hw - 7, 0, 0.32); await at('south', G.L * 0.35, -G.hw + 7, Math.PI, 0.32);
       await at('north2', G.L * 0.6, G.hw - 7, 0, 0.32); await at('dome', 120, 3.5, -Math.PI / 2, 1.35); await at('crossing', 98, 0, -Math.PI / 2, 0.22); await at('salon', G.L - 20, 0, -Math.PI / 2, 0.2); await at('salon-near', G.L - 7, 0, -Math.PI / 2, 0.3); await at('statue', 31, 3.2, -0.9, 0.32); await at('statue-side', 38.5, -2.5, 2.2, 0.32); await at('vault-up', 30, 0, -Math.PI / 2, 0.9); await at('last-bay', 100, -G.hw + 6, Math.PI, 0.2);
     }
+    else if (FLOW === 'library') { // the library's statues, a whole famous book read deep into; the Hall of Mirrors' chandeliers
+      const shot = async n => { await sleep(500); await page.screenshot({ path: join(root, `dev/shots/library-${n}.png`) }); };
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); window.__garden.late.enterSunWorld(); });
+      await page.waitForFunction(() => window.__garden.state.world === 'sun' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 }); await sleep(1500);
+      await page.evaluate(() => window.__garden.late.enterLibraryFromMap()); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.camera.position.y < -50, { timeout: 30000, polling: 300 }); await sleep(2500);
+      const p0 = await page.evaluate(() => { const p = window.__garden.player.pos; return [p.x, p.z]; });
+      const at = async (n, dx, dz, yaw, pitch) => { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden; g.player.pos.set(x, 0, z); g.player.yaw = yaw; g.player.pitch = pitch; }, p0[0] + dx, p0[1] + dz, yaw, pitch); await sleep(1800); await shot(n); };
+      await at('statue', 0, -8, 0, 0.12); await at('statue-near', 3, -10.5, 0.6, 0.18); await at('statue-small', -4, -9, 1.2, 0.1);
+      await page.evaluate(() => window.__garden.late.openLibrary()); await sleep(1500);
+      await page.evaluate(() => [...document.querySelectorAll('.lb-spine')].find(b => /Pride/.test(b.textContent)).click()); await sleep(4000); await shot('book');
+      for (let i = 0; i < 14; i++) { await page.keyboard.press('ArrowRight'); await sleep(420); }
+      await sleep(800); await shot('book-on');
+      await page.evaluate(() => { const s = document.querySelector('#lb-seek'); s.value = String(Math.round(+s.max * 0.95)); s.dispatchEvent(new Event('input')); }); await sleep(1200); await shot('book-end');
+      const info = await page.evaluate(() => [document.querySelector('#lb-pg').textContent, document.querySelector('#lb-seek').max, document.querySelector('#lb-flow').textContent.length]);
+      console.log('  book:', info.join(' | ')); if (+info[1] < 20) errors.push('the whole book did not load');
+      await page.keyboard.press('Escape'); await sleep(500); await page.keyboard.press('Escape'); await sleep(800);
+      await page.evaluate(() => window.__garden.late.enterHallFromMap()); await sleep(5000);
+      await page.evaluate(() => { const g = window.__garden; g.player.yaw = 0; g.player.pitch = 0.32; }); await sleep(1500); await shot('hall');
+      await page.evaluate(() => { const g = window.__garden, p = g.player.pos; p.z -= 66; g.player.pitch = 0.5; }); await sleep(1500); await shot('chandelier');
+      await page.evaluate(() => { const g = window.__garden, p = g.player.pos; p.z -= 6; g.player.pitch = -0.2; }); await sleep(1500); await shot('floor');
+    }
     else if (FLOW === 'sunmap') { // the secret world's map: open with M, go to the drop tower, then the Hall of Mirrors; and running
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); });
