@@ -85,6 +85,47 @@ export function standingSDF(x, y, z) {
   return d;
 }
 
+// a classical marble figure in the manner of a Muse: standing in contrapposto, her weight on the right leg, a
+// long chiton falling in folds to the feet, a mantle gathered over the left arm, the right arm raised with a
+// wreath, the hair drawn back into a knot. Unit height: feet at 0, the wreath near 1.05; she faces +z.
+export function museSDF(x, y, z) {
+  // the robe: a column of cloth, wider at the hem, the hips swung to her right, deep vertical folds
+  const hip = 0.018 * Math.min(1, y / 0.5);
+  const a = Math.atan2(z, x - hip), fold = 0.006 * Math.sin(a * 15 + y * 6) * Math.max(0, 1 - y / 0.55) + 0.003 * Math.sin(a * 31);
+  let d = cone(x, y, z, [0, 0.0, 0], [hip, 0.52, 0], 0.15, 0.1) - fold;
+  // the bent left knee pushing the cloth forward, and a foot showing under the hem
+  d = smin(d, ell(x, y, z, -0.05, 0.3, 0.05, 0.06, 0.12, 0.06), 0.05);
+  d = smin(d, ell(x, y, z, -0.055, 0.02, 0.12, 0.035, 0.022, 0.06), 0.02);
+  // the body: hips, waist, chest, a girdle under the breast
+  d = smin(d, ell(x, y, z, 0.018, 0.52, 0, 0.12, 0.075, 0.085), 0.05);
+  d = smin(d, ell(x, y, z, 0.01, 0.62, 0, 0.09, 0.08, 0.066), 0.05);
+  d = smin(d, ell(x, y, z, 0, 0.71, 0.006, 0.112, 0.065, 0.075), 0.05);
+  for (const s of [-1, 1]) d = smin(d, ell(x, y, z, s * 0.045, 0.7, 0.05, 0.04, 0.038, 0.035), 0.03);
+  d = smin(d, cone(x, y, z, [-0.09, 0.665, 0.06], [0.09, 0.665, 0.06], 0.009, 0.009), 0.01);
+  d = smin(d, cone(x, y, z, [-0.12, 0.76, 0], [0.12, 0.76, 0], 0.045, 0.045), 0.04);
+  // neck and head, turned a little toward the raised hand; the knot of hair
+  d = smin(d, cone(x, y, z, [0, 0.77, 0], [-0.006, 0.84, 0.004], 0.03, 0.027), 0.03);
+  let h = ell(x, y, z, -0.008, 0.893, 0.012, 0.047, 0.06, 0.054);
+  h = smin(h, ell(x, y, z, -0.008, 0.865, 0.05, 0.022, 0.024, 0.018), 0.02); // chin and mouth
+  h = smin(h, cone(x, y, z, [-0.008, 0.902, 0.06], [-0.008, 0.88, 0.07], 0.006, 0.009), 0.008); // nose
+  h = smin(h, ell(x, y, z, -0.008, 0.915, -0.004, 0.052, 0.045, 0.052), 0.02); // hair over the crown
+  h = smin(h, ell(x, y, z, -0.01, 0.905, -0.055, 0.034, 0.03, 0.03), 0.015); // the knot
+  for (const s of [-1, 1]) h = smax(h, -ell(x, y, z, -0.008 + s * 0.019, 0.9, 0.063, 0.01, 0.004, 0.01), 0.004); // the eyes
+  d = smin(d, h, 0.02);
+  // the right arm raised, holding up a wreath
+  d = smin(d, cone(x, y, z, [-0.12, 0.76, 0], [-0.17, 0.87, 0.02], 0.032, 0.026), 0.03);
+  d = smin(d, cone(x, y, z, [-0.17, 0.87, 0.02], [-0.13, 0.99, 0.04], 0.026, 0.02), 0.02);
+  d = smin(d, ell(x, y, z, -0.125, 1.005, 0.045, 0.018, 0.022, 0.016), 0.012);
+  { const px = x + 0.11, py = y - 1.04, pz = z - 0.05, q = Math.hypot(px, pz) - 0.05; d = Math.min(d, Math.hypot(q, py) - 0.011 - 0.003 * Math.sin(Math.atan2(pz, px) * 16)); }
+  // the left arm lowered, the mantle over it falling in a long swag to below the knee
+  d = smin(d, cone(x, y, z, [0.12, 0.76, 0], [0.15, 0.63, 0.03], 0.032, 0.027), 0.03);
+  d = smin(d, cone(x, y, z, [0.15, 0.63, 0.03], [0.13, 0.53, 0.09], 0.027, 0.02), 0.02);
+  d = smin(d, cone(x, y, z, [0.15, 0.6, 0.06], [0.17, 0.24, 0.07], 0.035, 0.06) - 0.004 * Math.sin(Math.atan2(z - 0.07, x - 0.16) * 9), 0.03);
+  // the mantle's edge across the front, from the right hip up to the left shoulder
+  d = smin(d, cone(x, y, z, [-0.1, 0.45, 0.08], [0.12, 0.74, 0.045], 0.016, 0.014), 0.02);
+  return d;
+}
+
 // surface nets: one vertex per cell that the surface crosses, a quad across every crossed grid edge
 export function meshSDF(f, min, max, h) {
   const nx = Math.ceil((max[0] - min[0]) / h) + 1, ny = Math.ceil((max[1] - min[1]) / h) + 1, nz = Math.ceil((max[2] - min[2]) / h) + 1;
@@ -124,6 +165,7 @@ export function meshSDF(f, min, max, h) {
   return g;
 }
 
-let seated = null, standing = null;
+let seated = null, standing = null, muse = null;
 export const seatedBuddha = () => seated || (seated = meshSDF(seatedSDF, [-0.56, -0.01, -0.2], [0.56, 0.93, 0.36], 0.0062));
 export const standingDisciple = () => standing || (standing = meshSDF(standingSDF, [-0.2, -0.01, -0.13], [0.2, 1.0, 0.2], 0.008));
+export const museFigure = () => muse || (muse = meshSDF(museSDF, [-0.26, -0.01, -0.14], [0.26, 1.07, 0.2], 0.0055));

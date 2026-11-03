@@ -7,6 +7,7 @@ import { worlds } from '../core/worlds.js';
 import { addTick, regThing } from '../core/things.js';
 import { late, provide } from '../core/late.js';
 import { O, sunScene } from './sunWorld.js';
+import { museFigure } from './buddha.js';
 import { HALL, OPEN_HALF, OPEN_Z, artTex, baroque, cover, frame, hall, img } from './castleHall.js';
 
 /* ================= the Hall of Paintings, off the Hall of Mirrors: after the Galleria Doria Pamphilj ================= */
@@ -21,9 +22,9 @@ import { HALL, OPEN_HALF, OPEN_Z, artTex, baroque, cover, frame, hall, img } fro
 // and ovals, each under a picture light, two easels and a painter's table. Shown whenever the Hall of Mirrors is.
 
 provide({ get hangOwnPaintings() { return hangOwn; } });
-// the gallery: its axis runs east from 22 m beyond the hall's east wall; 140 m long, 26 m wide, 19 m to the vault.
+// the gallery: its axis runs east from 22 m beyond the hall's east wall; 140 m long, 30 m wide, 22 m to the vault.
 // Eleven 10 m bays of paintings (ART_BAYS), then a domed crossing (DOME, two bays), then the salon (SAL on).
-export const GAL = { x: HALL.x + HALL.hw + 22, z: OPEN_Z, y: -90, L: 140, hw: 13, wall: 19, rise: 6.5, bay: 10 };
+export const GAL = { x: HALL.x + HALL.hw + 22, z: OPEN_Z, y: -90, L: 140, hw: 15, wall: 22, rise: 7, bay: 10 };
 const ART_BAYS = 11, DOME = { x: 120, r: 9.6, drum: 4.2 }, SAL = 131;
 const W = new V3(O.x + GAL.x, O.y + GAL.y, O.z + GAL.z);
 const gal = new THREE.Group(); gal.position.copy(W); gal.visible = false; sunScene.add(gal);
@@ -115,7 +116,7 @@ const velvet = canvasTex(256, 256, (g, w, h) => {
     (g, w, h) => { g.fillStyle = '#d9b04a'; g.fillRect(0, 0, w, h); ['sky', 'peace', 'victory', 'sun'].forEach((k, i) => { cover(g, img[k], i * w / 4 + 30, 40, w / 4 - 60, h - 80); frame(g, i * w / 4 + 30, 40, w / 4 - 60, h - 80, 16); }); }, true);
   // the barrel vault runs over the paintings and over the salon; the crossing between them has the dome
   for (const [x0, x1] of [[0, DOME.x - GAL.bay], [DOME.x + GAL.bay, L]]) {
-    const t = vt.clone(); t.needsUpdate = true; t.repeat.set((x1 - x0) / 32, 1);
+    const t = vt.clone(); t.needsUpdate = true; t.repeat.set(1, (x1 - x0) / 9); // u runs round the arch, v along the hall: four square panels across, one every 9 m along
     const v = new THREE.Mesh(new THREE.CylinderGeometry(hw, hw, x1 - x0, 48, 1, true, 0, Math.PI), lit(t, 0.7, { side: THREE.BackSide })); v.rotation.z = Math.PI / 2; v.scale.set(rise / hw, 1, 1); v.position.set((x0 + x1) / 2, wall, 0); gal.add(v);
   }
   const m = new Merge(), bays = L / GAL.bay;
@@ -125,7 +126,7 @@ const velvet = canvasTex(256, 256, (g, w, h) => {
       m.add(GEO.box, new V3(x, wall / 2, sz * (hw - 0.22)), new V3(0.8, wall, 0.44), GOLD);
       m.add(GEO.box, new V3(x, 0.5, sz * (hw - 0.3)), new V3(1.1, 1.0, 0.6), CREAM);
       m.add(GEO.box, new V3(x, wall - 0.75, sz * (hw - 0.4)), new V3(1.2, 0.8, 0.8), GOLD2);
-      for (const dy of [6.0, 10.2]) m.add(GEO.sph, new V3(x, dy, sz * (hw - 0.45)), new V3(0.3, 0.42, 0.2), GOLD2);
+      for (const dy of [6.6, 11.6]) m.add(GEO.sph, new V3(x, dy, sz * (hw - 0.45)), new V3(0.3, 0.42, 0.2), GOLD2);
     }
     // a gilded rib over the vault
     if (k > 0 && k < bays) m.add(new THREE.TorusGeometry(hw - 0.05, k === ART_BAYS || k === ART_BAYS + 2 ? 0.45 : 0.22, 6, 48, Math.PI).rotateY(Math.PI / 2), new V3(x, wall, 0), new V3(1, rise / hw, 1), GOLD);
@@ -134,7 +135,7 @@ const velvet = canvasTex(256, 256, (g, w, h) => {
     m.add(GEO.box, new V3(xm, wall - 0.2, sz * (hw - 0.35)), new V3(L, 0.4, 0.7), GOLD2);
     m.add(GEO.box, new V3(xm, 0.55, sz * (hw - 0.06)), new V3(L, 1.1, 0.12), C('#4f6a52'));
     m.add(GEO.box, new V3(xm, 1.12, sz * (hw - 0.1)), new V3(L, 0.08, 0.2), GOLD);
-    m.add(GEO.box, new V3(xm, 11.4, sz * (hw - 0.1)), new V3(L, 0.14, 0.2), GOLD);
+    m.add(GEO.box, new V3(xm, 13.1, sz * (hw - 0.1)), new V3(L, 0.14, 0.2), GOLD);
   }
   gal.add(new THREE.Mesh(m.build(), gilt));
 }
@@ -226,7 +227,7 @@ const mirrorTex = canvasTex(256, 384, (g, w, h) => {
   g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = 6; g.beginPath(); g.moveTo(40, h); g.lineTo(w - 40, 0); g.stroke();
 });
 function hangMirror(x, side) {
-  const y = 15.0, w = 3.2, h = 4.4;
+  const y = 17.2, w = 3.6, h = 5.0;
   const m = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshPhongMaterial({ map: mirrorTex, shininess: 120, specular: '#ffffff', emissive: '#ffffff', emissiveMap: mirrorTex, emissiveIntensity: 0.35, fog: false }));
   m.scale.set(w / 2, h / 2, 1); m.position.set(x, y, side * (GAL.hw - 0.2)); m.rotation.y = side > 0 ? Math.PI : 0; gal.add(m);
   const fm = new Merge(); fm.add(new THREE.TorusGeometry(1, 0.11, 8, 48), new V3(x, y, side * (GAL.hw - 0.26)), new V3(w / 2, h / 2, 1), GOLD, new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), side > 0 ? Math.PI : 0));
@@ -244,11 +245,11 @@ function hangMirror(x, side) {
   const upper = [['pearl-earring', 'lady-ermine', 'creation-adam', 'dance-class', 'shalott'], ['impression-sunrise', 'parasol', 'irises', 'hay-wain', 'carnation-lily', 'ophelia']];
   const bays = GAL.L / GAL.bay, art = f => FAMOUS_ART.find(a => a.file === f);
   [-1, 1].forEach((side, si) => {
-    lower[si].forEach((f, k) => hangPainting(art(f), (k + 0.5) * GAL.bay, 2.3, side, 6.6, 7.6));
+    lower[si].forEach((f, k) => hangPainting(art(f), (k + 0.5) * GAL.bay, 2.4, side, 7.4, 7.6));
     let u = 0;
     for (let k = 0; k < ART_BAYS; k++) {
       const x = (k + 0.5) * GAL.bay;
-      if ((k + si) % 2 === 1 && upper[si][u]) hangPainting(art(upper[si][u++]), x, 12.6, side, 4.8, 7.6);
+      if ((k + si) % 2 === 1 && upper[si][u]) hangPainting(art(upper[si][u++]), x, 14.2, side, 5.6, 7.6);
       else hangMirror(x, side);
     }
   });
@@ -256,7 +257,7 @@ function hangMirror(x, side) {
 
 /* ---------- furniture: consoles and urns, marble statues down the middle, benches, chandeliers ---------- */
 {
-  const m = new Merge(), s = new Merge(), bays = ART_BAYS + 1;
+  const m = new Merge(), s = new Merge(), bays = ART_BAYS + 1, statues = [];
   for (let k = 0; k < ART_BAYS; k++) {
     const x = (k + 0.5) * GAL.bay;
     for (const sz of [-1, 1]) {
@@ -272,15 +273,7 @@ function hangMirror(x, side) {
     if (k % 2 === 1 && k < bays - 2) {
       // a white marble statue on a pedestal in the middle of the bay
       s.add(GEO.box, new V3(x, 0.15, 0), new V3(1.8, 0.3, 1.8), C('#cfc6b8')); s.add(GEO.box, new V3(x, 1.0, 0), new V3(1.3, 1.4, 1.3), MARBLE2); s.add(GEO.box, new V3(x, 1.76, 0), new V3(1.5, 0.14, 1.5), C('#cfc6b8'));
-      const y0 = 1.83, sd = k % 4 === 1 ? 1 : -1;
-      for (const lz of [-0.18, 0.18]) s.limb(new V3(x, y0, lz), new V3(x + (lz > 0 ? 0.1 : 0) * sd, y0 + 1.25, lz * 0.7), 0.16, 0.13, MARBLE);
-      s.add(GEO.cone, new V3(x, y0 + 1.35, 0), new V3(0.55, 1.0, 0.4), MARBLE2, new THREE.Quaternion().setFromAxisAngle(new V3(1, 0, 0), Math.PI));
-      s.limb(new V3(x, y0 + 1.35, 0), new V3(x, y0 + 2.25, 0), 0.34, 0.3, MARBLE);
-      s.add(GEO.sph, new V3(x, y0 + 2.55, 0), new V3(0.22, 0.27, 0.22), MARBLE);
-      s.add(GEO.sph, new V3(x - 0.04, y0 + 2.68, 0), new V3(0.24, 0.22, 0.24), MARBLE2);
-      s.limb(new V3(x, y0 + 2.1, sd * 0.32), new V3(x + 0.35, y0 + 2.7, sd * 0.75), 0.1, 0.08, MARBLE);
-      s.limb(new V3(x, y0 + 2.1, -sd * 0.32), new V3(x + 0.1, y0 + 1.5, -sd * 0.45), 0.1, 0.08, MARBLE);
-      s.add(GEO.cone, new V3(x - 0.15, y0 + 1.6, 0), new V3(0.6, 1.8, 0.35), MARBLE2);
+      statues.push([x, k % 4 === 1 ? 1 : -1]);
     } else if (k > 0 && k < bays - 1) {
       // crimson benches with gilded legs, either side of the middle
       for (const bz of [-4.6, 4.6]) { m.add(GEO.box, new V3(x, 0.48, bz), new V3(2.8, 0.2, 0.95), C('#8a1f24')); for (const dx of [-1.2, 1.2]) for (const dz of [-0.36, 0.36]) m.add(GEO.box, new V3(x + dx, 0.2, bz + dz), new V3(0.1, 0.42, 0.1), GOLD); }
@@ -297,6 +290,9 @@ function hangMirror(x, side) {
   for (let k = 0; k < 90; k++) { const a = RB() * 6.283, rr = Math.sqrt(RB()) * 0.85, y = 3.5 + (0.85 - rr) * 0.7 + RB() * 0.25; m.add(GEO.sph, new V3(DOME.x + Math.cos(a) * rr, y, Math.sin(a) * rr), new V3(0.13, 0.11, 0.13), C(['#f6f2ea', '#e88aa0', '#f2d0dc', '#c84a5a', '#f4e3a0'][k % 5])); }
   for (let k = 0; k < 30; k++) { const a = RB() * 6.283, rr = 0.6 + RB() * 0.35; m.add(GEO.sph, new V3(DOME.x + Math.cos(a) * rr, 3.3 + RB() * 0.4 - (k % 3) * 0.3, Math.sin(a) * rr), new V3(0.09, 0.2, 0.06), C(k % 2 ? '#3f6a3a' : '#4f7a42')); }
   gal.add(new THREE.Mesh(m.build(), gilt)); gal.add(new THREE.Mesh(s.build(), stone));
+  // the marble Muses on the pedestals (world/buddha.js sculpts them), facing the way in, mirrored in turn
+  const marble = new THREE.MeshPhongMaterial({ color: '#f1ece2', specular: '#ffffff', shininess: 26, emissive: '#7a756c', emissiveIntensity: 0.55, fog: false }), fig = museFigure();
+  for (const [x, sd] of statues) { const st = new THREE.Mesh(fig, marble); st.scale.set(2.5 * sd, 2.5, 2.5); st.position.set(x, 1.83, 0); st.rotation.y = -Math.PI / 2; gal.add(st); }
   // Venetian glass chandeliers: two tiers of candles, crystal drops, a glass body, one over every bay
   const cm = new Merge(), glass = C('#eef4ff');
   for (let k = 0; k < ART_BAYS; k++) {
@@ -312,14 +308,13 @@ function hangMirror(x, side) {
 }
 
 /* ---------- the salon of your paintings, behind a gilded proscenium at the far end ---------- */
-// eleven carved frames hung salon-style on green velvet, rectangles and ovals of different sizes, each under a
-// picture light; your paintings fill them in this order: the centre, the two ovals, the top row, the bottom row
+// nine carved rectangular frames hung salon-style on green velvet (all rectangles, asked after round 56), each under
+// a picture light; your paintings fill them in this order: the centre, its two sides, the top row, the bottom row
 const SLOTS = [
-  { z: 0, y: 8.6, w: 7.4, h: 5.6 },
-  { z: -8.0, y: 8.8, w: 3.8, h: 5.0, oval: true }, { z: 8.0, y: 8.8, w: 3.8, h: 5.0, oval: true },
-  { z: -4.7, y: 13.8, w: 4.4, h: 3.3 }, { z: 0, y: 13.9, w: 3.0, h: 3.7, oval: true }, { z: 4.7, y: 13.8, w: 4.4, h: 3.3 },
-  { z: -5.8, y: 3.9, w: 4.6, h: 3.3 }, { z: 0, y: 3.7, w: 3.8, h: 2.8 }, { z: 5.8, y: 3.9, w: 4.6, h: 3.3 },
-  { z: -10.8, y: 13.8, w: 2.6, h: 3.4, oval: true }, { z: 10.8, y: 13.8, w: 2.6, h: 3.4, oval: true },
+  { z: 0, y: 10.2, w: 9.0, h: 6.6 },
+  { z: -9.4, y: 10.2, w: 4.8, h: 6.0 }, { z: 9.4, y: 10.2, w: 4.8, h: 6.0 },
+  { z: -7.8, y: 16.6, w: 5.4, h: 3.8 }, { z: 0, y: 16.5, w: 5.8, h: 3.6 }, { z: 7.8, y: 16.6, w: 5.4, h: 3.8 },
+  { z: -7.2, y: 3.9, w: 5.6, h: 3.4 }, { z: 0, y: 3.8, w: 4.6, h: 3.0 }, { z: 7.2, y: 3.9, w: 5.6, h: 3.4 },
 ];
 // a carved gilded frame and its picture, painted together on one canvas (so ovals and corner ornaments are crisp)
 function paintSlot(sl, im) {
@@ -396,7 +391,7 @@ function paintSlot(sl, im) {
   // picture lights: a brass bar over each frame
   SLOTS.forEach(sl => { const ly = sl.y + sl.h / 2 + 0.75; m.add(GEO.box, new V3(L - 0.55, ly, sl.z), new V3(0.3, 0.08, sl.w * 0.5), C('#c9a040')); m.limb(new V3(L - 0.1, ly - 0.15, sl.z), new V3(L - 0.5, ly, sl.z), 0.03, 0.03, C('#c9a040')); lights.push(L - 0.6, ly - 0.1, sl.z); });
   // two gilded easels with primed canvases, and a painter's table with a palette
-  for (const ez of [-8.2, 8.2]) {
+  for (const ez of [-10, 10]) {
     const ex = L - 5.4;
     for (const [dx, dz] of [[-0.45, -0.35], [0.45, -0.35], [0.4, 0.45]]) m.limb(new V3(ex + dx, 0.24, ez + dz), new V3(ex, 2.9, ez), 0.05, 0.05, GOLD);
     m.add(GEO.box, new V3(ex - 0.1, 1.1, ez), new V3(0.08, 0.08, 1.8), GOLD);
@@ -422,7 +417,7 @@ function paintSlot(sl, im) {
     g.fillStyle = '#f6e2a0'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '700 84px "Cormorant Garamond", Georgia, serif'; g.fillText('Your Paintings', w / 2, h / 2 - 16);
     g.font = 'italic 600 34px "Cormorant Garamond", Georgia, serif'; g.fillText('hung here by your own hand', w / 2, h / 2 + 44);
   });
-  const sg = new THREE.Mesh(new THREE.PlaneGeometry(8, 2.5), new THREE.MeshBasicMaterial({ map: sign, transparent: true, alphaTest: 0.1, fog: false })); sg.position.set(L - 0.15, 17.4, 0); sg.rotation.y = -Math.PI / 2; gal.add(sg);
+  const sg = new THREE.Mesh(new THREE.PlaneGeometry(8, 2.5), new THREE.MeshBasicMaterial({ map: sign, transparent: true, alphaTest: 0.1, fog: false })); sg.position.set(L - 0.15, 20.4, 0); sg.rotation.y = -Math.PI / 2; gal.add(sg);
   // the frames
   SLOTS.forEach(sl => {
     sl.cv = document.createElement('canvas'); sl.cv.width = Math.round(sl.w * 150); sl.cv.height = Math.round(sl.h * 150); sl.g = sl.cv.getContext('2d');
@@ -460,7 +455,7 @@ const HWY = { A: HALL.x + HALL.hw - GAL.x, B: 0, half: OPEN_HALF, h: HALL.wall, 
   for (const sz of [-1, 1]) { const t = damask.clone(); t.needsUpdate = true; t.repeat.set(L / 3, h / 3); const wm = new THREE.Mesh(new THREE.PlaneGeometry(L, h), lit(t, 0.4)); wm.position.set(xm, h / 2, sz * half); wm.rotation.y = sz > 0 ? Math.PI : 0; way.add(wm); }
   const ft = marbleFloor.clone(); ft.needsUpdate = true; ft.repeat.set(L / 4, half * 2 / 4);
   const fl = new THREE.Mesh(new THREE.PlaneGeometry(L + 1, half * 2).rotateX(-Math.PI / 2), new THREE.MeshPhongMaterial({ map: ft, shininess: 70, specular: '#4a3a2a', emissive: '#ffffff', emissiveMap: ft, emissiveIntensity: 0.3, color: '#bdb2a0', fog: false })); fl.position.set(xm, 0.006, 0); way.add(fl);
-  const vtex = canvasTex(512, 256, (g, w, hh) => { g.fillStyle = '#efe4c8'; g.fillRect(0, 0, w, hh); for (let y = 0; y < hh; y += 64) for (let x = 0; x < w; x += 64) { g.fillStyle = '#e2d0a4'; g.fillRect(x + 6, y + 6, 52, 52); g.fillStyle = '#d4a63a'; g.beginPath(); g.arc(x + 32, y + 32, 9, 0, 7); g.fill(); } }, true); vtex.repeat.set(L / 6, 2);
+  const vtex = canvasTex(512, 256, (g, w, hh) => { g.fillStyle = '#efe4c8'; g.fillRect(0, 0, w, hh); for (let y = 0; y < hh; y += 64) for (let x = 0; x < w; x += 64) { g.fillStyle = '#e2d0a4'; g.fillRect(x + 6, y + 6, 52, 52); g.fillStyle = '#d4a63a'; g.beginPath(); g.arc(x + 32, y + 32, 9, 0, 7); g.fill(); } }, true); vtex.repeat.set(1.7, L / 6); // u round the arch, v along the hallway
   const vt = new THREE.Mesh(new THREE.CylinderGeometry(half, half, L, 40, 1, true, 0, Math.PI), lit(vtex, 0.55, { side: THREE.BackSide })); vt.rotation.z = Math.PI / 2; vt.scale.set(rise / half, 1, 1); vt.position.set(xm, h, 0); way.add(vt);
   const m = new Merge(), bays = 4;
   for (let k = 0; k <= bays; k++) { const x = A + k / bays * L; for (const sz of [-1, 1]) { m.add(GEO.box, new V3(x, h / 2, sz * (half - 0.15)), new V3(0.6, h, 0.3), GOLD); m.add(GEO.box, new V3(x, 0.5, sz * (half - 0.2)), new V3(0.8, 1.0, 0.4), CREAM); } }
@@ -498,7 +493,7 @@ const HWY = { A: HALL.x + HALL.hw - GAL.x, B: 0, half: OPEN_HALF, h: HALL.wall, 
       }
       if (Math.abs(lx - SAL) < 0.8 && Math.abs(lz) > GAL.hw - 2) return true;
       if (Math.hypot(lx - DOME.x, lz) < 3.1) return true;
-      for (const ez of [-8.2, 8.2]) if (Math.hypot(lx - (GAL.L - 5.4), lz - ez) < 0.8) return true;
+      for (const ez of [-10, 10]) if (Math.hypot(lx - (GAL.L - 5.4), lz - ez) < 0.8) return true;
       if (Math.hypot(lx - (GAL.L - 5.6), lz + 4.6) < 0.8) return true;
       return false;
     }
