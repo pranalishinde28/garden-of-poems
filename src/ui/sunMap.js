@@ -43,13 +43,6 @@ function draw(g, P, s, full) {
   wash(() => rect(-34, P0.FIELD.z0, 34, P0.FIELD.z1), '#f2cf4a', ['#f7de7a', '#e4b22e'], 60, () => rnd(-34, 34, P0.FIELD.z1, P0.FIELD.z0));
   rect(-34, P0.FIELD.z0, 34, P0.FIELD.z1); ink();
   for (let k = 0; k < 190; k++) { const [x, y] = rnd(-33, 33, P0.FIELD.z1 + 1, P0.FIELD.z0 - 1); circle(x, y, 0.9 * s); fill('#f7c81e'); circle(x, y, 0.4 * s); fill('#6a3e18'); }
-  // the flower terraces: rows of colour, inked like the garden's beds
-  const rows = ['#a890dc', '#f6f2ea', '#e66a5a', '#f2d35a', '#f2a0c4', '#8a6ac8'];
-  for (const T of P0.TERRACES) {
-    for (let k = 0, z = T.z0; z > T.z1 + 0.5; z -= 4.4, k++) { rect(T.x0, z, T.x1, Math.max(T.z1, z - 3.8)); fill(rows[k % rows.length]); }
-    rect(T.x0, T.z0, T.x1, T.z1); ink();
-    for (let k = 0; k < 40; k++) { const [x, y] = rnd(T.x0 + 1, T.x1 - 1, T.z1 + 1, T.z0 - 1); circle(x, y, 0.35 * s); fill('#ffffff'); }
-  }
   // Splash Cove: a tiled deck, the pools in turquoise, the slide's flume from its tower
   rect(P0.WP.x0, P0.WP.z0, P0.WP.x1, P0.WP.z1); fill('#efe6d2'); ink();
   { const [x, y, w, h] = rect(P0.WP.x0, P0.WP.z0, P0.WP.x1, P0.WP.z1); g.save(); g.clip(); g.strokeStyle = 'rgba(120,100,70,.18)'; g.lineWidth = 1; for (let i = x; i < x + w; i += 2.2 * s) { g.beginPath(); g.moveTo(i, y); g.lineTo(i, y + h); g.stroke(); } for (let j = y; j < y + h; j += 2.2 * s) { g.beginPath(); g.moveTo(x, j); g.lineTo(x + w, j); g.stroke(); } g.restore(); }
@@ -109,7 +102,6 @@ function places() {
   add('Sunflower field', 'walk among the sunflowers', 'sunflower', -22, 14, 'l', hop(P0.pathX(14), 14, 0, 'The sunflowers'));
   add('White door', 'the way home', 'door', P0.DOOR.x, P0.DOOR.z, 'l', hop(P0.DOOR.x, P0.DOOR.z + 3.2, 0, 'The white door'));
   add('Sunflower arch', 'into the fair', 'arch', 0, P0.ARCH_Z, 'r', hop(0, P0.ARCH_Z + 5, 0, 'The sunflower arch'));
-  add('Flower terraces', 'rows of every colour', 'terraces', (P0.TERRACE.x0 + P0.TERRACE.x1) / 2, (P0.TERRACE.z0 + P0.TERRACE.z1) / 2, 'b', hop(P0.TERRACE.x1 + 1, (P0.TERRACE.z0 + P0.TERRACE.z1) / 2, Math.PI / 2, 'The flower terraces'));
   add('Wave pool', 'float on the waves', 'wave', P0.WP.wave.x, P0.WP.wave.z, 't', hop(P0.WP.wave.x, P0.WP.wave.z - P0.WP.wave.rz - 2.6, Math.PI, 'The wave pool'));
   add('Water slide', 'twist down into the pool', 'slide', P0.WP.tower.x, P0.WP.tower.z, 'l', hop(P0.WP.tower.x - 4, P0.WP.tower.z - 4.5, Math.PI * 0.75, 'The water slide'));
   add('Carousel', 'horses round and round', 'carousel', P0.CAROUSEL.x, P0.CAROUSEL.z, 'b', hop(0, P0.CAROUSEL.z + P0.CAROUSEL.r + 3, 0, 'The carousel'));

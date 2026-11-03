@@ -126,8 +126,8 @@ const medal = key => `<svg viewBox="0 0 24 24" aria-hidden="true">${GLYPHS[GLYPH
 
 // ---- the full map ----
 let P = null, S = 1, prevMode = 'walk', openedFrom = null;
-// in the secret world the sheet shows that world's plan (ui/sunMap.js); it lies sideways on a wide screen,
-// the lake on the left and the castle on the right, so it fills the sheet
+// in the secret world the sheet shows that world's plan (ui/sunMap.js), upright: you arrive at the bottom and
+// the castle is at the top (the owner asked; sideways put the arrival on the left), with no legend
 const sunPlan = () => state.world === 'sun' && late.sunPlan ? late.sunPlan : null;
 let turn = 0, toMap = (x, z) => [x, z];
 function layout() {
@@ -136,7 +136,7 @@ function layout() {
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, r.width, r.height);
   const cx = r.width / 2, cy = r.height / 2, sp = sunPlan();
   if (sp) {
-    const w = sp.x1 - sp.x0, d = sp.z1 - sp.z0, mx = (sp.x0 + sp.x1) / 2, mz = (sp.z0 + sp.z1) / 2, side = r.width > r.height * 1.05;
+    const w = sp.x1 - sp.x0, d = sp.z1 - sp.z0, mx = (sp.x0 + sp.x1) / 2, mz = (sp.z0 + sp.z1) / 2, side = false; // always upright: you arrive at the bottom, the castle is at the top
     S = side ? Math.min(r.width / d, r.height / w) : Math.min(r.width / w, r.height / d);
     P = side ? (x, z) => [cx + (mz - z) * S, cy + (x - mx) * S] : (x, z) => [cx + (x - mx) * S, cy + (z - mz) * S];
     turn = side ? Math.PI / 2 : 0; toMap = sp.local;
@@ -249,7 +249,7 @@ function settleLabels() {
 function legend() {
   // the places with their medallions, then the poem trees by mood, then you
   const sp = sunPlan(), ps = (sp ? sp.places() : places()).map(pl => `<span class="lg-place"><b class="medal">${medal(pl.glyph || pl.name)}</b>${(n => n[0].toUpperCase() + n.slice(1))(pl.name.replace(/^The /, ''))}</span>`).join('');
-  if (sp) { $('#map-legend').innerHTML = `<div class="lg-places">${ps}</div><div class="lg-moods"><span class="me-key"><b>▲</b>You</span></div>`; return; }
+  $('#map-legend').hidden = !!sp; if (sp) { $('#map-legend').innerHTML = ''; return; } // the secret world's places are all named on the plan
   $('#map-legend').innerHTML = `<div class="lg-places">${ps}</div><div class="lg-moods"><span class="lg-h">Poem trees</span>` + MOODS.map(([k, label]) => `<span><i style="background:${MOOD_INK[k]}"></i>${label}</span>`).join('') + '<span class="me-key"><b>▲</b>You</span></div>';
 }
 export function openMap() {
