@@ -348,70 +348,84 @@ Object.assign(SUN_PLAN, { FLUME: flume.getSpacedPoints(60), DOCK });
 // for the test harness: how fast the slider is going, and where on the run
 export const slideState = slide;
 
-/* ================= the Thunder Bowl: a tube down a tower, round a great bowl, and through ================= */
-// After the Thunder Bowl slides: a 20 m tower, an enclosed tube striped orange and blue spiralling down round it
-// and on to the rim of a great striped bowl, which you enter sideways and circle (about two and a half laps,
-// faster high on the wall, slower as you sink toward the middle) until you drop through its hole into the pool
-// beneath. The speeds are physics: gravity along the tube less the friction of a body on running water (0.03)
-// and the water's drag, 13 s to about 30 km/h; in the bowl, gravity down its slope against the circling speed,
-// with a body's friction on the wetted wall (0.08), simulated before choosing the bowl's shape.
-const BW = BOWL, BT = BW.tower, BTH = 2.45;
-const bowlH = r => BW.hole + (BW.rim - BW.hole) * Math.pow(clamp((r - BW.rh) / (BW.R - BW.rh), 0, 1), 1.5);
-const bowlS = r => 1.5 * (BW.rim - BW.hole) / (BW.R - BW.rh) * Math.sqrt(clamp((r - BW.rh) / (BW.R - BW.rh), 0, 1));
+/* ================= the Thunder Bowl: a tube down a tower, then a great funnel, and out into a pool ================= */
+// After the funnel slides (the owner's photograph of one: an orange, red and yellow funnel lying on its side in a
+// steel ring). A 20 m tower; an enclosed tube striped orange and blue spiralling down it and on into the funnel's
+// side wall, high up; you drop down the wall, swing up the far side nearly to the top, back again, each swing a
+// little lower, drifting toward the funnel's narrow end, and out down a short chute into the pool. Real physics:
+// in the tube, gravity along it less the friction of a body on running water (0.03) and the water's drag, 13 s
+// to about 40 km/h; in the funnel (meeting its wall takes a quarter of your speed), a pendulum on its curved wall (gravity, the wall's friction 0.08 on the
+// pressing force, drag), the radius shrinking as you drift down its floor. About 7 s in the funnel: a few big
+// swings, not the minutes of circling that made the old bowl dizzying. (Asked after round 58: "the ride feels a
+// little too long in the cone, it gives me dizzy; add the funnel slide which shifts the motion".)
+const BW = BOWL, BT = BW.tower;
+// the funnel: wide mouth (radius FN.R0) at C0, its axis tilted FN.tilt down toward the narrow end (radius FN.R1)
+// FN.L along it; e1 is its side (toward the tower), e2 its "up" across the axis
+const FN = { C0: new V3(68, 12.85, -46), L: 13, R0: 6.5, R1: 1.5, tilt: 0.45, se: 2.5, phi0: 1.0 };
+FN.d = new V3(0, -Math.sin(FN.tilt), -Math.cos(FN.tilt)); FN.e1 = new V3(1, 0, 0); FN.e2 = new V3(0, Math.cos(FN.tilt), -Math.sin(FN.tilt));
+// the tubes' radius: their centre lines meet the funnel this far inside its wall, so the seat carries straight on
+const TBF_R = 0.95;
+const fnR = s => FN.R0 - (FN.R0 - FN.R1) * clamp(s / FN.L, 0, 1);
+const fnP = (s, phi, out = new V3(), lift = 0) => { const r = fnR(s) - lift; return out.copy(FN.C0).addScaledVector(FN.d, s).addScaledVector(FN.e1, Math.sin(phi) * r).addScaledVector(FN.e2, -Math.cos(phi) * r); };
 const bowlCurve = (() => {
   const pts = [[BT.x + 1.6, BT.h + 0.4, BT.z]];
   for (let k = 0; k <= 20; k++) { const f = k / 20, phi = -2 * Math.PI + f * 2.5 * Math.PI; pts.push([BT.x + 4.6 * Math.cos(phi), BT.h + 0.2 - f * 4.6, BT.z + 4.6 * Math.sin(phi)]); }
-  const ex = BW.x + BW.R * Math.cos(BTH), ez = BW.z + BW.R * Math.sin(BTH), tx = -Math.sin(BTH), tz = Math.cos(BTH);
-  for (const [s, y] of [[22, 14.4], [16, 13.2], [9, 12.1], [3, 11.4], [0, 11.2]]) pts.push([ex - tx * s, y, ez - tz * s]);
+  // into the funnel's side wall, arriving along it, heading down toward its floor
+  const e = fnP(FN.se, FN.phi0, new V3(), TBF_R), r = fnR(FN.se), dir = FN.e1.clone().multiplyScalar(-Math.cos(FN.phi0)).addScaledVector(FN.e2, -Math.sin(FN.phi0)).normalize();
+  for (const k of [9, 5, 2.5, 0]) { const p = e.clone().addScaledVector(dir, -k); pts.push([p.x, p.y, p.z]); }
+  pts.splice(pts.length - 4, 0, [81, 14.8, -43]);
   return new THREE.CatmullRomCurve3(pts.map(([x, y, z]) => new V3(x, y, z)), false, 'catmullrom', 0.5);
 })();
-const TBF = { N: 420, R: 0.95 }, tbf = [];
+// the chute out of the narrow end, down into the pool
+const exitCurve = (() => { const a = fnP(FN.L, 0, new V3(), TBF_R); return new THREE.CatmullRomCurve3([a, a.clone().addScaledVector(FN.d, 2), new V3(69.4, 2.8, -61.6), new V3(71, 1.0, -63.3), new V3(72, 0.45, -64.2)], false, 'catmullrom', 0.5); })();
+const sweep = (curve, N) => { const L = curve.getLength(), fr = []; for (let i = 0; i <= N; i++) { const u = i / N, c = curve.getPointAt(u), t = curve.getTangentAt(u).normalize(); const side = new V3().crossVectors(t, up).normalize(), upv = new V3().crossVectors(side, t).normalize(); fr.push({ c, t, side, up: upv }); } return { L, N, fr }; };
+const TBF = Object.assign(sweep(bowlCurve, 420), { R: TBF_R }), EXF = Object.assign(sweep(exitCurve, 60), { R: TBF_R });
+const frameAt = (F, s) => { const f = clamp(s / F.L, 0, 1) * F.N, i = Math.min(F.N - 1, Math.floor(f)), k = f - i, a = F.fr[i], b = F.fr[i + 1]; return { c: a.c.clone().lerp(b.c, k), t: a.t.clone().lerp(b.t, k).normalize(), up: a.up.clone().lerp(b.up, k).normalize(), dy: (b.c.y - a.c.y) / (F.L / F.N) }; };
+const FN_LEGS = [];
 {
-  TBF.L = bowlCurve.getLength();
-  for (let i = 0; i <= TBF.N; i++) { const u = i / TBF.N, c = bowlCurve.getPointAt(u), t = bowlCurve.getTangentAt(u).normalize(); const side = new V3().crossVectors(t, up).normalize(), upv = new V3().crossVectors(side, t).normalize(); tbf.push({ c, t, side, up: upv }); }
-  // the tube: closed all round, bands of orange and blue with a thin yellow line between
-  const pos = [], col = [], idx = [], NA = 24, c3 = new THREE.Color(), OR = C('#f08a2a'), BL = C('#2a64c8'), YE = C('#f6c22a');
-  tbf.forEach((f, i) => { const band = i / TBF.N * TBF.L / 2.4, k = Math.floor(band), e = band - k; for (let j = 0; j <= NA; j++) { const a = j / NA * Math.PI * 2, p = f.c.clone().addScaledVector(f.side, Math.sin(a) * TBF.R).addScaledVector(f.up, -Math.cos(a) * TBF.R); pos.push(p.x, p.y, p.z); c3.copy(e < 0.08 ? YE : k % 2 ? BL : OR); col.push(c3.r, c3.g, c3.b); } });
-  for (let i = 0; i < TBF.N; i++) for (let j = 0; j < NA; j++) { const a = i * (NA + 1) + j, b = a + NA + 1; idx.push(a, b, a + 1, a + 1, b, b + 1); }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
-  root.add(new THREE.Mesh(g, nightLit(new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, shininess: 80, specular: '#ffffff', emissive: '#2a1e14', emissiveIntensity: 0.9 }), 0.4)));
-  // white legs from the ground to the tube, and the tower: four blue legs, a stair, a platform, a striped canopy
+  const OR = C('#f08a2a'), BL = C('#2a64c8'), YE = C('#f6c22a'), c3 = new THREE.Color();
+  const tubeMat = nightLit(new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, shininess: 80, specular: '#ffffff', emissive: '#2a1e14', emissiveIntensity: 0.9 }), 0.4);
+  // the tubes: closed all round, bands of orange and blue with a thin yellow line between
+  const tubeMesh = F => { const pos = [], col = [], idx = [], NA = 24; F.fr.forEach((f, i) => { const band = i / F.N * F.L / 2.4, k = Math.floor(band), e = band - k; for (let j = 0; j <= NA; j++) { const a = j / NA * Math.PI * 2, p = f.c.clone().addScaledVector(f.side, Math.sin(a) * F.R).addScaledVector(f.up, -Math.cos(a) * F.R); pos.push(p.x, p.y, p.z); c3.copy(e < 0.08 ? YE : k % 2 ? BL : OR); col.push(c3.r, c3.g, c3.b); } });
+    for (let i = 0; i < F.N; i++) for (let j = 0; j < NA; j++) { const a = i * (NA + 1) + j, b = a + NA + 1; idx.push(a, b, a + 1, a + 1, b, b + 1); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals(); root.add(new THREE.Mesh(g, tubeMat)); };
+  tubeMesh(TBF); tubeMesh(EXF);
+  // the funnel: rings along its axis, a checker of orange, red and yellow radiating to the mouth (after the photo)
+  const NS = 40, NA = 96, pos = [], uv = [], idx = [], p = new V3();
+  for (let i = 0; i <= NS; i++) for (let j = 0; j <= NA; j++) { fnP(i / NS * FN.L, j / NA * Math.PI * 2, p); pos.push(p.x, p.y, p.z); uv.push(j / NA, 1 - i / NS); }
+  for (let i = 0; i < NS; i++) for (let j = 0; j < NA; j++) { const a = i * (NA + 1) + j, b = a + NA + 1; idx.push(a, b, a + 1, a + 1, b, b + 1); }
+  const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); fg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); fg.setIndex(idx); fg.computeVertexNormals();
+  const checker = canvasTex(1024, 256, (g, w, h) => { const cols = ['#f6c22a', '#f08a2a', '#d8321e', '#f08a2a']; for (let j = 0; j < 4; j++) for (let i = 0; i < 24; i++) { g.fillStyle = cols[(i + j) % 4]; g.fillRect(i * w / 24, j * h / 4, w / 24 + 1, h / 4 + 1); } }, true);
+  root.add(new THREE.Mesh(fg, nightLit(new THREE.MeshPhongMaterial({ map: checker, side: THREE.DoubleSide, shininess: 40, specular: '#5a5a5a' }), 0.4)));
+  // the mouth's rolled lip and a grey steel ring standing round it, legs to the ground, the tower
   const m = new Merge();
-  for (let i = 12; i < TBF.N - 6; i += 20) { const f = tbf[i], b = f.c.clone().addScaledVector(f.up, -TBF.R - 0.05); if (Math.hypot(b.x - BW.x, b.z - BW.z) < BW.pool + 0.8) continue; m.limb(new V3(b.x, 0, b.z), b, 0.14, 0.12, C('#f4f1ea')); m.add(GEO.box, b, new V3(0.5, 0.14, 0.5), C('#d8d4ca')); }
+  const lip = new THREE.TorusGeometry(FN.R0, 0.22, 8, 64), q = new THREE.Quaternion().setFromUnitVectors(new V3(0, 0, 1), FN.d);
+  m.add(lip, FN.C0, new V3(1, 1, 1), C('#f8f6f0'), q); m.add(new THREE.TorusGeometry(FN.R0 + 0.9, 0.16, 6, 64), FN.C0.clone().addScaledVector(FN.d, 0.3), new V3(1, 1, 1), C('#9aa0a6'), q);
+  for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, i0 = fnP(0.3, a, new V3(), -0.9), i1 = fnP(4, a, new V3(), -0.15); m.limb(i0, i1, 0.07, 0.07, C('#9aa0a6')); }
+  for (const [s, ph] of [[0.4, -0.9], [0.4, 0.9], [5, -0.7], [5, 0.7], [10, -0.5], [10, 0.5], [12.5, 0]]) { const b = fnP(s, ph, new V3(), -0.15); if (Math.hypot(b.x - BW.x, b.z - BW.z) < BW.pool + 0.6) continue; m.limb(new V3(b.x, 0, b.z), b, 0.22, 0.2, C('#9aa0a6')); m.add(GEO.box, new V3(b.x, 0.15, b.z), new V3(0.8, 0.3, 0.8), C('#d8d4ca')); FN_LEGS.push([b.x, b.z]); }
+  for (let i = 12; i < TBF.N - 6; i += 20) { const f = TBF.fr[i], b = f.c.clone().addScaledVector(f.up, -TBF.R - 0.05); m.limb(new V3(b.x, 0, b.z), b, 0.14, 0.12, C('#f4f1ea')); m.add(GEO.box, b, new V3(0.5, 0.14, 0.5), C('#d8d4ca')); }
+  for (const i of [20, 40]) { const f = EXF.fr[i], b = f.c.clone().addScaledVector(f.up, -EXF.R - 0.05); if (Math.hypot(b.x - BW.x, b.z - BW.z) > BW.pool + 0.4) m.limb(new V3(b.x, 0, b.z), b, 0.14, 0.12, C('#f4f1ea')); }
   for (const [dx, dz] of [[-2.2, -2.2], [2.2, -2.2], [-2.2, 2.2], [2.2, 2.2]]) m.limb(new V3(BT.x + dx, 0, BT.z + dz), new V3(BT.x + dx, BT.h + 3.2, BT.z + dz), 0.24, 0.22, C('#2a64c8'));
   for (let y = 2; y < BT.h; y += 2.2) { m.add(GEO.box, new V3(BT.x, y, BT.z + 2.2), new V3(4.6, 0.12, 0.12), C('#f4f1ea')); m.add(GEO.box, new V3(BT.x - 2.2, y, BT.z), new V3(0.12, 0.12, 4.6), C('#f4f1ea')); }
   for (let k = 0; k < 30; k++) { const y = k * (BT.h / 30), a = k * 0.5; m.add(GEO.box, new V3(BT.x + Math.cos(a) * 1.4, y + 0.3, BT.z + Math.sin(a) * 1.4), new V3(1.4, 0.12, 0.5), C('#f08a2a'), new THREE.Quaternion().setFromAxisAngle(up, -a)); }
   m.add(GEO.box, new V3(BT.x, BT.h, BT.z), new V3(5.2, 0.3, 5.2), C('#f6c22a'));
   for (const [dx, dz, w, d] of [[0, 2.5, 5.2, 0.08], [0, -2.5, 5.2, 0.08], [-2.5, 0, 0.08, 5.2]]) m.add(GEO.box, new V3(BT.x + dx, BT.h + 0.6, BT.z + dz), new V3(w, 1.0, d), C('#f4f1ea'));
-  for (let s = 0; s < 12; s++) { const b = s / 12 * Math.PI * 2; m.add(GEO.cone, new V3(BT.x + Math.cos(b) * 1.6, BT.h + 3.6, BT.z + Math.sin(b) * 1.6), new V3(2.2, 1.2, 1.1), s % 2 ? C('#2a64c8') : C('#f08a2a'), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -b, 1.2, 'YXZ'))); }
-  // the bowl's eight legs and a ring beam under it, the pool's white coping
-  const LR = 7.6, LH = bowlH(LR);
-  for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + Math.PI / 8, x = BW.x + Math.cos(a) * LR, z = BW.z + Math.sin(a) * LR; m.limb(new V3(x, 0, z), new V3(x, LH - 0.2, z), 0.3, 0.26, C('#f4f1ea')); m.add(GEO.box, new V3(x, 0.15, z), new V3(0.9, 0.3, 0.9), C('#d8d4ca')); }
-  m.add(new THREE.TorusGeometry(LR, 0.22, 6, 48).rotateX(Math.PI / 2), new V3(BW.x, LH - 0.3, BW.z), new V3(1, 1, 1), C('#f4f1ea'));
+  for (let k = 0; k < 12; k++) { const b = k / 12 * Math.PI * 2; m.add(GEO.cone, new V3(BT.x + Math.cos(b) * 1.6, BT.h + 3.6, BT.z + Math.sin(b) * 1.6), new V3(2.2, 1.2, 1.1), k % 2 ? C('#2a64c8') : C('#f08a2a'), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -b, 1.2, 'YXZ'))); }
   m.add(new THREE.TorusGeometry(BW.pool * 1.02, 0.28, 6, 64).rotateX(Math.PI / 2), new V3(BW.x, 0.1, BW.z), new V3(1, 1, 1), C('#f8f6f0'));
   root.add(new THREE.Mesh(m.build(), toy));
-  // the water running down the tube's floor
-  const fu = { uTime: waterU.uTime, uNight: skyU.uNight }, wp = [], wuv = [], wi = [], WA = 6;
-  tbf.forEach((f, i) => { for (let j = 0; j <= WA; j++) { const a = -0.7 + 1.4 * j / WA, p = f.c.clone().addScaledVector(f.side, Math.sin(a) * (TBF.R - 0.05)).addScaledVector(f.up, -Math.cos(a) * (TBF.R - 0.05)); wp.push(p.x, p.y, p.z); wuv.push(i / TBF.N * TBF.L, j / WA); } });
-  for (let i = 0; i < TBF.N; i++) for (let j = 0; j < WA; j++) { const a = i * (WA + 1) + j, b = a + WA + 1; wi.push(a, b, a + 1, a + 1, b, b + 1); }
-  const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(wp, 3)); wg.setAttribute('uv', new THREE.Float32BufferAttribute(wuv, 2)); wg.setIndex(wi);
+  // water running down the tubes' floors, and sheeting over the funnel's
+  const fu = { uTime: waterU.uTime, uNight: skyU.uNight };
   const flow = 'uniform float uTime,uNight;varying vec2 vUv;float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}void main(){float s=vUv.x*.9-uTime*5.,w=vUv.y;float st=smoothstep(.75,1.,fract(s+h2(vec2(floor(w*7.),0.))*.7))*smoothstep(.0,.2,w)*smoothstep(1.,.8,w);vec3 c=mix(vec3(.35,.82,.95),vec3(1.),st*.8);c*=mix(1.,.45,uNight);gl_FragColor=vec4(c,.5+st*.35);}';
-  root.add(new THREE.Mesh(wg, new THREE.ShaderMaterial({ uniforms: fu, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false, vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}', fragmentShader: flow })));
-  // the bowl: a striped funnel whose stripes swirl toward the hole, a rolled lip, and water sheeting round it
-  const prof = []; for (let j = 0; j <= 30; j++) { const r = BW.rh + (BW.R - BW.rh) * j / 30; prof.push(new THREE.Vector2(r, bowlH(r))); }
-  prof.push(new THREE.Vector2(BW.R + 0.3, BW.rim + 0.32), new THREE.Vector2(BW.R + 0.55, BW.rim + 0.18), new THREE.Vector2(BW.R + 0.6, BW.rim - 0.2));
-  // the stripes come from a texture whose u is turned a little more the further out it is, so they swirl, crisp
-  const stripes = canvasTex(1024, 16, (g, w) => { const SC = ['#f08a2a', '#2a64c8', '#f6c22a', '#2a64c8']; for (let k = 0; k < 16; k++) { g.fillStyle = SC[k % 4]; g.fillRect(k * w / 16, 0, w / 16 + 1, 16); } g.fillStyle = 'rgba(255,255,255,.55)'; for (let k = 0; k < 16; k++) g.fillRect(k * w / 16, 0, 3, 16); }, true);
-  const bg = new THREE.LatheGeometry(prof, 160), bp = bg.attributes.position, buv = bg.attributes.uv, bc = [];
-  for (let i = 0; i < bp.count; i++) { const r = Math.hypot(bp.getX(i), bp.getZ(i)); buv.setX(i, buv.getX(i) + r * 0.05); const c = r > BW.R + 0.1 ? 1.6 : 1; bc.push(c, c, c); }
-  bg.setAttribute('color', new THREE.Float32BufferAttribute(bc, 3)); bg.computeVertexNormals();
-  const bm = new THREE.Mesh(bg, nightLit(new THREE.MeshPhongMaterial({ map: stripes, vertexColors: true, side: THREE.DoubleSide, shininess: 40, specular: '#5a5a5a' }), 0.4)); bm.position.set(BW.x, 0, BW.z); root.add(bm);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(BW.rh, 0.12, 8, 40).rotateX(Math.PI / 2), nightLit(new THREE.MeshLambertMaterial({ color: '#f08a2a' }), 0.4)); ring.position.set(BW.x, BW.hole, BW.z); root.add(ring);
-  const sheet = new THREE.LatheGeometry(prof.slice(0, 29).map(v => new THREE.Vector2(v.x, v.y + 0.05)), 120);
-  const sheetM = new THREE.Mesh(sheet, new THREE.ShaderMaterial({ uniforms: fu, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false,
-    vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-    fragmentShader: 'uniform float uTime,uNight;varying vec2 vUv;void main(){float st=smoothstep(.82,1.,fract(vUv.x*14.+vUv.y*2.5-uTime*.9))+smoothstep(.9,1.,fract(vUv.x*31.-vUv.y*4.-uTime*1.4))*.6;vec3 c=mix(vec3(.6,.9,1.),vec3(1.),st);c*=mix(1.,.45,uNight);gl_FragColor=vec4(c,(.12+st*.45)*smoothstep(0.,.15,vUv.y));}' })); sheetM.position.set(BW.x, 0, BW.z); root.add(sheetM);
-  // the pool beneath, and a tiled deck all round with the pool cut out
+  const wmat = new THREE.ShaderMaterial({ uniforms: fu, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false, vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}', fragmentShader: flow });
+  for (const F of [TBF, EXF]) { const wp = [], wuv = [], wi = [], WA = 6; F.fr.forEach((f, i) => { for (let j = 0; j <= WA; j++) { const a = -0.7 + 1.4 * j / WA, q2 = f.c.clone().addScaledVector(f.side, Math.sin(a) * (F.R - 0.05)).addScaledVector(f.up, -Math.cos(a) * (F.R - 0.05)); wp.push(q2.x, q2.y, q2.z); wuv.push(i / F.N * F.L, j / WA); } });
+    for (let i = 0; i < F.N; i++) for (let j = 0; j < WA; j++) { const a = i * (WA + 1) + j, b = a + WA + 1; wi.push(a, b, a + 1, a + 1, b, b + 1); }
+    const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(wp, 3)); wg.setAttribute('uv', new THREE.Float32BufferAttribute(wuv, 2)); wg.setIndex(wi); root.add(new THREE.Mesh(wg, wmat)); }
+  { const sp = [], su = [], si = [], NW = 30; for (let i = 0; i <= 24; i++) for (let j = 0; j <= NW; j++) { fnP(i / 24 * FN.L, -1.1 + 2.2 * j / NW, p, 0.04); sp.push(p.x, p.y, p.z); su.push(j / NW, i / 24); }
+    for (let i = 0; i < 24; i++) for (let j = 0; j < NW; j++) { const a = i * (NW + 1) + j, b = a + NW + 1; si.push(a, b, a + 1, a + 1, b, b + 1); }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3)); sg.setAttribute('uv', new THREE.Float32BufferAttribute(su, 2)); sg.setIndex(si);
+    root.add(new THREE.Mesh(sg, new THREE.ShaderMaterial({ uniforms: fu, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false, vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+      fragmentShader: 'uniform float uTime,uNight;varying vec2 vUv;void main(){float st=smoothstep(.85,1.,fract(vUv.y*9.-uTime*1.3+sin(vUv.x*6.)*.3));float e=smoothstep(0.,.25,vUv.x)*smoothstep(1.,.75,vUv.x);vec3 c=mix(vec3(.6,.9,1.),vec3(1.),st);c*=mix(1.,.45,uNight);gl_FragColor=vec4(c,(.1+st*.4)*e);}' }))); }
+  // the pool beneath the chute, and a tiled deck all round with the pool cut out
   pool({ x: BW.x, z: BW.z, rx: BW.pool, rz: BW.pool }, false, [28, 28]);
   const D = BW.deck, sh = new THREE.Shape(); sh.moveTo(D.x0, -D.z0); sh.lineTo(D.x1, -D.z0); sh.lineTo(D.x1, -D.z1); sh.lineTo(D.x0, -D.z1); sh.closePath();
   const hp = new THREE.Path(); hp.absellipse(BW.x, -BW.z, BW.pool * 1.01, BW.pool * 1.01, 0, Math.PI * 2, true); sh.holes.push(hp);
@@ -422,58 +436,68 @@ const TBF = { N: 420, R: 0.95 }, tbf = [];
   const sx = D.x0 + 1, sz = BW.z + 12, sm = new Merge(); for (const dz of [-3.4, 3.4]) sm.limb(new V3(sx, 0, sz + dz), new V3(sx, 5.2, sz + dz), 0.18, 0.16, C('#f4f1ea')); root.add(new THREE.Mesh(sm.build(), toy));
   for (const r of [-Math.PI / 2, Math.PI / 2]) { const b = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 1.8), new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.25 })); b.position.set(sx + (r > 0 ? 0.05 : -0.05), 4.4, sz); b.rotation.y = r; root.add(b); }
 }
-const tubeAt = s => { const f = clamp(s / TBF.L, 0, 1) * TBF.N, i = Math.min(TBF.N - 1, Math.floor(f)), k = f - i, a = tbf[i], b = tbf[i + 1]; return { c: a.c.clone().lerp(b.c, k), t: a.t.clone().lerp(b.t, k).normalize(), up: a.up.clone().lerp(b.up, k).normalize(), dy: (b.c.y - a.c.y) / (TBF.L / TBF.N) }; };
-const bowl = { on: false, phase: 'tube', s: 0, v: 0, r: 0, th: 0, vt: 0, vr: 0, t: 0, fx: 0, fz: 0 };
-const bowlNormal = (r, th, v) => { const s = bowlS(r); return v.set(-s * Math.cos(th), 1, -s * Math.sin(th)).normalize(); };
+// the slider: s along the tube, then the funnel (s along its axis, phi round its wall), then the chute
+const bowl = { on: false, phase: 'tube', s: 0, v: 0, phi: 0, w: 0, sv: 0, t: 0, fx: 0, fz: 0 };
+const SEAT = 0.6;
+const seatOn = (F, s, v) => { const f = frameAt(F, s); return v.copy(f.c).addScaledVector(f.up, -F.R + SEAT); };
+const funnelSeat = v => { const phi = bowl.phi * (1 - smooth(FN.L - 1.6, FN.L, bowl.s)); return fnP(bowl.s, phi, v, SEAT + 0.4 * (1 - smooth(FN.L - 2, FN.L, bowl.s))); };
 const bowlRide = {
-  key: 'bowl', label: 'Ride the Thunder Bowl', name: 'The Thunder Bowl', hint: 'down the tube, round the bowl, and through', exit: W3(BW.x + 12, 0, BW.z - 2),
+  key: 'bowl', label: 'Ride the Thunder Bowl', name: 'The Thunder Bowl', hint: 'down the tube, swing through the funnel, and out', exit: W3(BW.x + 10, 0, BW.z - 4),
   board() { bowl.on = true; bowl.phase = 'tube'; bowl.s = 0.5; bowl.v = 1.6; bowl.t = 0; },
   leave() { bowl.on = false; setUnder(0); late.setVeil && late.setVeil(0); },
   seat(v) {
-    if (bowl.phase === 'tube') { const f = tubeAt(bowl.s); v.copy(f.c).addScaledVector(f.up, -TBF.R + 0.55).add(O); return; }
-    if (bowl.phase === 'bowl') { const n = bowlNormal(bowl.r, bowl.th, tmpV); v.set(BW.x + Math.cos(bowl.th) * bowl.r, bowlH(bowl.r), BW.z + Math.sin(bowl.th) * bowl.r).addScaledVector(n, 1.05).add(O); return; }
-    const y = bowl.phase === 'fall' ? Math.max(WATER, BW.hole - 0.3 - 0.5 * G * bowl.t * bowl.t) : bowl.phase === 'float' ? WATER + 0.42 + Math.sin(T * 1.7) * 0.05 : WATER - 0.75 + (WATER + 0.42 - (WATER - 0.75)) * smooth(0.9, 1.7, bowl.t);
+    if (bowl.phase === 'tube') { seatOn(TBF, bowl.s, v).add(O); return; }
+    if (bowl.phase === 'funnel') { funnelSeat(v).add(O); return; }
+    if (bowl.phase === 'exit') { seatOn(EXF, bowl.s, v).add(O); return; }
+    const y = bowl.phase === 'float' ? WATER + 0.42 + Math.sin(T * 1.7) * 0.05 : WATER - 0.75 + (WATER + 0.42 - (WATER - 0.75)) * smooth(0.9, 1.7, bowl.t);
     v.set(bowl.fx, y, bowl.fz).add(O);
   },
   fwd(v) {
-    if (bowl.phase === 'tube') { v.copy(tubeAt(bowl.s).t); v.y -= 0.1; return; }
-    if (bowl.phase === 'bowl') { const c = Math.cos(bowl.th), s = Math.sin(bowl.th); const sp = Math.max(0.5, Math.hypot(bowl.vt, bowl.vr)); v.set((-s * bowl.vt + c * bowl.vr) / sp - c * 0.35, bowlS(bowl.r) * bowl.vr / sp - 0.1, (c * bowl.vt + s * bowl.vr) / sp - s * 0.35).normalize(); return; }
-    if (bowl.phase === 'fall') { v.set(Math.cos(bowl.th) * 0.25, -1, Math.sin(bowl.th) * 0.25); return; }
-    v.set(Math.cos(bowl.th), bowl.phase === 'float' ? 0.02 : -0.15 + 0.3 * smooth(0.5, 1.5, bowl.t), Math.sin(bowl.th));
+    if (bowl.phase === 'tube') { v.copy(frameAt(TBF, bowl.s).t); v.y -= 0.1; return; }
+    if (bowl.phase === 'exit') { v.copy(frameAt(EXF, bowl.s).t); return; }
+    if (bowl.phase === 'funnel') {
+      // along the way you are swinging, but always leaning down the funnel toward its end, so the view never whips round
+      const r = fnR(bowl.s), tang = FN.e1.clone().multiplyScalar(Math.cos(bowl.phi)).addScaledVector(FN.e2, Math.sin(bowl.phi));
+      v.copy(tang).multiplyScalar(bowl.w * r * 0.4).addScaledVector(FN.d, 3 + bowl.sv); v.y += 1.6; v.normalize(); return;
+    }
+    const d = exitCurve.getTangentAt(1); v.set(d.x, bowl.phase === 'float' ? 0.02 : -0.15 + 0.3 * smooth(0.5, 1.5, bowl.t), d.z);
   },
 };
 rides.push(bowlRide);
 { const g = new THREE.Group(); root.add(g); regThing(g, bowlRide.label, start(bowlRide), { x: O.x + BT.x - 4.2, z: O.z + BT.z, r: 4 }); }
+const tubeStep = (F, dt) => { const f = frameAt(F, bowl.s), sinA = clamp(-f.dy, -1, 1), cosA = Math.sqrt(1 - sinA * sinA); bowl.v = clamp(bowl.v + (G * sinA - 0.03 * G * cosA - 0.012 * bowl.v * bowl.v) * dt, 1.5, 14); bowl.s += bowl.v * dt; return f; };
 addTick(dt => {
   if (state.world !== 'sun' || !bowl.on) return;
   dt = Math.min(dt, 0.05);
   if (bowl.phase === 'tube') {
-    const f = tubeAt(bowl.s), sinA = clamp(-f.dy, -1, 1), cosA = Math.sqrt(1 - sinA * sinA);
-    bowl.v = clamp(bowl.v + (G * sinA - 0.03 * G * cosA - 0.012 * bowl.v * bowl.v) * dt, 1.5, 14); bowl.s += bowl.v * dt;
-    if (bowl.s >= TBF.L - 0.3) { bowl.phase = 'bowl'; bowl.r = BW.R - 0.4; bowl.th = BTH; bowl.vt = bowl.v; bowl.vr = 0; tmpV.set(BW.x + Math.cos(BTH) * bowl.r, bowlH(bowl.r) + 0.3, BW.z + Math.sin(BTH) * bowl.r); burst(tmpV.x, tmpV.y, tmpV.z, 50, 0.9); }
-  } else if (bowl.phase === 'bowl') {
-    // circling a bowl: the wall's slope pulls you in, your circling speed holds you out; friction and the water's
-    // drag slow you, so you circle lower and faster round, until you go through the hole
-    for (let n = Math.ceil(dt / 0.005), h = dt / n; n > 0; n--) {
-      const s = bowlS(bowl.r), k = Math.sqrt(1 + s * s), sp = Math.max(0.1, Math.hypot(bowl.vt, bowl.vr * k)), fr = 0.08 * G / k + 0.012 * sp * sp;
-      const ar = (bowl.vt * bowl.vt / bowl.r - G * s) / (1 + s * s) - fr * bowl.vr * k / sp, at = -bowl.vt * bowl.vr / bowl.r - fr * bowl.vt / sp;
-      bowl.vr += ar * h; bowl.vt += at * h; bowl.r += bowl.vr * h; bowl.th += bowl.vt / bowl.r * h;
+    tubeStep(TBF, dt);
+    // into the funnel's wall, still moving at the tube's speed, down the wall toward its floor
+    if (bowl.s >= TBF.L - 0.05) { bowl.phase = 'funnel'; bowl.phi = FN.phi0; bowl.s = FN.se; bowl.w = -bowl.v * 0.75 / fnR(FN.se); bowl.sv = 0.6; }
+  } else if (bowl.phase === 'funnel') {
+    // a pendulum on the funnel's curved wall: gravity swings you back toward the floor, friction on the wall (it
+    // presses harder the faster you go) and the water's drag take a little of every swing; you drift down the
+    // floor toward the narrow end, where the shrinking radius quickens the swing
+    for (let n = Math.ceil(dt / 0.004), h = dt / n; n > 0; n--) {
+      const r = fnR(bowl.s), dr = -(FN.R0 - FN.R1) / FN.L * bowl.sv, vt = bowl.w * r, press = Math.max(0, G * Math.cos(bowl.phi) + vt * vt / r);
+      const fr = (0.08 * press + 0.012 * vt * vt) * Math.sign(bowl.w) / r;
+      bowl.w += (-(G / r) * Math.sin(bowl.phi) - 2 * dr / r * bowl.w - fr) * h; bowl.phi += bowl.w * h;
+      bowl.sv += (G * 0.04 - 0.25 * bowl.sv) * h; bowl.phi = clamp(bowl.phi, -1.65, 1.65); bowl.s += bowl.sv * h;
     }
-    if (R() < 0.7) { const p = new V3(BW.x + Math.cos(bowl.th) * bowl.r, bowlH(bowl.r) + 0.1, BW.z + Math.sin(bowl.th) * bowl.r); emit(p.x, p.y, p.z, (R() - 0.5) * 2, 0.8 + R(), (R() - 0.5) * 2, 0.4, 0.2); }
-    if (bowl.r < BW.rh + 0.15) { bowl.phase = 'fall'; bowl.t = 0; bowl.fx = BW.x + Math.cos(bowl.th) * BW.rh * 0.5; bowl.fz = BW.z + Math.sin(bowl.th) * BW.rh * 0.5; }
+    if (R() < 0.6) { const q = fnP(bowl.s, bowl.phi, tmpV, 0.1); emit(q.x, q.y, q.z, (R() - 0.5) * 2, 0.8 + R(), (R() - 0.5) * 2, 0.4, 0.2); }
+    if (bowl.s >= FN.L) { bowl.phase = 'exit'; bowl.s = 0; bowl.v = Math.max(2.5, bowl.sv + Math.abs(bowl.w) * FN.R1 * 0.5); }
+  } else if (bowl.phase === 'exit') {
+    tubeStep(EXF, dt);
+    if (bowl.s >= EXF.L - 0.05) { const e = exitCurve.getPointAt(1); bowl.fx = e.x; bowl.fz = e.z; bowl.phase = 'splash'; bowl.t = 0; burst(e.x, WATER + 0.1, e.z, 180, 1.8); late.setVeil && late.setVeil(0.85); }
   } else {
     bowl.t += dt;
-    if (bowl.phase === 'fall' && BW.hole - 0.3 - 0.5 * G * bowl.t * bowl.t <= WATER) { bowl.phase = 'splash'; bowl.t = 0; burst(bowl.fx, WATER + 0.1, bowl.fz, 200, 2); late.setVeil && late.setVeil(0.85); }
-    else if (bowl.phase !== 'fall') {
-      late.setVeil && late.setVeil(Math.max(0, 0.85 - bowl.t * 1.6));
-      setUnder(bowl.phase === 'splash' ? smooth(0.1, 0.3, bowl.t) * (1 - smooth(1.1, 1.6, bowl.t)) : 0);
-      if (bowl.phase === 'splash' && bowl.t > 1.7) { bowl.phase = 'float'; bowl.t = 0; }
-      // a little while bobbing in the pool, then up the tower and round again
-      if (bowl.phase === 'float' && bowl.t > 5) { bowl.phase = 'tube'; bowl.s = 0.5; bowl.v = 1.6; bowl.t = 0; late.setVeil && late.setVeil(0.6); }
-    }
+    late.setVeil && late.setVeil(Math.max(0, 0.85 - bowl.t * 1.6));
+    setUnder(bowl.phase === 'splash' ? smooth(0.1, 0.3, bowl.t) * (1 - smooth(1.1, 1.6, bowl.t)) : 0);
+    if (bowl.phase === 'splash' && bowl.t > 1.7) { bowl.phase = 'float'; bowl.t = 0; }
+    // a little while bobbing in the pool, then up the tower and round again
+    if (bowl.phase === 'float' && bowl.t > 5) { bowl.phase = 'tube'; bowl.s = 0.5; bowl.v = 1.6; bowl.t = 0; late.setVeil && late.setVeil(0.6); }
   }
 });
-// walking here: the deck is level; the pool, the tower and the bowl's legs stop you
+// walking here: the deck is level; the pool, the tower and the funnel's legs stop you
 {
   const f = worlds.sun.floorH, b = worlds.sun.blocked, D = BW.deck;
   const loc = (x, z) => [x - O.x, z - O.z];
@@ -482,10 +506,11 @@ addTick(dt => {
     const [lx, lz] = loc(x, z);
     if (Math.hypot(lx - BW.x, lz - BW.z) < BW.pool * 1.06) return true;
     if (Math.abs(lx - BT.x) < 2.8 && Math.abs(lz - BT.z) < 2.8) return true;
-    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + Math.PI / 8; if (Math.hypot(lx - BW.x - Math.cos(a) * 7.6, lz - BW.z - Math.sin(a) * 7.6) < 0.8) return true; }
+    for (const [px, pz] of FN_LEGS) if (Math.hypot(lx - px, lz - pz) < 0.7) return true;
     return b(x, z);
   };
 }
-Object.assign(SUN_PLAN, { BOWL_TUBE: bowlCurve.getSpacedPoints(80) });
+// for the secret world's map: the tube's line, the funnel's outline from above
+Object.assign(SUN_PLAN, { BOWL_TUBE: bowlCurve.getSpacedPoints(80).concat(exitCurve.getSpacedPoints(10)), FUNNEL: [fnP(0, -Math.PI / 2), fnP(0, Math.PI / 2), fnP(FN.L, Math.PI / 2), fnP(FN.L, -Math.PI / 2)].map(p => [p.x, p.z]) });
 export const bowlState = bowl;
 provide({ get bowlState() { return bowl; } });

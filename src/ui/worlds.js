@@ -64,11 +64,11 @@ function leaveSunWorld() {
 // "Step off" or Esc sets you down beside the ride.
 const rideUI = $('#rideui');
 let ride = null, head = 0;
-const seat = new V3(), prev = new V3(), fwd = new V3();
+const seat = new V3(), prev = new V3(), fwd = new V3(), look = new V3();
 function startRide(r) {
   if (state.mode !== 'walk' || state.world !== 'sun') return;
   late.closePops && late.closePops(); setCue(null);
-  ride = r; r.board && r.board(); r.seat(prev);
+  ride = r; r.board && r.board(); r.seat(prev); look.ok = false;
   head = r.yaw0 !== undefined ? r.yaw0 : player.yaw; player.yaw = 0; player.pitch = r.fwd ? 0 : -0.05;
   state.mode = 'ride';
   $('#ride-name').textContent = r.name; $('#rideui .sw-hint').textContent = r.hint || 'drag to look around'; rideUI.hidden = false; requestAnimationFrame(() => rideUI.classList.add('show'));
@@ -85,7 +85,8 @@ addTick(dt => {
   // a ride you drive (the bumper cars) reads the keys or the joystick
   if (ride.drive) { let ix = jv.x, iz = jv.y; if (keys.has('KeyW') || keys.has('ArrowUp')) iz += 1; if (keys.has('KeyS') || keys.has('ArrowDown')) iz -= 1; if (keys.has('KeyA') || keys.has('ArrowLeft')) ix -= 1; if (keys.has('KeyD') || keys.has('ArrowRight')) ix += 1; ride.ix = Math.max(-1, Math.min(1, ix)); ride.iz = Math.max(-1, Math.min(1, iz)); }
   ride.seat(seat); camera.position.copy(seat);
-  if (ride.fwd) { ride.fwd(fwd); curLook.copy(seat).addScaledVector(fwd, 10); curLook.y -= 0.35; camera.lookAt(curLook); }
+  // the way you look follows the ride's direction gently, so a ride that turns sharply never jerks the view
+  if (ride.fwd) { ride.fwd(fwd); if (!look.ok || prev.distanceToSquared(seat) > 25) look.copy(fwd); else look.lerp(fwd, 1 - Math.exp(-dt * 5)).normalize(); look.ok = true; curLook.copy(seat).addScaledVector(look, 10); curLook.y -= 0.35; camera.lookAt(curLook); }
   else {
     if (ride.follow && dt > 0) {
       const vx = (seat.x - prev.x) / dt, vz = (seat.z - prev.z) / dt;

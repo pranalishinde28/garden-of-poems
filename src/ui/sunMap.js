@@ -57,8 +57,8 @@ function draw(g, P, s, full) {
   // the Thunder Bowl: its deck, the striped bowl over its pool, the tube from the tower
   if (P0.BOWL) { const B = P0.BOWL, D = B.deck; rect(D.x0, D.z0, D.x1, D.z1); fill('#efe6d2'); ink();
     if (P0.BOWL_TUBE) { const line = () => { g.beginPath(); P0.BOWL_TUBE.forEach((q, i) => { const [a, b] = at(q.x, q.z); i ? g.lineTo(a, b) : g.moveTo(a, b); }); }; line(); g.strokeStyle = INKC; g.lineWidth = 1.9 * s + lw * 2; g.stroke(); line(); g.strokeStyle = '#f08a2a'; g.lineWidth = 1.9 * s; g.stroke(); }
-    const [cx, cy] = at(B.x, B.z); for (let k = 0; k < 16; k++) { g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, B.R * s, k / 16 * 6.283, (k + 1) / 16 * 6.283); g.closePath(); fill(['#f08a2a', '#2a64c8', '#f6c22a', '#2a64c8'][k % 4]); }
-    circle(cx, cy, B.R * s); ink(lw * 1.4); circle(cx, cy, B.rh * s); fill('#5cc0d4'); ink();
+    { const [cx, cy] = at(B.x, B.z); circle(cx, cy, B.pool * s); fill('#5cc0d4'); ink(); }
+    if (P0.FUNNEL) { g.beginPath(); P0.FUNNEL.forEach(([x, z], i) => { const [a, b] = at(x, z); i ? g.lineTo(a, b) : g.moveTo(a, b); }); g.closePath(); fill('#f08a2a'); ink(lw * 1.2); g.save(); g.clip(); for (let k = 0; k < 8; k++) { const [x0, z0] = P0.FUNNEL[0], [x1, z1] = P0.FUNNEL[3], [a, b] = at(x0 + (P0.FUNNEL[1][0] - x0) * (k + 0.5) / 8, z0), [c, d] = at(x1 + (P0.FUNNEL[2][0] - x1) * (k + 0.5) / 8, z1); g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.strokeStyle = k % 2 ? '#d8321e' : '#f6c22a'; g.lineWidth = 1.2 * s; g.stroke(); } g.restore(); }
     rect(B.tower.x - 2.6, B.tower.z - 2.6, B.tower.x + 2.6, B.tower.z + 2.6); fill('#f6c22a'); ink(); }
   // water: the lake by the arrival, the lagoon across the fair, the storybook canal round its island
   for (const W of [P0.LAKE, P0.LAGOON]) {
@@ -115,7 +115,7 @@ function places() {
   add('Fireworks', 'the striped kiosk', 'fireworks', P0.KIOSK.x, P0.KIOSK.z, 'r', hop(P0.KIOSK.x, P0.KIOSK.z + 2.4, 0, 'Fireworks'));
   add('Canal boats', 'boats round the island', 'boat', P0.CANAL.x, P0.CANAL.z, 'l', hop(P0.CANAL.x + P0.CANAL.rx + P0.CANAL.half + 3.2, P0.CANAL.z, Math.PI / 2, 'The storybook canal'));
   add('Swings', 'fly out over the lagoon', 'swingride', P0.SWING.x, P0.SWING.z, 'r', hop(P0.SWING.x - P0.SWING.r - 2.5, P0.SWING.z, -Math.PI / 2, 'The swings'));
-  if (P0.BOWL) add('Thunder Bowl', 'round the great bowl, and through', 'bowl', P0.BOWL.x, P0.BOWL.z, 'r', hop(P0.BOWL.tower.x - 4.2, P0.BOWL.tower.z + 2, Math.PI / 2, 'The Thunder Bowl'));
+  if (P0.BOWL) add('Thunder Bowl', 'swing through the great funnel', 'bowl', P0.BOWL.x, P0.BOWL.z, 'r', hop(P0.BOWL.tower.x - 4.2, P0.BOWL.tower.z + 2, Math.PI / 2, 'The Thunder Bowl'));
   add('Drop tower', '56 metres up, then down', 'drop', P0.FAIR_RIDES.drop.x, P0.FAIR_RIDES.drop.z, 'r', hop(P0.FAIR_RIDES.drop.x - 6.5, P0.FAIR_RIDES.drop.z + 2, -Math.PI / 2, 'The drop tower'));
   if (P0.DOCK) add('Jet skis', 'out on the lagoon', 'jetski', P0.DOCK.x, P0.DOCK.z1 + 2, 'b', hop(P0.DOCK.x, P0.DOCK.z0 + 2.2, Math.PI, 'Jet skis'));
   add('Ferris wheel', 'see the whole fair', 'wheel', P0.WHEEL.x, P0.WHEEL.z, 'l', hop(P0.WHEEL.x, P0.WHEEL.z + 6.5, 0, 'The Ferris wheel'));
