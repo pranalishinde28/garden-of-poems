@@ -259,7 +259,9 @@ export function openMap() {
   const sp = sunPlan();
   $('#map-title').textContent = sp ? sp.title : state.visiting ? (state.visiting.name || 'This garden') : (SETTINGS.name || 'Your garden');
   $('.map-head p').textContent = sp ? sp.sub : 'Choose a place or a poem, and the garden will carry you there.';
-  view.hidden = false; legend(); layout(); buildMarks(); // the legend first: it changes how much room the map has
+  // no legend box under the map (removed at the owner's request): every place is named on the map itself
+  $('#map-legend').hidden = true;
+  view.hidden = false; layout(); buildMarks(); // the legend first: it changes how much room the map has
   requestAnimationFrame(() => view.classList.add('open'));
   if (state.mode === 'walk') { prevMode = 'walk'; state.mode = 'map'; } else prevMode = state.mode;
   (marks.querySelector('.map-place') || $('#map-close')).focus({ preventScroll: true });
