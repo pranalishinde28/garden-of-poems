@@ -14,75 +14,64 @@ const panel = $('#sunmap'), cv = $('#sm-canvas'), marks = $('#sm-marks'), S = 4;
 // world (local x, z) to canvas: x across, the field at the bottom, the castle at the top
 const px = (x, z) => [(x + 100) * S, (z + 186) * S * 0 + (70 - z) * S];
 function draw(c = cv, title = true) {
+  // a calm plan: soft fills, no ink outlines or patterns; the big areas named faintly; places are the dots
   const g = c.getContext('2d'), W = c.width, H = c.height;
-  // parchment, a faint grid
-  const pg = g.createLinearGradient(0, 0, 0, H); pg.addColorStop(0, '#f5ead2'); pg.addColorStop(1, '#ead9b4'); g.fillStyle = pg; g.fillRect(0, 0, W, H);
-  g.strokeStyle = 'rgba(140,110,70,.12)'; g.lineWidth = 1; for (let x = 0; x < W; x += 40) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); } for (let y = 0; y < H; y += 40) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
-  const ink = (w = 2) => { g.strokeStyle = '#5a4630'; g.lineWidth = w; g.stroke(); };
-  const ell = (x, z, rx, rz, fill) => { const [a, b] = px(x, z); g.beginPath(); g.ellipse(a, b, rx * S, rz * S, 0, 0, 7); g.fillStyle = fill; g.fill(); ink(); };
+  const pg = g.createLinearGradient(0, 0, 0, H); pg.addColorStop(0, '#f5ead2'); pg.addColorStop(1, '#ecdcba'); g.fillStyle = pg; g.fillRect(0, 0, W, H);
+  const ell = (x, z, rx, rz, fill) => { const [a, b] = px(x, z); g.beginPath(); g.ellipse(a, b, rx * S, rz * S, 0, 0, 7); g.fillStyle = fill; g.fill(); };
+  const box = (x0, z0, x1, z1, fill, r = 14) => { const [a0, b0] = px(x0, z0), [a1, b1] = px(x1, z1), x = Math.min(a0, a1), y = Math.min(b0, b1), w = Math.abs(a1 - a0), h = Math.abs(b1 - b0); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); g.fillStyle = fill; g.fill(); };
+  const name = (t, x, z) => { const [a, b] = px(x, z); g.font = 'italic 600 26px "Cormorant Garamond", Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(90,64,36,.5)'; g.fillText(t, a, b); };
   // the lawn
-  g.beginPath(); g.ellipse(W / 2, H / 2, W * 0.47, H * 0.48, 0, 0, 7); g.fillStyle = '#b9d38c'; g.fill();
-  // the sunflower field
-  { const [x0, y0] = px(-34, P.FIELD.z0), [x1, y1] = px(34, P.FIELD.z1); g.fillStyle = '#f2cf4a'; g.fillRect(x0, y0, x1 - x0, y1 - y0); g.fillStyle = '#7a4e1e'; for (let y = y0 + 8; y < y1; y += 14) for (let x = x0 + 8; x < x1; x += 14) { g.beginPath(); g.arc(x + ((y / 14) % 2) * 7, y, 2.2, 0, 7); g.fill(); } g.strokeStyle = '#a8862a'; g.lineWidth = 2; g.strokeRect(x0, y0, x1 - x0, y1 - y0); }
-  // the flower terraces: rows of colour west of the sunflowers
-  for (const T0 of P.TERRACES) { const cols = ['#a890dc', '#f6f2ea', '#e66a5a', '#f2d35a', '#f2a0c4', '#8a6ac8']; for (let k = 0, z = T0.z0; z > T0.z1; z -= 4.4, k++) { const [x0, y0] = px(T0.x0, z), [x1, y1] = px(T0.x1, Math.max(T0.z1, z - 3.8)); g.fillStyle = cols[k % cols.length]; g.fillRect(x0, y0, x1 - x0, y1 - y0); } const [a0, b0] = px(T0.x0, T0.z0), [a1, b1] = px(T0.x1, T0.z1); g.strokeStyle = '#5a4630'; g.lineWidth = 2; g.strokeRect(a0, b0, a1 - a0, b1 - b0); }
-  // Splash Cove: its deck, the wave pool and splash pool, the slide's flume from its tower
-  { const W0 = P.WP, [a0, b0] = px(W0.x0, W0.z0), [a1, b1] = px(W0.x1, W0.z1); g.fillStyle = '#efe8da'; g.fillRect(a0, b0, a1 - a0, b1 - b0); g.strokeStyle = '#5a4630'; g.lineWidth = 2; g.strokeRect(a0, b0, a1 - a0, b1 - b0); }
-  ell(P.WP.wave.x, P.WP.wave.z, P.WP.wave.rx, P.WP.wave.rz, '#5cc8dc'); ell(P.WP.splash.x, P.WP.splash.z, P.WP.splash.rx, P.WP.splash.rz, '#5cc8dc');
-  if (P.FLUME) { g.beginPath(); P.FLUME.forEach((q, i) => { const [a, b] = px(q.x, q.z); i ? g.lineTo(a, b) : g.moveTo(a, b); }); g.strokeStyle = '#f2b81e'; g.lineWidth = 5; g.stroke(); }
-  { const [a, b] = px(P.WP.tower.x, P.WP.tower.z); g.fillStyle = '#3b78d0'; g.fillRect(a - 9, b - 9, 18, 18); }
-  // water: the lake, the lagoon, the canal
-  ell(P.LAKE.x, P.LAKE.z, P.LAKE.rx, P.LAKE.rz, '#8cc0dc');
-  ell(P.LAGOON.x, P.LAGOON.z, P.LAGOON.rx, P.LAGOON.rz, '#8cc0dc');
-  g.beginPath(); P.CANAL_PTS.forEach(([x, z], i) => { const [a, b] = px(x, z); i ? g.lineTo(a, b) : g.moveTo(a, b); }); g.closePath(); g.strokeStyle = '#6aa8cc'; g.lineWidth = P.CANAL.half * 2 * S; g.stroke();
-  // the paths: through the field to the arch, then the fair's promenade to the castle
-  g.beginPath(); for (let z = P.FIELD.z0 + 4; z >= P.CASTLE.z + 12; z -= 1) { const [a, b] = px(P.pathX(z), z); z === P.FIELD.z0 + 4 ? g.moveTo(a, b) : g.lineTo(a, b); } g.strokeStyle = '#f7efdc'; g.lineWidth = 12; g.stroke(); g.strokeStyle = 'rgba(90,70,48,.4)'; g.lineWidth = 1.5; g.stroke();
-  ell(P.PLAZA.x, P.PLAZA.z, P.PLAZA.r, P.PLAZA.r, '#ead2c4');
-  // the coaster's track
-  g.beginPath(); P.track.forEach((p, i) => { const [a, b] = px(p.x, p.z); i ? g.lineTo(a, b) : g.moveTo(a, b); }); g.closePath(); g.strokeStyle = '#d8322e'; g.lineWidth = 4; g.stroke();
-  // the castle: pink walls, blue spires
-  { const [a, b] = px(P.CASTLE.x, P.CASTLE.z); g.fillStyle = '#e8b4b0'; g.fillRect(a - 18 * S, b - 8 * S, 36 * S, 18 * S); g.strokeStyle = '#5a4630'; g.lineWidth = 2; g.strokeRect(a - 18 * S, b - 8 * S, 36 * S, 18 * S);
-    for (const [dx, dz, r] of [[-18, 9, 3.2], [18, 9, 3.2], [-15, -8, 3.4], [15, -8, 3.4], [0, -1, 4]]) { const [c, d] = px(P.CASTLE.x + dx, P.CASTLE.z + dz); g.beginPath(); g.arc(c, d, r * S, 0, 7); g.fillStyle = '#4a7fd0'; g.fill(); ink(1.5); } }
-  // the rides, drawn small
-  const ring = (x, z, r, fill) => ell(x, z, r, r, fill);
-  ring(P.CAROUSEL.x, P.CAROUSEL.z, P.CAROUSEL.r, '#f0c0c8');
-  { const [a, b] = px(P.WHEEL.x, P.WHEEL.z); g.strokeStyle = '#d8322e'; g.lineWidth = 4; g.beginPath(); g.moveTo(a - P.WHEEL.r * S, b); g.lineTo(a + P.WHEEL.r * S, b); g.stroke(); }
-  ring(P.SWING.x, P.SWING.z, P.SWING.r, '#bcd4f0');
-  ring(P.FAIR_RIDES.tea.x, P.FAIR_RIDES.tea.z, P.FAIR_RIDES.tea.r, '#f7c8dc');
-  ring(P.FAIR_RIDES.drop.x, P.FAIR_RIDES.drop.z, 4, '#e8463a');
-  // a ribbon title
+  g.beginPath(); g.ellipse(W / 2, H / 2, W * 0.47, H * 0.48, 0, 0, 7); g.fillStyle = '#c5dc9c'; g.fill();
+  // the sunflower field, the flower terraces, Splash Cove
+  box(-34, P.FIELD.z0, 34, P.FIELD.z1, '#f4d76a');
+  for (const T0 of P.TERRACES) { box(T0.x0, T0.z0, T0.x1, T0.z1, '#e3d2ee'); const n = 3, d = (T0.z0 - T0.z1) / n; ['#f2b8c8', '#f4e08e', '#c8b4e8'].forEach((col, k) => box(T0.x0 + 3, T0.z0 - k * d - 3, T0.x1 - 3, T0.z0 - (k + 1) * d + 3, col, 10)); }
+  box(P.WP.x0, P.WP.z0, P.WP.x1, P.WP.z1, '#f1e8d6');
+  ell(P.WP.wave.x, P.WP.wave.z, P.WP.wave.rx, P.WP.wave.rz, '#8fd2e2'); ell(P.WP.splash.x, P.WP.splash.z, P.WP.splash.rx, P.WP.splash.rz, '#8fd2e2');
+  // water
+  ell(P.LAKE.x, P.LAKE.z, P.LAKE.rx, P.LAKE.rz, '#a6cfe2');
+  ell(P.LAGOON.x, P.LAGOON.z, P.LAGOON.rx, P.LAGOON.rz, '#a6cfe2');
+  g.beginPath(); P.CANAL_PTS.forEach(([x, z], i) => { const [a, b] = px(x, z); i ? g.lineTo(a, b) : g.moveTo(a, b); }); g.closePath(); g.strokeStyle = '#a6cfe2'; g.lineWidth = P.CANAL.half * 2 * S; g.stroke();
+  // the fair's plaza, the castle
+  ell(P.PLAZA.x, P.PLAZA.z, P.PLAZA.r, P.PLAZA.r, '#efd9cc');
+  box(P.CASTLE.x - 18, P.CASTLE.z + 10, P.CASTLE.x + 18, P.CASTLE.z - 8, '#ecc4c0');
+  // the one path, through the field and on through the fair to the castle
+  g.beginPath(); for (let z = P.FIELD.z0 + 4; z >= P.CASTLE.z + 10; z -= 1) { const [a, b] = px(P.pathX(z), z); z === P.FIELD.z0 + 4 ? g.moveTo(a, b) : g.lineTo(a, b); } g.strokeStyle = '#fbf5e8'; g.lineWidth = 10; g.lineCap = 'round'; g.stroke();
+  // the areas' names
+  name('Sunflower field', -16, P.FIELD.z0 - 9); name('Splash Cove', 70, -13);
+  name('The fair', -16, P.PLAZA.z + 8); name('The lagoon', -32, P.LAGOON.z); name('The castle', P.CASTLE.x, P.CASTLE.z - 12);
+  name('Flower terraces', (P.TERRACE.x0 + P.TERRACE.x1) / 2, P.TERRACE.z1 - 3.5);
   if (!title) return;
-  g.fillStyle = '#7a3a3a'; g.beginPath(); g.moveTo(W / 2 - 220, 24); g.lineTo(W / 2 + 220, 24); g.lineTo(W / 2 + 196, 46); g.lineTo(W / 2 + 220, 68); g.lineTo(W / 2 - 220, 68); g.lineTo(W / 2 - 196, 46); g.closePath(); g.fill();
-  g.fillStyle = '#fff4de'; g.font = '700 30px "Cormorant Garamond", Georgia, serif'; g.textAlign = 'center'; g.fillText('The Secret Garden', W / 2, 56);
 }
 // the places, and where each one stands you
 const PLACES = () => [
-  ['Where you arrived', 'the jetty on the lake', 0, 34.8, 0, 34.8, 0, 'r'],
-  ['The white door', 'the way home', P.DOOR.x, P.DOOR.z, P.DOOR.x, P.DOOR.z + 3.2, 0, 'r'],
-  ['The sunflower arch', 'into the fair', 0, P.ARCH_Z, 0, P.ARCH_Z + 5, 0, 't'],
-  ['The carousel', 'horses round and round', P.CAROUSEL.x, P.CAROUSEL.z, 0, P.CAROUSEL.z + P.CAROUSEL.r + 3, 0, 'b'],
-  ['The teacups', 'spin and spin', P.FAIR_RIDES.tea.x, P.FAIR_RIDES.tea.z, P.FAIR_RIDES.tea.x + P.FAIR_RIDES.tea.r + 2.2, P.FAIR_RIDES.tea.z, Math.PI / 2, 'l'],
-  ['Storybook canal', 'boats round the island', P.CANAL.x, P.CANAL.z, P.CANAL.x + P.CANAL.rx + P.CANAL.half + 3.2, P.CANAL.z, Math.PI / 2, 'l'],
-  ['The swings', 'fly out over the lagoon', P.SWING.x, P.SWING.z, P.SWING.x - P.SWING.r - 2.5, P.SWING.z, -Math.PI / 2, 'r'],
-  ['The drop tower', '56 metres up, then down', P.FAIR_RIDES.drop.x, P.FAIR_RIDES.drop.z, P.FAIR_RIDES.drop.x - 6.5, P.FAIR_RIDES.drop.z + 2, -Math.PI / 2, 'r'],
+  ['Arrival', 'the jetty on the lake', 0, 34.8, 0, 34.8, 0, 'r'],
+  ['White door', 'the way home', P.DOOR.x, P.DOOR.z, P.DOOR.x, P.DOOR.z + 3.2, 0, 'r'],
+  ['Sunflower arch', 'into the fair', 0, P.ARCH_Z, 0, P.ARCH_Z + 5, 0, 't'],
+  ['Carousel', 'horses round and round', P.CAROUSEL.x, P.CAROUSEL.z, 0, P.CAROUSEL.z + P.CAROUSEL.r + 3, 0, 'b'],
+  ['Teacups', 'spin and spin', P.FAIR_RIDES.tea.x, P.FAIR_RIDES.tea.z, P.FAIR_RIDES.tea.x + P.FAIR_RIDES.tea.r + 2.2, P.FAIR_RIDES.tea.z, Math.PI / 2, 'l'],
+  ['Canal boats', 'boats round the island', P.CANAL.x, P.CANAL.z, P.CANAL.x + P.CANAL.rx + P.CANAL.half + 3.2, P.CANAL.z, Math.PI / 2, 'l'],
+  ['Swings', 'fly out over the lagoon', P.SWING.x, P.SWING.z, P.SWING.x - P.SWING.r - 2.5, P.SWING.z, -Math.PI / 2, 'r'],
+  ['Drop tower', '56 metres up, then down', P.FAIR_RIDES.drop.x, P.FAIR_RIDES.drop.z, P.FAIR_RIDES.drop.x - 6.5, P.FAIR_RIDES.drop.z + 2, -Math.PI / 2, 'r'],
   ['Fireworks', 'the striped kiosk', P.KIOSK.x, P.KIOSK.z, P.KIOSK.x, P.KIOSK.z + 2.4, 0, 'r'],
-  ['The Ferris wheel', 'see the whole fair', P.WHEEL.x, P.WHEEL.z, P.WHEEL.x, P.WHEEL.z + 6.5, 0, 'l'],
-  ['The roller coaster', 'hold on tight', 50, -142, 29, -118, -Math.PI / 2, 'r'],
-  ['The Hall of Mirrors', 'inside the castle', P.CASTLE.x, P.CASTLE.z, null, null, 0, 'r'],
-  ['The Library', 'read, or write a book', P.CASTLE.x - 12, P.CASTLE.z + 4, 'library', null, 0, 'l'],
-  ['The water slide', 'twist down into the pool', P.WP.tower.x, P.WP.tower.z, P.WP.tower.x - 4, P.WP.tower.z - 4.5, Math.PI * 0.75, 'b'],
-  ['The wave pool', 'float on the waves', P.WP.wave.x, P.WP.wave.z, P.WP.wave.x, P.WP.wave.z - P.WP.wave.rz - 2.6, Math.PI, 't'],
+  ['Ferris wheel', 'see the whole fair', P.WHEEL.x, P.WHEEL.z, P.WHEEL.x, P.WHEEL.z + 6.5, 0, 'l'],
+  ['Roller coaster', 'hold on tight', 50, -142, 29, -118, -Math.PI / 2, 'r'],
+  ['Hall of Mirrors', 'inside the castle', P.CASTLE.x, P.CASTLE.z, null, null, 0, 'r'],
+  ['Library', 'read, or write a book', P.CASTLE.x - 12, P.CASTLE.z + 4, 'library', null, 0, 'l'],
+  ['Water slide', 'twist down into the pool', P.WP.tower.x, P.WP.tower.z, P.WP.tower.x - 4, P.WP.tower.z - 4.5, Math.PI * 0.75, 'b'],
+  ['Wave pool', 'float on the waves', P.WP.wave.x, P.WP.wave.z, P.WP.wave.x, P.WP.wave.z - P.WP.wave.rz - 2.6, Math.PI, 't'],
   ['Jet skis', 'out on the lagoon', P.DOCK.x, P.DOCK.z1 + 2, P.DOCK.x, P.DOCK.z0 + 2.2, Math.PI, 'b'],
-  ['Flower terraces', 'rows of every colour', (P.TERRACE.x0 + P.TERRACE.x1) / 2, (P.TERRACE.z0 + P.TERRACE.z1) / 2, P.TERRACE.x1 + 1, (P.TERRACE.z0 + P.TERRACE.z1) / 2, Math.PI / 2, 'b'],
+  ['Terraces', 'rows of every colour', (P.TERRACE.x0 + P.TERRACE.x1) / 2, (P.TERRACE.z0 + P.TERRACE.z1) / 2, P.TERRACE.x1 + 1, (P.TERRACE.z0 + P.TERRACE.z1) / 2, Math.PI / 2, 'b'],
 ];
 function build() {
   marks.innerHTML = '';
   const W = cv.width, H = cv.height;
   PLACES().forEach(([name, hint, x, z, sx, sz, yaw, side]) => {
     const [a, b] = px(x, z), btn = document.createElement('button');
-    btn.className = 'sm-place side-' + side; btn.style.left = (a / W * 100) + '%'; btn.style.top = (b / H * 100) + '%';
-    btn.innerHTML = `<span class="dot"></span><span class="t"><em>${name}</em><small>${hint}</small></span>`;
+    btn.className = 'sm-place side-' + side; btn.dataset.side = side; btn.style.left = (a / W * 100) + '%'; btn.style.top = (b / H * 100) + '%';
+    btn.innerHTML = `<span class="dot"></span><span class="t"><em>${name}</em></span>`;
     btn.setAttribute('aria-label', `${name}: ${hint}`);
+    const say = () => { cap.innerHTML = `<b>${name}</b> · ${hint}`; }; btn.onmouseenter = say; btn.onfocus = say;
+    btn.onmouseleave = btn.onblur = () => { cap.textContent = CAP; };
     btn.onclick = () => { close(); if (sx === 'library') late.enterLibraryFromMap && late.enterLibraryFromMap(); else if (sx === null) late.enterHallFromMap && late.enterHallFromMap(); else late.hopTo && late.hopTo(O.clone().add(new V3(sx, 0, sz)), yaw, name); };
     marks.appendChild(btn);
   });
@@ -91,7 +80,24 @@ function build() {
   me.className = 'sm-me'; me.textContent = '▲'; me.style.left = (a / W * 100) + '%'; me.style.top = (b / H * 100) + '%'; me.style.transform = `translate(-50%,-50%) rotate(${Math.PI + player.yaw}rad)`; // +z is up on this plan
   if (a > 0 && a < W && b > 0 && b < H) marks.appendChild(me);
 }
-function open() { if (state.mode !== 'walk') return; draw(); build(); openPanel(panel); }
+// each label takes the first side (its own first, then right, left, below, above) where it overlaps no other
+// label or dot and stays on the map; failing that, the side that overlaps least
+function settle() {
+  const box = marks.getBoundingClientRect(), placed = [], dots = [...marks.querySelectorAll('.sm-place .dot, .sm-me')].map(d => d.getBoundingClientRect());
+  const over = (r, q) => Math.max(0, Math.min(r.right, q.right) - Math.max(r.left, q.left) + 4) * Math.max(0, Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top) + 4);
+  for (const btn of marks.querySelectorAll('.sm-place')) {
+    const t = btn.querySelector('.t'), own = btn.querySelector('.dot').getBoundingClientRect(); let best = null, bestCost = 1e9;
+    for (const side of [btn.dataset.side, 'r', 'l', 'b', 't']) {
+      btn.className = 'sm-place side-' + side; const r = t.getBoundingClientRect();
+      let cost = placed.reduce((s, q) => s + over(r, q), 0) + dots.reduce((s, q) => s + (q === own ? 0 : over(r, q)), 0);
+      if (r.left < box.left || r.right > box.right || r.top < box.top || r.bottom > box.bottom) cost += 1e5;
+      if (cost < bestCost) { bestCost = cost; best = side; } if (cost === 0) break;
+    }
+    btn.className = 'sm-place side-' + best; placed.push(t.getBoundingClientRect());
+  }
+}
+const cap = $('#sm-cap'), CAP = cap.textContent;
+function open() { if (state.mode !== 'walk') return; draw(); build(); openPanel(panel); requestAnimationFrame(() => requestAnimationFrame(settle)); }
 function close() { closePanel(panel); }
 function toggleSunMap() { panel.hidden || !panel.classList.contains('open') ? open() : close(); }
 $('#sm-close').onclick = close;

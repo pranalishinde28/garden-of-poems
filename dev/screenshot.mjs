@@ -382,6 +382,8 @@ async function main() {
       await page.evaluate(() => window.__garden.late.enterSunWorld()); await page.waitForFunction(() => window.__garden.state.world === 'sun' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 }); await sleep(2500);
       // the corner map: facing the castle (north on the plan is the field), then turned east
       for (const [n, yaw] of [['n', 0], ['e', -Math.PI / 2]]) { await page.evaluate(y => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + 4, 0, O.z - 40); g.player.yaw = y; }, yaw); await sleep(900); await page.screenshot({ path: join(root, `dev/shots/sunmap-corner-${n}.png`) }); }
+      // the lawn, close and wide
+      for (const [n, x, z, yaw, pitch] of [['lawn', -45, 45, 1.0, -0.25], ['lawn-wide', 50, 45, -1.2, -0.06], ['lawn-west', -70, -42, 0.3, -0.12]]) { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + x, 0, O.z - 34.8 + z); g.player.yaw = yaw; g.player.pitch = pitch; }, x, z, yaw, pitch); await sleep(1200); await page.screenshot({ path: join(root, `dev/shots/sun-${n}.png`) }); }
       const cornerOn = await page.evaluate(() => !document.querySelector('#minimap-btn').hidden && getComputedStyle(document.querySelector('#minimap-btn')).display !== 'none'); if (!cornerOn) errors.push('no corner map in the secret world');
       await page.keyboard.press('KeyM'); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/sunmap.png') });
       const n = await page.$$eval('#sm-marks .sm-place', b => b.length); if (n < 10) errors.push('the secret map has too few places: ' + n);

@@ -1,8 +1,9 @@
 import * as THREE from 'three';
-import { C, V3, clamp, lerp, rng, smooth } from '../core/util.js';
+import { C, V3, clamp, isTouch, lerp, rng, smooth } from '../core/util.js';
 import { state, T } from '../core/state.js';
 import { camera, renderer } from './renderer.js';
-import { canvasTex, glowTex } from './textures.js';
+import { canvasTex, glowTex, groundTex } from './textures.js';
+import { grassGeo, grassMat } from './grass.js';
 import { GEO, Merge } from './geometry.js';
 import { windify } from './wind.js';
 import { nightLit } from './architecture.js';
@@ -132,23 +133,54 @@ const bulbs = [];
 const bulb = (p, col, ph = R()) => { const c = new THREE.Color(col); bulbs.push(p.x, p.y, p.z, c.r, c.g, c.b, ph * 100); };
 
 /* ---------- the land: lawn, the lake, wooded hills, blue mountains ---------- */
-const lawnTex = canvasTex(256, 256, (g, w, h) => {
-  g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h);
-  for (let i = 0; i < 2600; i++) { const v = 200 + R() * 55 | 0; g.fillStyle = `rgba(${v - 20},${v},${v - 40},.5)`; g.fillRect(R() * w, R() * h, 1, 2 + R() * 4); }
-}, true);
+// The lawn is the garden's own: the same painted ground (groundTex: blades, soil specks, clover) and the same
+// broad, uneven greens (lighter and drier patches, lusher hollows), not one flat green; then real grass tufts.
 {
   const S = 600, N = 210, g = new THREE.PlaneGeometry(S, S, N, N).rotateX(-Math.PI / 2), p = g.attributes.position, col = [], uv = g.attributes.uv, c = new THREE.Color();
-  const LAWN = C('#4a8530'), LAWN2 = C('#57953a'), FOREST = C('#2a4f22'), BANK = C('#4d6b35');
+  const cA = C('#68834a'), cB = C('#7b8a55'), cDry = C('#8a9055'), cLush = C('#567a3a'), FOREST = C('#2a4f22'), BANK = C('#5d6a40');
   for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), z = p.getZ(i) - 60, y = sunH(x, z); p.setXYZ(i, x, y, z); uv.setXY(i, x / 3, z / 3);
+    const x = p.getX(i), z = p.getZ(i) - 60, y = sunH(x, z); p.setXYZ(i, x, y, z); uv.setXY(i, x / 3.2, z / 3.2);
     const r = Math.hypot(x, z + 60);
-    c.copy(LAWN).lerp(LAWN2, (Math.sin(x * 0.42) > 0 ? 0.55 : 0.1) * (1 - smooth(60, 120, r))).lerp(FOREST, smooth(150, 210, r) * 0.9);
+    const n = Math.sin(x * 0.21) * Math.cos(z * 0.17) * 0.5 + 0.5 + Math.sin(x * 0.9 + z * 0.7) * 0.08;
+    const dry = smooth(0.55, 0.95, Math.sin(x * 0.047 + 2) * Math.cos(z * 0.061 + 1) * 0.5 + 0.5 + Math.sin(x * 0.17 - z * 0.13) * 0.2), lush = smooth(0.6, 1, Math.cos(x * 0.083 - 1) * Math.sin(z * 0.071 + 3) * 0.5 + 0.5);
+    c.copy(cA).lerp(cB, clamp(n, 0, 1) * 0.7).lerp(cDry, dry * 0.35).lerp(cLush, lush * 0.4).lerp(FOREST, smooth(150, 210, r) * 0.9);
     c.lerp(BANK, smooth(-0.1, -0.6, y));
     col.push(c.r, c.g, c.b);
   }
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
-  const lawnMat = new THREE.MeshLambertMaterial({ vertexColors: true, map: lawnTex, emissive: '#5c9a3a', emissiveIntensity: 0 }); fieldMats.push([lawnMat, 0.16]);
-  root.add(new THREE.Mesh(g, lawnMat));
+  const lawnMat = new THREE.MeshLambertMaterial({ vertexColors: true, map: groundTex, emissive: '#5c9a3a', emissiveIntensity: 0 }); fieldMats.push([lawnMat, 0.16]);
+  const lawn = new THREE.Mesh(g, lawnMat); lawn.receiveShadow = true; root.add(lawn);
+}
+// grass tufts over the open lawn, in 22 m patches like the garden's (they bend where you walk), never in the
+// water, on the paths and plazas, in the sunflowers, the terraces, Splash Cove or anything at the fair
+{
+  const total = isTouch ? 9000 : 26000, CELL = 22, RG = rng(77), chunks = new Map(), d = new THREE.Object3D();
+  const tints = ['#ffffff', '#eef3dd', '#dfe8cc', '#f6efcf', '#d9e4d4'].map(C);
+  for (let i = 0; i < total; i++) {
+    const x = (RG() - 0.5) * 190, z = 68 - RG() * 250;
+    if (sunH(x, z) < -0.12 || lakeE(x, z) < 1.25 || lagoonE(x, z) < 1.15 || canalD(x, z) < CANAL.half + 1.5) continue;
+    if (keepClear(x, z, 1) || inTerrace(x, z, 1) || inWP(x, z, 1)) continue;
+    if (Math.abs(x) < 36 && z < FIELD.z0 + 1 && z > FIELD.z1 - 1) continue; // the sunflowers
+    if (Math.abs(x - pathX(z)) < 2.4 && z > CASTLE.z + 8 && z < FIELD.z0 + 6) continue; // the path and promenade
+    if (Math.hypot(x - DOOR.x, z - DOOR.z) < 4) continue;
+    const key = Math.floor(x / CELL) + ',' + Math.floor(z / CELL);
+    if (!chunks.has(key)) chunks.set(key, { cx: (Math.floor(x / CELL) + 0.5) * CELL, cz: (Math.floor(z / CELL) + 0.5) * CELL, items: [] });
+    chunks.get(key).items.push({ x, z, h: 0.17 + RG() * 0.15, w: 0.9 + RG() * 0.6, ry: RG() * 6.28, c: tints[Math.floor(RG() * tints.length)] });
+  }
+  chunks.forEach(ch => {
+    const cg = grassGeo.clone(); cg.boundingSphere = new THREE.Sphere(new V3(0, 0.5, 0), CELL * 0.75 + 2);
+    const m = new THREE.InstancedMesh(cg, grassMat, ch.items.length); m.position.set(ch.cx, 0, ch.cz);
+    ch.items.forEach((it, i) => { d.position.set(it.x - ch.cx, sunH(it.x, it.z) - 0.03, it.z - ch.cz); d.rotation.set(0, it.ry, 0); d.scale.set(it.w, it.h, it.w); d.updateMatrix(); m.setMatrixAt(i, d.matrix); m.setColorAt(i, it.c); });
+    m.layers.set(2); root.add(m);
+  });
+  // and wildflowers among them: white, pale yellow and violet
+  const FN = isTouch ? 400 : 1100, fm = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.045, 1), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x1a1a1a }), FN), fc = ['#fbfaf2', '#f4e27a', '#c9b2e8', '#fbfaf2'].map(C);
+  let n = 0; for (let k = 0; k < FN * 4 && n < FN; k++) {
+    const x = (RG() - 0.5) * 190, z = 68 - RG() * 250;
+    if (sunH(x, z) < -0.12 || lakeE(x, z) < 1.3 || lagoonE(x, z) < 1.2 || keepClear(x, z, 1) || inTerrace(x, z, 1) || inWP(x, z, 1) || (Math.abs(x) < 36 && z < FIELD.z0 + 1 && z > FIELD.z1 - 1) || Math.abs(x - pathX(z)) < 2.4) continue;
+    d.position.set(x, sunH(x, z) + 0.16 + RG() * 0.08, z); d.rotation.set(0, 0, 0); d.scale.setScalar(0.8 + RG() * 0.6); d.updateMatrix(); fm.setMatrixAt(n, d.matrix); fm.setColorAt(n, fc[n % fc.length]); n++;
+  }
+  fm.count = n; fm.layers.set(2); root.add(fm);
 }
 // the mountains: a real range all round, forested low down, rock on the steep faces and above the treeline,
 // snow on the highest peaks; lit by this world's sun, rosy at sunset, dark at night, hazed with distance.
