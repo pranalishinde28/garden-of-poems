@@ -127,7 +127,7 @@ const hemi = new THREE.HemisphereLight('#e2f1ff', '#4d7a32', 0.62); sunScene.add
 const sun = new THREE.DirectionalLight('#fff1d8', 0.95); sun.position.set(40, 100, 120); sunScene.add(sun);
 sunScene.add(new THREE.AmbientLight('#ffffff', 0.06));
 // the fair's lit windows and lamp globes, brighter as the light fails; the field's own night glow
-const winMats = [], fieldMats = [];
+const winMats = [], fieldMats = [], fieldLanterns = [];
 // every small light in this world (lamps, rides, lanterns): [x, y, z, r, g, b, phase], drawn as one set of glowing points
 const bulbs = [];
 const bulb = (p, col, ph = R()) => { const c = new THREE.Color(col); bulbs.push(p.x, p.y, p.z, c.r, c.g, c.b, ph * 100); };
@@ -372,6 +372,14 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
     const d = Math.abs(px - pathX(pz));
     spots.push([px, pz, 1.1 + Math.min(1, d / 6) * 0.7 + R() * 0.6]);
   }
+  // and further off, the same real sunflowers a little more thinly, running on to the woods either side
+  // (they were painted on crossed cards, which read as flat rows of pictures from anywhere but the path)
+  const FAR = isTouch ? 1.5 : 1.05;
+  for (let z = FIELD.z0 + 4; z > FIELD.z1 - 2; z -= FAR) for (const sd of [-1, 1]) for (let x = 34.5; x < 110; x += FAR) {
+    const px = sd * (x + (R() - 0.5) * FAR * 0.7), pz = z + (R() - 0.5) * FAR * 0.7;
+    if (lakeE(px, pz) < 1.4 || keepClear(px, pz, 1.5) || inTerrace(px, pz, 1.5) || inWP(px, pz, 1.5)) continue;
+    spots.push([px, pz, 1.4 + R() * 0.8]);
+  }
   // at night the field holds a soft glow of its own: the petals warm gold, the leaves a faint green
   const stemMat = windify(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, emissive: '#2c5a1c', emissiveIntensity: 0 }), 0.012, 'blade');
   const headMat = new THREE.MeshLambertMaterial({ map: sunTex, alphaTest: 0.4, side: THREE.DoubleSide, emissive: '#ffffff', emissiveMap: sunTex, emissiveIntensity: 0 });
@@ -393,11 +401,12 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
       m.limb(new V3(px, y, pz), new V3(px, y + h, pz), 0.03, 0.025, C('#8a7a4a'));
       lanterns.push(new V3(px, y + h - 0.25, pz));
     }
-    root.add(new THREE.Mesh(m.build(), new THREE.MeshLambertMaterial({ vertexColors: true })));
+    // by day these read as white balls over the flowers, so the lanterns and their stakes come out only at dusk
+    const stakes = new THREE.Mesh(m.build(), new THREE.MeshLambertMaterial({ vertexColors: true })); root.add(stakes); fieldLanterns.push(stakes);
     const lm = new THREE.MeshLambertMaterial({ color: '#fff0d0', emissive: '#ffb860', emissiveIntensity: 0.1 }); winMats.push(lm);
     const im = new THREE.InstancedMesh(GEO.sph, lm, lanterns.length), dd = new THREE.Object3D();
     lanterns.forEach((p, i) => { dd.position.copy(p); dd.scale.set(0.2, 0.26, 0.2); dd.updateMatrix(); im.setMatrixAt(i, dd.matrix); bulb(p, i % 3 ? '#ffd890' : '#ffb8c8'); });
-    root.add(im);
+    root.add(im); fieldLanterns.push(im);
     // and lights floating low over the far reaches of the field, all the way to the woods
     for (let z = FIELD.z0 + 4; z > FIELD.z1 - 2; z -= 4.5) for (const s of [-1, 1]) for (let x = 35; x < 108; x += 4.5) {
       const px = s * (x + (R() - 0.5) * 2), pz = z + (R() - 0.5) * 2;
@@ -405,17 +414,6 @@ const headGeo = new THREE.CircleGeometry(0.2, 20);
       bulb(new V3(px, sunH(px, pz) + 2.4 + R() * 0.8, pz), ['#ffd890', '#ffe8b0', '#ffc0d0'][(R() * 3) | 0]);
     }
   }
-  // further off, painted on crossed cards: the sea of sunflowers runs on to the woods
-  const far = canvasTex(512, 256, g => {
-    for (let i = 0; i < 70; i++) { const x = R() * 512, y = 120 + R() * 136; g.fillStyle = `rgb(${60 + R() * 20 | 0},${110 + R() * 40 | 0},${40 + R() * 20 | 0})`; g.beginPath(); g.ellipse(x, y, 14 + R() * 12, 22 + R() * 20, R() * 2, 0, 7); g.fill(); }
-    for (let i = 0; i < 90; i++) { const x = 10 + R() * 492, y = 30 + R() * 110, r = 10 + R() * 9; g.drawImage(sunTex.image, x - r * 2.2, y - r * 2.2, r * 4.4, r * 4.4); }
-  });
-  const card = (() => { const a = new THREE.PlaneGeometry(4, 2.3).translate(0, 1.15, 0), b = a.clone().rotateY(Math.PI / 2); const m = new Merge(); m.add(a, new V3(), new V3(1, 1, 1), C('#ffffff')); m.add(b, new V3(), new V3(1, 1, 1), C('#ffffff')); return m.build(); })();
-  const list = []; for (let z = FIELD.z0 + 4; z > FIELD.z1 - 2; z -= 2.6) for (const s of [-1, 1]) for (let x = 34; x < 110; x += 2.8) if (lakeE(s * x, z) > 1.4 && !keepClear(s * x, z, 3) && !inTerrace(s * x, z, 3)) list.push([s * (x + R()), z + R()]);
-  const farMat = new THREE.MeshLambertMaterial({ map: far, alphaTest: 0.45, side: THREE.DoubleSide, emissive: '#ffffff', emissiveMap: far, emissiveIntensity: 0 }); fieldMats.push([farMat, 0.4]);
-  const im = new THREE.InstancedMesh(card, farMat, list.length);
-  list.forEach(([x, z], i) => { d.position.set(x, sunH(x, z) - 0.2, z); d.rotation.set(0, R() * 0.6 - 0.3 + Math.PI / 4, 0); d.scale.setScalar(0.9 + R() * 0.3); d.updateMatrix(); im.setMatrixAt(i, d.matrix); });
-  root.add(im);
 }
 
 /* ---------- the sunflower arch, the way from the field into the fair ---------- */
@@ -951,6 +949,7 @@ addTick(dt => {
   // the fair's lights: a little by day, warm at sunset, full at night
   const glow = Math.max(n, d * 0.6, 0.12); waterU.uGlow.value = glow;
   winMats.forEach(m => { m.emissiveIntensity = glow * 1.2; });
+  fieldLanterns.forEach(o => { o.visible = Math.max(n, d * 0.6) > 0.06; });
   fieldMats.forEach(([m, k]) => { m.emissiveIntensity = Math.max(n, d * 0.4) * k; });
   // the rides
   wheel.rotation.z = T * 0.14; cabins.forEach(c => { c.rotation.z = -wheel.rotation.z; });
