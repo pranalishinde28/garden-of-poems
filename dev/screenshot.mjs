@@ -276,12 +276,24 @@ async function main() {
       await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); window.__garden.late.enterSunWorld(); });
       await page.waitForFunction(() => window.__garden.state.world === 'sun' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 });
       await sleep(2500);
-      await page.evaluate(() => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + 1, 0, O.z - 34.8 - 136); g.player.yaw = 0; g.player.pitch = 0.12; });
-      // walk straight into the gate: no prompt, it takes you in
-      await page.keyboard.down('KeyW'); await sleep(2500); await page.keyboard.up('KeyW'); const cue = 'castle';
+      for (const [n, x, z, yaw, pitch] of [['front', 0, -95, 0, 0.32], ['front-near', -14, -122, -0.35, 0.3], ['towers', 30, -128, 0.75, 0.45]]) { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + x, 0, O.z - 34.8 + z); g.player.yaw = yaw; g.player.pitch = pitch; }, x, z, yaw, pitch); await sleep(2200); await shot(n); }
+      await page.evaluate(() => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + 0.5, 0, O.z - 34.8 - 134); g.player.yaw = 0; g.player.pitch = 0.1; }); await sleep(3000); await shot('doors-open');
+      // walk straight in through the opened doors: no prompt, the passage takes you in
+      await page.keyboard.down('KeyW'); await sleep(5000); await page.keyboard.up('KeyW'); const cue = 'castle';
       await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.player.pos.y < -50 || window.__garden.camera.position.y < -50, { timeout: 20000, polling: 300 }).catch(() => {});
       await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 20000, polling: 300 }); await sleep(2600); await shot('inside');
       const inside = await page.evaluate(() => window.__garden.camera.position.y < -50); if (!inside) errors.push('walking into the gate did not take you inside');
+      // press into the walls, in first and third person, sprinting: the camera must stay in the room
+      const leaks = [];
+      const hallC = await page.evaluate(() => { const p = window.__garden.player.pos; return [p.x, p.z - 30]; });
+      for (const third of [false, true]) for (const yaw of [Math.PI / 2, -Math.PI / 2, Math.PI / 4, -Math.PI / 4]) {
+        await page.evaluate((third, yaw, c) => { const g = window.__garden; g.setThirdPerson(third); g.player.pos.set(c[0], 0, c[1]); g.player.yaw = yaw; g.player.pitch = 0; }, third, yaw, hallC);
+        await page.keyboard.down('KeyW'); await sleep(6000); await page.keyboard.up('KeyW'); await sleep(600);
+        const c = await page.evaluate(() => { const g = window.__garden, c = g.camera.position; return [c.y, g.worlds.sun.floorH(c.x, c.z)]; });
+        if (!(c[0] < -60 && c[1] < -60)) leaks.push(`${third ? 'third' : 'first'} ${yaw.toFixed(1)}: ${c.map(v => v.toFixed(1)).join(',')}`);
+      }
+      await page.evaluate(c => { const g = window.__garden; g.setThirdPerson(false); g.player.pos.set(c[0], 0, c[1] + 30); g.player.yaw = 0; }, hallC); await sleep(600);
+      console.log('  walls:', leaks.length ? 'LEAK ' + leaks.join('; ') : 'held'); if (leaks.length) errors.push('the camera left the hall');
       await page.evaluate(() => { const g = window.__garden; g.player.yaw = 0.6; g.player.pitch = 0.12; }); await sleep(1000); await shot('inside2');
       await page.evaluate(() => { const g = window.__garden; g.player.yaw = -0.7; g.player.pitch = 0.1; }); await sleep(1000); await shot('inside3');
       for (const k of []) {
@@ -328,7 +340,7 @@ async function main() {
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); });
       await page.evaluate(() => { const g = window.__garden, d = g.worlds.temple.doors[1], o = d.out.pos; g.setAvatar && g.setAvatar({ kind: 'bird' }); g.player.pos.set(o.x, 0, o.z); g.player.alt = 2.5; g.player.cruise = 2.5; g.player.flying = true; g.player.yaw = d.out.yaw + Math.PI; g.player.pitch = 0.18; });
-      await sleep(1800); await shot('pagoda');
+      await sleep(1800); await shot('pagoda'); await page.evaluate(() => { const g = window.__garden, d = g.worlds.temple.doors[0], o = d.out.pos; g.player.pos.set(o.x, 0, o.z); g.player.alt = 0; g.player.flying = false; g.player.cruise = 0; g.setAvatar({ kind: 'girl' }); g.player.yaw = d.out.yaw + Math.PI; g.player.pitch = 0.12; }); await sleep(2500); await page.screenshot({ path: join(root, 'dev/shots/pagoda-doors.png') }); await page.evaluate(() => { const g = window.__garden, d = g.worlds.temple.doors[1], o = d.out.pos; g.setAvatar({ kind: 'bird' }); g.player.pos.set(o.x, 0, o.z); g.player.alt = 2.5; g.player.cruise = 2.5; g.player.flying = true; g.player.yaw = d.out.yaw + Math.PI; }); await sleep(1500);
       const cue = await page.$eval('#cue', e => e.textContent.trim()); await page.keyboard.press('KeyE');
       await page.waitForFunction(() => window.__garden.state.world === 'temple' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 }).catch(() => {});
       await sleep(3500); await shot('entry');
@@ -387,6 +399,15 @@ async function main() {
       await page.evaluate(() => window.__garden.late.enterLibraryFromMap()); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.camera.position.y < -50, { timeout: 30000, polling: 300 }); await sleep(2500);
       const p0 = await page.evaluate(() => { const p = window.__garden.player.pos; return [p.x, p.z]; });
       const at = async (n, dx, dz, yaw, pitch) => { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden; g.player.pos.set(x, 0, z); g.player.yaw = yaw; g.player.pitch = pitch; }, p0[0] + dx, p0[1] + dz, yaw, pitch); await sleep(1800); await shot(n); };
+      { const leaks = [];
+        for (const [cx, cz] of [[0, -8], [0, -26], [0, 10], [0, 26]]) for (const third of [false, true]) for (let k = 0; k < 8; k++) {
+          await page.evaluate((x, z, yaw, third) => { const g = window.__garden; g.setThirdPerson(third); g.player.pos.set(x, 0, z); g.player.yaw = yaw; g.player.pitch = 0; g.player.alt = 0; }, p0[0] + cx, p0[1] + cz, k / 8 * Math.PI * 2, third);
+          await page.keyboard.down('KeyW'); await sleep(2500); await page.keyboard.up('KeyW'); await sleep(250);
+          const c = await page.evaluate(() => { const g = window.__garden, c = g.camera.position; return [c.y, g.worlds.sun.floorH(c.x, c.z)]; });
+          if (!(c[0] < -60 && c[1] < -60)) leaks.push(`${cx},${cz} ${third ? '3rd' : '1st'} ${k}: ${c.map(v => v.toFixed(1))}`);
+        }
+        await page.evaluate(() => window.__garden.setThirdPerson(false));
+        console.log('  library walls:', leaks.length ? 'LEAK ' + leaks.join('; ') : 'held'); if (leaks.length) errors.push('the camera left the library'); }
       await at('statue', 0, -8, 0, 0.12); await at('statue-near', 3, -10.5, 0.6, 0.18); await at('statue-small', -4, -9, 1.2, 0.1);
       await page.evaluate(() => window.__garden.late.openLibrary()); await sleep(1500);
       await page.evaluate(() => [...document.querySelectorAll('.lb-spine')].find(b => /Pride/.test(b.textContent)).click()); await sleep(4000); await shot('book');

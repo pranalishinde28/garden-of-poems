@@ -7,7 +7,7 @@ import { flag } from '../settings/storage.js';
 import { decor, featOn } from '../world/paths.js';
 import { bench } from '../world/decor.js';
 import { plants } from '../plants/registry.js';
-import { curLook, floorH, lookDir, player } from './camera.js';
+import { blocked, curLook, floorH, lookDir, player } from './camera.js';
 import { animateAvatar, buildAvatar, cleanAvatar, figureMetrics } from './avatar.js';
 
 /* ================= your figure in the garden, and the third-person camera ================= */
@@ -47,6 +47,8 @@ function obstacles() {
 // how far the camera can sit behind a point, along a horizontal direction, before something is in the way
 function clearDistance(x, z, dx, dz, max) {
   let best = max;
+  // indoors the walls are what stop you walking (blocked), so they stop the camera too: it never leaves the room
+  if (floorH(x, z) < -40) { for (let t = 0.15; t < max; t += 0.15) if (blocked(x + dx * t, z + dz * t) || floorH(x + dx * t, z + dz * t) > -40) { best = t - 0.15; break; } return Math.max(0.35, best - 0.25); }
   for (const [cx, cz, r] of obstacles()) {
     const fx = x - cx, fz = z - cz; if (fx * fx + fz * fz < r * r) continue;
     const b = fx * dx + fz * dz, c = fx * fx + fz * fz - r * r, disc = b * b - c;

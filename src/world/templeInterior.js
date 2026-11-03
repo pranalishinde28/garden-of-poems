@@ -12,6 +12,7 @@ import { SFX } from '../animals/animals.js';
 import { LANDMARKS } from './shrines.js';
 import { BIG_PAGODAS, templeGroup } from './temples.js';
 import { seatedBuddha, standingDisciple } from './buddha.js';
+import { makeDoors } from './doors.js';
 
 /* ================= inside the pagodas: the temple of the golden Buddha ================= */
 // The two pagodas on the hills open onto this temple (the garden's own pagoda opens onto a Japanese shrine,
@@ -490,6 +491,10 @@ worlds.temple = {
   leave() {},
 };
 
+// what you glimpse through a pagoda's open doors: lantern-lit vermilion for the shrine, gold for the temple
+let peeks = {};
+const shrinePeek = () => peeks.s || (peeks.s = canvasTex(256, 384, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#3a1a10'); gr.addColorStop(0.7, '#6a2a14'); gr.addColorStop(1, '#2a140c'); g.fillStyle = gr; g.fillRect(0, 0, w, h); for (const x of [0.15, 0.85]) { g.fillStyle = '#c8401c'; g.fillRect(x * w - 10, 0, 20, h); } for (let k = 0; k < 4; k++) { const x = w * (0.3 + k * 0.13), y = h * (0.22 + (k % 2) * 0.05), rg = g.createRadialGradient(x, y, 2, x, y, 40); rg.addColorStop(0, 'rgba(255,200,110,1)'); rg.addColorStop(1, 'rgba(255,160,60,0)'); g.fillStyle = rg; g.fillRect(x - 40, y - 40, 80, 80); } g.fillStyle = '#f4efe6'; g.fillRect(w * 0.25, h * 0.55, w * 0.5, h * 0.3); g.fillStyle = '#b8282a'; for (let k = 0; k < 4; k++) g.fillRect(w * 0.27 + k * w * 0.12, h * 0.55, w * 0.05, h * 0.3); }));
+const templePeek = () => peeks.t || (peeks.t = canvasTex(256, 384, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#2a140a'); gr.addColorStop(1, '#5a3418'); g.fillStyle = gr; g.fillRect(0, 0, w, h); const rg = g.createRadialGradient(w / 2, h * 0.5, 4, w / 2, h * 0.5, w * 0.5); rg.addColorStop(0, 'rgba(255,214,120,1)'); rg.addColorStop(1, 'rgba(255,170,60,0)'); g.fillStyle = rg; g.fillRect(0, 0, w, h); g.fillStyle = '#f0b856'; g.beginPath(); g.ellipse(w / 2, h * 0.62, w * 0.2, h * 0.08, 0, 0, 7); g.fill(); g.beginPath(); g.ellipse(w / 2, h * 0.5, w * 0.1, h * 0.12, 0, 0, 7); g.fill(); g.beginPath(); g.arc(w / 2, h * 0.36, w * 0.06, 0, 7); g.fill(); for (const x of [0.12, 0.88]) { g.fillStyle = '#efe6d2'; g.fillRect(x * w - 12, 0, 24, h); } }));
 /* ---------- the doors: the garden's pagoda opens onto the Japanese shrine (world/shrineInterior.js), the two on the hills (a bird can reach those) onto this temple ---------- */
 // each door is an invisible panel over the pagoda's real door; its cue is in front of the steps
 const doorM = new THREE.MeshBasicMaterial({ visible: false });
@@ -497,10 +502,15 @@ export const pagodaDoors = [];
 function door(parent, cx, cz, yaw, s, y0, w, h, front, outside, world = 'temple') {
   const d = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.3), doorM);
   const c = Math.cos(yaw), sn = Math.sin(yaw), at = (lx, lz) => ({ x: cx + lx * c + lz * sn, z: cz - lx * sn + lz * c });
-  const p = at(0, front * 0.62); d.position.set(p.x, y0 + h / 2, p.z); d.rotation.y = yaw; parent.add(d);
+  const p = at(0, front * 0.62 + 0.03); d.position.set(p.x, y0 + h / 2, p.z); d.rotation.y = yaw; parent.add(d);
   const n = at(0, outside), out = at(0, outside + 0.6), face = Math.atan2(-(out.x - n.x), -(out.z - n.z));
   const info = { door: d, out: { pos: new V3(n.x, 0, n.z), yaw: face }, far: parent === templeGroup, world };
   regThing(d, 'Step inside the pagoda', () => late.enterTemple && late.enterTemple(info), { x: n.x, z: n.z, r: 2.6 * Math.max(0.8, s) });
+  // real doors over the painted ones, opening inward as you come up the steps, onto a warm glimpse of the room within
+  { const g = new THREE.Group(); g.position.set(p.x, y0, p.z); g.rotation.y = yaw; parent.add(g);
+    const glow = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.96, h * 0.98), new THREE.MeshBasicMaterial({ map: world === 'shrine' ? shrinePeek() : templePeek(), fog: false })); glow.position.set(0, h / 2, -0.05); g.add(glow);
+    const dd = new THREE.Group(); dd.position.z = 0.06; dd.rotation.y = Math.PI; g.add(dd); // they open outward, toward you
+    makeDoors(dd, w * 0.96, h - w * 0.48, (x, z) => Math.hypot(x - n.x, z - n.z) < 3.4 * Math.max(0.8, s) + 1.5, '#7a2e1c', 'garden'); }
   pagodaDoors.push(info);
 }
 { const P = LANDMARKS.pagoda, yaw = Math.atan2(-P.x, -P.z); door(scene, P.x, P.z, yaw, 1, groundH(P.x, P.z) - 0.12 + 1.14, 1.7, 2.4, 3.6, 5.6, 'shrine'); }
