@@ -35,6 +35,7 @@ import './world/gorge.js';
 import './world/sunWorld.js';
 import './world/castleHall.js';
 import './world/waterPark.js';
+import './world/rideNames.js';
 import './world/libraryHall.js';
 import './world/paintingHall.js';
 import './world/horizon.js';

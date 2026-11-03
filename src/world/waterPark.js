@@ -377,16 +377,17 @@ const bowlCurve = (() => {
   return new THREE.CatmullRomCurve3(pts.map(([x, y, z]) => new V3(x, y, z)), false, 'catmullrom', 0.5);
 })();
 // the chute out of the narrow end, down into the pool
-const exitCurve = (() => { const a = fnP(FN.L, 0, new V3(), TBF_R); return new THREE.CatmullRomCurve3([a, a.clone().addScaledVector(FN.d, 2), new V3(69.4, 2.8, -61.6), new V3(71, 1.0, -63.3), new V3(72, 0.45, -64.2)], false, 'catmullrom', 0.5); })();
+const exitCurve = (() => { const a = FN.C0.clone().addScaledVector(FN.d, FN.L - 0.3); return new THREE.CatmullRomCurve3([a, a.clone().addScaledVector(FN.d, 2), new V3(69.4, 2.8, -61.6), new V3(71, 1.0, -63.3), new V3(72, 0.45, -64.2)], false, 'catmullrom', 0.5); })();
 const sweep = (curve, N) => { const L = curve.getLength(), fr = []; for (let i = 0; i <= N; i++) { const u = i / N, c = curve.getPointAt(u), t = curve.getTangentAt(u).normalize(); const side = new V3().crossVectors(t, up).normalize(), upv = new V3().crossVectors(side, t).normalize(); fr.push({ c, t, side, up: upv }); } return { L, N, fr }; };
-const TBF = Object.assign(sweep(bowlCurve, 420), { R: TBF_R }), EXF = Object.assign(sweep(exitCurve, 60), { R: TBF_R });
+// the chute leaves the funnel at the funnel's own width and narrows to a tube's over its first few metres
+const TBF = Object.assign(sweep(bowlCurve, 420), { R: TBF_R, rad: () => TBF_R }), EXF = Object.assign(sweep(exitCurve, 60), { R: TBF_R, rad: u => FN.R1 + (TBF_R - FN.R1) * smooth(0, 0.4, u) });
 const frameAt = (F, s) => { const f = clamp(s / F.L, 0, 1) * F.N, i = Math.min(F.N - 1, Math.floor(f)), k = f - i, a = F.fr[i], b = F.fr[i + 1]; return { c: a.c.clone().lerp(b.c, k), t: a.t.clone().lerp(b.t, k).normalize(), up: a.up.clone().lerp(b.up, k).normalize(), dy: (b.c.y - a.c.y) / (F.L / F.N) }; };
 const FN_LEGS = [];
 {
   const OR = C('#f08a2a'), BL = C('#2a64c8'), YE = C('#f6c22a'), c3 = new THREE.Color();
   const tubeMat = nightLit(new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, shininess: 80, specular: '#ffffff', emissive: '#2a1e14', emissiveIntensity: 0.9 }), 0.4);
   // the tubes: closed all round, bands of orange and blue with a thin yellow line between
-  const tubeMesh = F => { const pos = [], col = [], idx = [], NA = 24; F.fr.forEach((f, i) => { const band = i / F.N * F.L / 2.4, k = Math.floor(band), e = band - k; for (let j = 0; j <= NA; j++) { const a = j / NA * Math.PI * 2, p = f.c.clone().addScaledVector(f.side, Math.sin(a) * F.R).addScaledVector(f.up, -Math.cos(a) * F.R); pos.push(p.x, p.y, p.z); c3.copy(e < 0.08 ? YE : k % 2 ? BL : OR); col.push(c3.r, c3.g, c3.b); } });
+  const tubeMesh = F => { const pos = [], col = [], idx = [], NA = 24; F.fr.forEach((f, i) => { const band = i / F.N * F.L / 2.4, k = Math.floor(band), e = band - k, R2 = F.rad(i / F.N); for (let j = 0; j <= NA; j++) { const a = j / NA * Math.PI * 2, p = f.c.clone().addScaledVector(f.side, Math.sin(a) * R2).addScaledVector(f.up, -Math.cos(a) * R2); pos.push(p.x, p.y, p.z); c3.copy(e < 0.08 ? YE : k % 2 ? BL : OR); col.push(c3.r, c3.g, c3.b); } });
     for (let i = 0; i < F.N; i++) for (let j = 0; j < NA; j++) { const a = i * (NA + 1) + j, b = a + NA + 1; idx.push(a, b, a + 1, a + 1, b, b + 1); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals(); root.add(new THREE.Mesh(g, tubeMat)); };
   tubeMesh(TBF); tubeMesh(EXF);
@@ -403,8 +404,12 @@ const FN_LEGS = [];
   m.add(lip, FN.C0, new V3(1, 1, 1), C('#f8f6f0'), q); m.add(new THREE.TorusGeometry(FN.R0 + 0.9, 0.16, 6, 64), FN.C0.clone().addScaledVector(FN.d, 0.3), new V3(1, 1, 1), C('#9aa0a6'), q);
   for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, i0 = fnP(0.3, a, new V3(), -0.9), i1 = fnP(4, a, new V3(), -0.15); m.limb(i0, i1, 0.07, 0.07, C('#9aa0a6')); }
   for (const [s, ph] of [[0.4, -0.9], [0.4, 0.9], [5, -0.7], [5, 0.7], [10, -0.5], [10, 0.5], [12.5, 0]]) { const b = fnP(s, ph, new V3(), -0.15); if (Math.hypot(b.x - BW.x, b.z - BW.z) < BW.pool + 0.6) continue; m.limb(new V3(b.x, 0, b.z), b, 0.22, 0.2, C('#9aa0a6')); m.add(GEO.box, new V3(b.x, 0.15, b.z), new V3(0.8, 0.3, 0.8), C('#d8d4ca')); FN_LEGS.push([b.x, b.z]); }
-  for (let i = 12; i < TBF.N - 6; i += 20) { const f = TBF.fr[i], b = f.c.clone().addScaledVector(f.up, -TBF.R - 0.05); m.limb(new V3(b.x, 0, b.z), b, 0.14, 0.12, C('#f4f1ea')); m.add(GEO.box, b, new V3(0.5, 0.14, 0.5), C('#d8d4ca')); }
-  for (const i of [20, 40]) { const f = EXF.fr[i], b = f.c.clone().addScaledVector(f.up, -EXF.R - 0.05); if (Math.hypot(b.x - BW.x, b.z - BW.z) > BW.pool + 0.4) m.limb(new V3(b.x, 0, b.z), b, 0.14, 0.12, C('#f4f1ea')); }
+  // a support goes straight down, so it must not pass through a lower turn of the tube, the funnel or the chute
+  // (riders met them inside the tube); those places are carried by the tower and the funnel's own legs
+  const clear = (b, skip) => { for (const F of [TBF, EXF]) for (let j = 0; j <= F.N; j += 2) { if (F === TBF && Math.abs(j - skip) < 14) continue; const c = F.fr[j].c; if (c.y < b.y - 0.2 && Math.hypot(c.x - b.x, c.z - b.z) < F.rad(j / F.N) + 0.5) return false; }
+    for (let k = 0; k <= 26; k++) { const sk = k / 26 * FN.L, ax = FN.C0.clone().addScaledVector(FN.d, sk); if (ax.y - fnR(sk) < b.y && Math.hypot(ax.x - b.x, ax.z - b.z) < fnR(sk) + 0.6) return false; } return true; };
+  for (let i = 12; i < TBF.N - 6; i += 20) { const f = TBF.fr[i], b = f.c.clone().addScaledVector(f.up, -TBF.R - 0.05); if (!clear(b, i)) continue; m.limb(new V3(b.x, 0, b.z), b, 0.14, 0.12, C('#f4f1ea')); m.add(GEO.box, b, new V3(0.5, 0.14, 0.5), C('#d8d4ca')); }
+  for (const i of [20, 40]) { const f = EXF.fr[i], b = f.c.clone().addScaledVector(f.up, -EXF.rad(i / EXF.N) - 0.05); if (Math.hypot(b.x - BW.x, b.z - BW.z) > BW.pool + 0.4) m.limb(new V3(b.x, 0, b.z), b, 0.14, 0.12, C('#f4f1ea')); }
   for (const [dx, dz] of [[-2.2, -2.2], [2.2, -2.2], [-2.2, 2.2], [2.2, 2.2]]) m.limb(new V3(BT.x + dx, 0, BT.z + dz), new V3(BT.x + dx, BT.h + 3.2, BT.z + dz), 0.24, 0.22, C('#2a64c8'));
   for (let y = 2; y < BT.h; y += 2.2) { m.add(GEO.box, new V3(BT.x, y, BT.z + 2.2), new V3(4.6, 0.12, 0.12), C('#f4f1ea')); m.add(GEO.box, new V3(BT.x - 2.2, y, BT.z), new V3(0.12, 0.12, 4.6), C('#f4f1ea')); }
   for (let k = 0; k < 30; k++) { const y = k * (BT.h / 30), a = k * 0.5; m.add(GEO.box, new V3(BT.x + Math.cos(a) * 1.4, y + 0.3, BT.z + Math.sin(a) * 1.4), new V3(1.4, 0.12, 0.5), C('#f08a2a'), new THREE.Quaternion().setFromAxisAngle(up, -a)); }
@@ -417,7 +422,7 @@ const FN_LEGS = [];
   const fu = { uTime: waterU.uTime, uNight: skyU.uNight };
   const flow = 'uniform float uTime,uNight;varying vec2 vUv;float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}void main(){float s=vUv.x*.9-uTime*5.,w=vUv.y;float st=smoothstep(.75,1.,fract(s+h2(vec2(floor(w*7.),0.))*.7))*smoothstep(.0,.2,w)*smoothstep(1.,.8,w);vec3 c=mix(vec3(.35,.82,.95),vec3(1.),st*.8);c*=mix(1.,.45,uNight);gl_FragColor=vec4(c,.5+st*.35);}';
   const wmat = new THREE.ShaderMaterial({ uniforms: fu, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false, vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}', fragmentShader: flow });
-  for (const F of [TBF, EXF]) { const wp = [], wuv = [], wi = [], WA = 6; F.fr.forEach((f, i) => { for (let j = 0; j <= WA; j++) { const a = -0.7 + 1.4 * j / WA, q2 = f.c.clone().addScaledVector(f.side, Math.sin(a) * (F.R - 0.05)).addScaledVector(f.up, -Math.cos(a) * (F.R - 0.05)); wp.push(q2.x, q2.y, q2.z); wuv.push(i / F.N * F.L, j / WA); } });
+  for (const F of [TBF, EXF]) { const wp = [], wuv = [], wi = [], WA = 6; F.fr.forEach((f, i) => { for (let j = 0; j <= WA; j++) { const a = -0.7 + 1.4 * j / WA, R2 = F.rad(i / F.N) - 0.05, q2 = f.c.clone().addScaledVector(f.side, Math.sin(a) * R2).addScaledVector(f.up, -Math.cos(a) * R2); wp.push(q2.x, q2.y, q2.z); wuv.push(i / F.N * F.L, j / WA); } });
     for (let i = 0; i < F.N; i++) for (let j = 0; j < WA; j++) { const a = i * (WA + 1) + j, b = a + WA + 1; wi.push(a, b, a + 1, a + 1, b, b + 1); }
     const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(wp, 3)); wg.setAttribute('uv', new THREE.Float32BufferAttribute(wuv, 2)); wg.setIndex(wi); root.add(new THREE.Mesh(wg, wmat)); }
   { const sp = [], su = [], si = [], NW = 30; for (let i = 0; i <= 24; i++) for (let j = 0; j <= NW; j++) { fnP(i / 24 * FN.L, -1.1 + 2.2 * j / NW, p, 0.04); sp.push(p.x, p.y, p.z); su.push(j / NW, i / 24); }
@@ -431,15 +436,11 @@ const FN_LEGS = [];
   const hp = new THREE.Path(); hp.absellipse(BW.x, -BW.z, BW.pool * 1.01, BW.pool * 1.01, 0, Math.PI * 2, true); sh.holes.push(hp);
   const dg = new THREE.ShapeGeometry(sh, 64).rotateX(-Math.PI / 2), duv = dg.attributes.uv, dps = dg.attributes.position; for (let i = 0; i < dps.count; i++) duv.setXY(i, dps.getX(i), dps.getZ(i));
   const deck = new THREE.Mesh(dg, new THREE.MeshLambertMaterial({ map: tileTex, color: '#ffffff' })); deck.position.y = 0.06; root.add(deck);
-  // its sign by the way in from the fair
-  const tex = canvasTex(1024, 256, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#f08a2a'); gr.addColorStop(1, '#2a64c8'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.strokeStyle = '#ffffff'; g.lineWidth = 12; g.strokeRect(10, 10, w - 20, h - 20); g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '700 128px "Cormorant Garamond", Georgia, serif'; g.fillText('The Thunder Bowl', w / 2, h / 2 + 6); });
-  const sx = D.x0 + 1, sz = BW.z + 12, sm = new Merge(); for (const dz of [-3.4, 3.4]) sm.limb(new V3(sx, 0, sz + dz), new V3(sx, 5.2, sz + dz), 0.18, 0.16, C('#f4f1ea')); root.add(new THREE.Mesh(sm.build(), toy));
-  for (const r of [-Math.PI / 2, Math.PI / 2]) { const b = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 1.8), new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.25 })); b.position.set(sx + (r > 0 ? 0.05 : -0.05), 4.4, sz); b.rotation.y = r; root.add(b); }
 }
 // the slider: s along the tube, then the funnel (s along its axis, phi round its wall), then the chute
 const bowl = { on: false, phase: 'tube', s: 0, v: 0, phi: 0, w: 0, sv: 0, t: 0, fx: 0, fz: 0 };
 const SEAT = 0.6;
-const seatOn = (F, s, v) => { const f = frameAt(F, s); return v.copy(f.c).addScaledVector(f.up, -F.R + SEAT); };
+const seatOn = (F, s, v) => { const f = frameAt(F, s); return v.copy(f.c).addScaledVector(f.up, -F.rad(clamp(s / F.L, 0, 1)) + SEAT); };
 const funnelSeat = v => { const phi = bowl.phi * (1 - smooth(FN.L - 1.6, FN.L, bowl.s)); return fnP(bowl.s, phi, v, SEAT + 0.4 * (1 - smooth(FN.L - 2, FN.L, bowl.s))); };
 const bowlRide = {
   key: 'bowl', label: 'Ride the Thunder Bowl', name: 'The Thunder Bowl', hint: 'down the tube, swing through the funnel, and out', exit: W3(BW.x + 10, 0, BW.z - 4),
