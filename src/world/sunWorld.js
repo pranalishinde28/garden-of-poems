@@ -47,8 +47,12 @@ const canalD = (x, z) => { if (Math.abs(x - CANAL.x) > CANAL.rx + 8 || Math.abs(
 // splash pool; and the flower terraces west of the sunflowers, rows of colour after Shikisai-no-oka
 export const WP = { x0: 40, x1: 93, z0: 27, z1: -34, wave: { x: 66, z: 7, rx: 20, rz: 13 }, splash: { x: 50, z: -24, rx: 7.5, rz: 5.5 }, tower: { x: 86, z: -24, h: 16 } };
 export const TERRACE = { x0: -93, x1: -40, z0: 27, z1: -31 };
-// three patches of flower rows: west of the sunflowers, south-west of the canal, and east of the swings by the lagoon
-export const TERRACES = [TERRACE, { x0: -95, x1: -60, z0: -79, z1: -142 }, { x0: 55, x1: 95, z0: -38, z1: -88 }];
+// two patches of flower rows: west of the sunflowers, and south-west of the canal (the third, east of the swings,
+// gave way to the Thunder Bowl)
+export const TERRACES = [TERRACE, { x0: -95, x1: -60, z0: -79, z1: -142 }];
+// the Thunder Bowl beside Splash Cove (built in waterPark.js): a 20 m tower, an enclosed tube spiralling down it and
+// on into a great striped bowl, whose hole drops you into a pool beneath. Heights are above the level deck.
+export const BOWL = { x: 72, z: -64, R: 9.5, rh: 1.6, hole: 5.2, rim: 10.8, pool: 6.4, deck: { x0: 58, x1: 96, z0: -37, z1: -82 }, tower: { x: 88, z: -45, h: 20 } };
 const inTerrace = (x, z, m = 0) => TERRACES.some(t => x > t.x0 - m && x < t.x1 + m && z < t.z0 + m && z > t.z1 - m);
 const inWP = (x, z, m = 0) => x > WP.x0 - m && x < WP.x1 + m && z < WP.z0 + m && z > WP.z1 - m;
 // everything built at the fair, with room round it for canopies, flying seats and people: nothing scattered
@@ -65,6 +69,7 @@ const KEEP = [
   ['r', 25, 95, -180, -108],        // the roller coaster
   ['e', 0, -104, 62 + 3, 14 + 3],   // the lagoon
   ['r', 36, 97, -38, 31],           // Splash Cove
+  ['r', 56, 98, -84, -35],          // the Thunder Bowl, its tower and tube
 ];
 export function keepClear(x, z, m = 0) {
   for (const k of KEEP) {
@@ -94,6 +99,8 @@ export function sunH(x, z) {
     h = lerp(h, 0.02, smooth(WP.x0 - 8, WP.x0, x) * (1 - smooth(WP.x1, WP.x1 + 8, x)) * smooth(WP.z1 - 8, WP.z1, z) * (1 - smooth(WP.z0, WP.z0 + 8, z)));
     h = lerp(h, -1.6, 1 - smooth(0.92, 1.0, wpE(x, z, WP.wave))); h = lerp(h, -1.6, 1 - smooth(0.9, 1.0, wpE(x, z, WP.splash)));
   }
+  // the Thunder Bowl's deck is level too, its pool sunk under the bowl
+  { const D = BOWL.deck; if (x > D.x0 - 8 && x < D.x1 + 8 && z < D.z0 + 8 && z > D.z1 - 8) { h = lerp(h, 0.02, smooth(D.x0 - 6, D.x0, x) * (1 - smooth(D.x1, D.x1 + 6, x)) * smooth(D.z1 - 6, D.z1, z) * (1 - smooth(D.z0, D.z0 + 6, z))); h = lerp(h, -1.6, 1 - smooth(0.9, 1.0, Math.hypot(x - BOWL.x, z - BOWL.z) / BOWL.pool)); } }
   const a = Math.atan2(z + 60, x);
   h += smooth(150, 290, r) * (9 + 5 * Math.sin(a * 3 + 1) + 3 * Math.sin(a * 7 + 2));
   return h;
@@ -1012,4 +1019,4 @@ worlds.sun = {
 
 // the layout, for the secret world's map (ui/sunMap.js)
 export { skyU, sun, LAGOON, lagoonE, fieldMats, waterU };
-export const SUN_PLAN = { KEEP, WP, TERRACE, TERRACES, LAKE, FIELD, ARCH_Z, PLAZA, CAROUSEL, LAGOON, BRIDGE, CASTLE, WHEEL, CANAL, CANAL_PTS, SWING, KIOSK, DOOR, FAIR_RIDES, pathX, track: track.getSpacedPoints(120) };
+export const SUN_PLAN = { KEEP, BOWL, WP, TERRACE, TERRACES, LAKE, FIELD, ARCH_Z, PLAZA, CAROUSEL, LAGOON, BRIDGE, CASTLE, WHEEL, CANAL, CANAL_PTS, SWING, KIOSK, DOOR, FAIR_RIDES, pathX, track: track.getSpacedPoints(120) };

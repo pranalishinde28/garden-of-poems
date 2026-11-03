@@ -119,6 +119,7 @@ const GLYPHS = {
   swingride: '<path d="M12 3v4M5 7h14M7 7l-2 8M17 7l2 8M12 7v8M4 15h2M18 15h2M11 15h2M12 19v2M8 21h8"/>', drop: '<path d="M12 3v18M8 21h8M8 7h8v4H8zM15 15l-3 3-3-3"/>',
   jetski: '<path d="M3 15h15l3-3H9l-2-3H5zM4 19c3 1 5 1 8 0s5-1 8 0"/>', wheel: '<circle cx="12" cy="10" r="6"/><path d="M12 4v12M6 10h12M7.8 5.8l8.4 8.4M16.2 5.8l-8.4 8.4M9 21l3-5 3 5"/>',
   coaster: '<path d="M3 17c3-10 6-10 8-2s5 6 10-8M5 21v-4M10 21v-5M15 21v-3M20 21V9"/>', castle: '<path d="M4 20V9l2-2 2 2v3h3V8l1-4 1 4v4h3V9l2-2 2 2v11zM10 20v-4h4v4"/>',
+  bowl: '<path d="M3 8c0 5 4 9 9 9s9-4 9-9M3 8c2 1 5 1.5 9 1.5S19 9 21 8M12 17v4M9 13c1-1.5 4-1.5 6 0"/>',
   book: '<path d="M4 6c3-1 6-1 8 1v13c-2-2-5-2-8-1zM20 6c-3-1-6-1-8 1v13c2-2 5-2 8-1z"/>',
 };
 const glyphFor = name => /lantern/i.test(name) ? 'lantern' : /bench/i.test(name) ? 'bench' : /pond/i.test(name) ? 'pond' : /swing/i.test(name) ? 'swing' : /gate/i.test(name) ? 'gate' : /tulip/i.test(name) ? 'tulip' : /rose/i.test(name) ? 'rose' : /secret/i.test(name) ? 'secret' : /stream|gorge/i.test(name) ? 'stream' : /fountain/i.test(name) ? 'fountain' : /shrine/i.test(name) ? 'torii' : /pagoda/i.test(name) ? 'pagoda' : /bell/i.test(name) ? 'bell' : 'gate';

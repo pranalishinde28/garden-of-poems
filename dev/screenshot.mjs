@@ -399,6 +399,16 @@ async function main() {
       // from above, as a bird: the whole field to the woods
       await page.evaluate(() => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.setAvatar({ kind: 'bird' }); g.player.pos.set(O.x + 30, 0, O.z - 34.8 + 40); g.player.alt = 14; g.player.cruise = 14; g.player.flying = true; g.player.yaw = 0.35; g.player.pitch = -0.55; }); await sleep(2500); await page.screenshot({ path: join(root, 'dev/shots/sun-field-above.png') });
       await page.evaluate(() => { const g = window.__garden; g.player.alt = 0; g.player.cruise = 0; g.player.flying = false; g.setAvatar({ kind: 'girl' }); }); await sleep(800);
+      // the Thunder Bowl: seen from the deck, then ridden: in the tube, in the bowl, falling through
+      await page.evaluate(() => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + 50, 0, O.z - 34.8 - 42); g.player.yaw = -2.2; g.player.pitch = 0.22; }); await sleep(1800); await page.screenshot({ path: join(root, 'dev/shots/bowl.png') });
+      await page.evaluate(() => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + 60, 0, O.z - 34.8 - 90); g.player.yaw = -2.6; g.player.pitch = 0.3; }); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/bowl-2.png') });
+      await page.evaluate(() => { const g = window.__garden; g.state.mode = 'walk'; g.late.startRide(g.rides.find(r => r.key === 'bowl')); });
+      const bowlLog = [];
+      for (const [n, w] of [['tube', 5000], ['tube-2', 6500], ['in', 3000], ['in-2', 5000], ['in-3', 5000]]) { await sleep(w); await page.screenshot({ path: join(root, `dev/shots/bowl-ride-${n}.png`) }); bowlLog.push(await page.evaluate(() => { const b = window.__garden.late.bowlState; return b ? `${b.phase} r${b.r.toFixed(1)} v${(b.phase === 'tube' ? b.v : Math.hypot(b.vt, b.vr)).toFixed(1)}` : '?'; })); }
+      for (let i = 0; i < 20; i++) { await sleep(500); const ph = await page.evaluate(() => window.__garden.late.bowlState.phase); if (ph === 'splash' || ph === 'float') break; }
+      await page.screenshot({ path: join(root, 'dev/shots/bowl-ride-pool.png') }); bowlLog.push(await page.evaluate(() => window.__garden.late.bowlState.phase));
+      console.log('  thunder bowl:', bowlLog.join(' | ')); if (!/splash|float/.test(bowlLog[bowlLog.length - 1])) errors.push('the Thunder Bowl ride did not reach the pool');
+      await page.click('#ride-off'); await sleep(800);
       const cornerOn = await page.evaluate(() => !document.querySelector('#minimap-btn').hidden && getComputedStyle(document.querySelector('#minimap-btn')).display !== 'none'); if (!cornerOn) errors.push('no corner map in the secret world');
       await page.keyboard.press('KeyM'); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/sunmap.png') });
       const n = await page.$$eval('#map-marks .map-place', b => b.length); if (n < 10) errors.push('the secret map has too few places: ' + n);
