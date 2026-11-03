@@ -5,7 +5,7 @@ import { O, SUN_PLAN as P } from '../world/sunWorld.js';
 import { closePanel, openPanel } from './reading.js';
 import { late, provide } from '../core/late.js';
 
-provide({ get toggleSunMap() { return toggleSunMap; } });
+provide({ get toggleSunMap() { return toggleSunMap; }, get drawSunMini() { return drawSunMini; } });
 
 /* ================= the map of the secret world ================= */
 // M (or Map in ⋯) in the secret world opens this: a hand-drawn plan of the sunflower field and the fair, with
@@ -13,8 +13,8 @@ provide({ get toggleSunMap() { return toggleSunMap; } });
 const panel = $('#sunmap'), cv = $('#sm-canvas'), marks = $('#sm-marks'), S = 4;
 // world (local x, z) to canvas: x across, the field at the bottom, the castle at the top
 const px = (x, z) => [(x + 100) * S, (z + 186) * S * 0 + (70 - z) * S];
-function draw() {
-  const g = cv.getContext('2d'), W = cv.width, H = cv.height;
+function draw(c = cv, title = true) {
+  const g = c.getContext('2d'), W = c.width, H = c.height;
   // parchment, a faint grid
   const pg = g.createLinearGradient(0, 0, 0, H); pg.addColorStop(0, '#f5ead2'); pg.addColorStop(1, '#ead9b4'); g.fillStyle = pg; g.fillRect(0, 0, W, H);
   g.strokeStyle = 'rgba(140,110,70,.12)'; g.lineWidth = 1; for (let x = 0; x < W; x += 40) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); } for (let y = 0; y < H; y += 40) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
@@ -51,6 +51,7 @@ function draw() {
   ring(P.FAIR_RIDES.tea.x, P.FAIR_RIDES.tea.z, P.FAIR_RIDES.tea.r, '#f7c8dc');
   ring(P.FAIR_RIDES.drop.x, P.FAIR_RIDES.drop.z, 4, '#e8463a');
   // a ribbon title
+  if (!title) return;
   g.fillStyle = '#7a3a3a'; g.beginPath(); g.moveTo(W / 2 - 220, 24); g.lineTo(W / 2 + 220, 24); g.lineTo(W / 2 + 196, 46); g.lineTo(W / 2 + 220, 68); g.lineTo(W / 2 - 220, 68); g.lineTo(W / 2 - 196, 46); g.closePath(); g.fill();
   g.fillStyle = '#fff4de'; g.font = '700 30px "Cormorant Garamond", Georgia, serif'; g.textAlign = 'center'; g.fillText('The Secret Garden', W / 2, 56);
 }
@@ -87,11 +88,28 @@ function build() {
   });
   // you are here
   const [a, b] = px(player.pos.x - O.x, player.pos.z - O.z), me = document.createElement('span');
-  me.className = 'sm-me'; me.textContent = '▲'; me.style.left = (a / W * 100) + '%'; me.style.top = (b / H * 100) + '%'; me.style.transform = `translate(-50%,-50%) rotate(${-player.yaw}rad)`;
+  me.className = 'sm-me'; me.textContent = '▲'; me.style.left = (a / W * 100) + '%'; me.style.top = (b / H * 100) + '%'; me.style.transform = `translate(-50%,-50%) rotate(${Math.PI + player.yaw}rad)`; // +z is up on this plan
   if (a > 0 && a < W && b > 0 && b < H) marks.appendChild(me);
 }
 function open() { if (state.mode !== 'walk') return; draw(); build(); openPanel(panel); }
 function close() { closePanel(panel); }
 function toggleSunMap() { panel.hidden || !panel.classList.contains('open') ? open() : close(); }
 $('#sm-close').onclick = close;
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => draw());
+
+/* ---------- the corner map in the secret world ---------- */
+// ui/map.js draws the round corner map; here it takes a window of this plan (without its title) round you,
+// with a small medallion for every place. +z is up on this plan, so the arrow turns the other way.
+let plan = null;
+function drawSunMini(g, N, span) {
+  if (!plan) { plan = document.createElement('canvas'); plan.width = cv.width; plan.height = cv.height; draw(plan, false); }
+  const k = N / (2 * span * S), [a, b] = px(player.pos.x - O.x, player.pos.z - O.z);
+  g.drawImage(plan, a - span * S, b - span * S, span * 2 * S, span * 2 * S, 0, 0, N, N);
+  for (const [, , x, z] of PLACES()) {
+    const [c, d] = px(x, z), mx = N / 2 + (c - a) * k, my = N / 2 + (d - b) * k;
+    if (mx < -8 || my < -8 || mx > N + 8 || my > N + 8) continue;
+    g.fillStyle = '#7a4a2a'; g.beginPath(); g.arc(mx, my, 6, 0, 7); g.fill(); g.strokeStyle = '#f5ead2'; g.lineWidth = 2; g.stroke();
+  }
+  return Math.PI + player.yaw;
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { plan = null; });

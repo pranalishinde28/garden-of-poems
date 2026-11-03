@@ -122,6 +122,7 @@ const VIEWS = {
   'gorge-deck': { pos: [68.5, 1.8, 8.2], look: [119, 10, 14.4], season: 'spring' },
   'gorge-in': { pos: [96.8, 3, 15.7], look: [145.6, 12, 12.2], season: 'spring' },
   'gorge-in-autumn': { pos: [96.8, 3, 15.7], look: [145.6, 12, 12.2], season: 'autumn' },
+  'gorge-ridge-autumn': { pos: [74, 2.2, 0], look: [100, 6, -16], season: 'autumn' },
   'gorge-in-night': { pos: [96.8, 3, 15.7], look: [145.6, 12, 12.2], season: 'spring', light: 'night' },
   'gorge-high': { pos: [40, 34, -14], look: [130, 8, 22], season: 'spring' },
   'gorge-bird': { pos: [55, 70, -60], look: [150, 0, 30], season: 'spring' },
@@ -379,6 +380,9 @@ async function main() {
       console.log(`  sprinted ${sprinted.toFixed(1)} m; pace ${pace}`); if (pace !== 2 || sprinted < ran * 1.4) errors.push('a second tap of Shift did not sprint');
       await page.keyboard.press('ShiftLeft'); await sleep(300); if (await page.evaluate(() => window.__garden.state.pace) !== 0) errors.push('a third tap of Shift did not go back to walking');
       await page.evaluate(() => window.__garden.late.enterSunWorld()); await page.waitForFunction(() => window.__garden.state.world === 'sun' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 }); await sleep(2500);
+      // the corner map: facing the castle (north on the plan is the field), then turned east
+      for (const [n, yaw] of [['n', 0], ['e', -Math.PI / 2]]) { await page.evaluate(y => { const g = window.__garden, O = g.worlds.sun.arrive.pos; g.player.pos.set(O.x + 4, 0, O.z - 40); g.player.yaw = y; }, yaw); await sleep(900); await page.screenshot({ path: join(root, `dev/shots/sunmap-corner-${n}.png`) }); }
+      const cornerOn = await page.evaluate(() => !document.querySelector('#minimap-btn').hidden && getComputedStyle(document.querySelector('#minimap-btn')).display !== 'none'); if (!cornerOn) errors.push('no corner map in the secret world');
       await page.keyboard.press('KeyM'); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/sunmap.png') });
       const n = await page.$$eval('#sm-marks .sm-place', b => b.length); if (n < 10) errors.push('the secret map has too few places: ' + n);
       await page.evaluate(() => [...document.querySelectorAll('#sm-marks .sm-place')].find(b => /drop tower/i.test(b.textContent)).click());

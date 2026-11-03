@@ -275,16 +275,23 @@ let worldAt = -1e9, miniAt = 0;
 function redrawWorld() { const g = world.getContext('2d'); g.clearRect(0, 0, world.width, world.height); drawWorld(g, (x, z) => [(x + W) * PX, (z + W) * PX], PX, false); }
 const miniFrame = now => {
   requestAnimationFrame(miniFrame);
-  const show = state.minimap && (state.mode === 'walk' || state.mode === 'swing') && !document.body.classList.contains('sr-open');
+  // the garden and the secret world each have one; inside the pagodas there is none
+  const inside = state.world === 'temple' || state.world === 'shrine', sun = state.world === 'sun';
+  const show = state.minimap && (state.mode === 'walk' || state.mode === 'swing') && !document.body.classList.contains('sr-open') && !inside;
   if (miniBtn.hidden === show) miniBtn.hidden = !show;
   // a small × hides it; a little map button brings it back (the same choice as in You)
-  const wantShow = (state.mode === 'walk' || state.mode === 'swing') && !document.body.classList.contains('sr-open') && !document.body.classList.contains('panel-open');
+  const wantShow = (state.mode === 'walk' || state.mode === 'swing') && !document.body.classList.contains('sr-open') && !document.body.classList.contains('panel-open') && !inside;
   hideBtn.hidden = !(show && wantShow); showBtn.hidden = !(wantShow && !state.minimap);
   if (!show || now - miniAt < 110) return; miniAt = now;
-  if (now - worldAt > 5000) { redrawWorld(); worldAt = now; }
+  if (!sun && now - worldAt > 5000) { redrawWorld(); worldAt = now; }
   const g = mini.getContext('2d'), N = mini.width, R = N / 2, span = 26, k = N / (2 * span);
   g.clearRect(0, 0, N, N); g.save(); g.beginPath(); g.arc(R, R, R - 2, 0, 7); g.clip();
   g.fillStyle = 'rgba(239,232,214,.92)'; g.fillRect(0, 0, N, N);
+  if (sun) {
+    const turn = late.drawSunMini ? late.drawSunMini(g, N, 42) : -player.yaw;
+    g.translate(R, R); g.rotate(turn); g.beginPath(); g.moveTo(0, -12); g.lineTo(8, 8); g.lineTo(0, 4); g.lineTo(-8, 8); g.closePath(); g.lineWidth = 4; g.strokeStyle = '#fff8e8'; g.stroke(); g.fillStyle = '#8a2424'; g.fill();
+    g.restore(); g.strokeStyle = 'rgba(44,54,39,.35)'; g.lineWidth = 2; g.beginPath(); g.arc(R, R, R - 2, 0, 7); g.stroke(); return;
+  }
   const px = player.pos.x, pz = player.pos.z;
   g.drawImage(world, (px - span + W) * PX, (pz - span + W) * PX, span * 2 * PX, span * 2 * PX, 0, 0, N, N);
   plants.forEach(pl => { if (!onMap(pl)) return; const x = R + (pl.root.position.x - px) * k, y = R + (pl.root.position.z - pz) * k; if (x < -6 || y < -6 || x > N + 6 || y > N + 6) return; g.fillStyle = MOOD_INK[moodOf(pl.poem)]; g.beginPath(); g.arc(x, y, pl.poem.important ? 5 : 3.6, 0, 7); g.fill(); });
@@ -292,7 +299,7 @@ const miniFrame = now => {
   g.restore(); g.strokeStyle = 'rgba(44,54,39,.35)'; g.lineWidth = 2; g.beginPath(); g.arc(R, R, R - 2, 0, 7); g.stroke();
 };
 requestAnimationFrame(miniFrame);
-miniBtn.onclick = () => openMap();
+miniBtn.onclick = () => toggleMap();
 const hideBtn = $('#minimap-hide'), showBtn = $('#minimap-show');
 const setMini = on => { state.minimap = on; try { localStorage.setItem('garden-of-poems:minimap', on ? '1' : '0'); } catch (e) {} const c = document.getElementById('av-minimap'); if (c) c.checked = on; };
 hideBtn.onclick = () => setMini(false);
