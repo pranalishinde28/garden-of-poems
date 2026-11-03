@@ -7,7 +7,8 @@ import { worlds } from '../core/worlds.js';
 import { addTick, regThing } from '../core/things.js';
 import { late } from '../core/late.js';
 import { player } from '../player/camera.js';
-import { CASTLE, FAIR_RIDES, O, rides, sunH, sunScene } from './sunWorld.js';
+import { makeDoors, swingDoors } from './doors.js';
+import { CASTLE, FAIR_RIDES, GATE, O, rides, sunH, sunScene } from './sunWorld.js';
 
 /* ================= the Hall of Mirrors, inside the castle; and two rides out at the fair ================= */
 // Walk through the castle's gate and you are inside a great gilded gallery after the Hall of Mirrors at
@@ -410,8 +411,6 @@ export const POEM_SPOTS = [];
   }
   // the door at the south end: tall, white and gold under a gilded arch
   m.add(GEO.box, new V3(0, 3.6, HALL.hl - 0.2), new V3(6, 7.2, 0.3), IVORY);
-  m.add(GEO.box, new V3(0, 3.3, HALL.hl - 0.38), new V3(4.4, 6.4, 0.15), C('#e8dcc4'));
-  for (const o of [-1.1, 1.1]) for (const y of [1.8, 4.6]) m.add(GEO.box, new V3(o, y, HALL.hl - 0.46), new V3(1.6, 2.2, 0.06), GOLD);
   m.add(new THREE.TorusGeometry(3.0, 0.35, 8, 28, Math.PI), new V3(0, 7.2, HALL.hl - 0.3), new V3(1, 1, 1), GOLD);
   hall.add(new THREE.Mesh(m.build(), gilt));
   for (let k = 0; k <= 14; k++) { const a = Math.PI * k / 14; bulb(Math.cos(a) * 3.4, 7.2 + Math.sin(a) * 3.4, HALL.hl - 0.6, '#ffe08a'); }
@@ -510,26 +509,61 @@ export const POEM_SPOTS = [];
 }
 addTick(() => { if (hall.visible) hall.userData.pts.material.uniforms.uTime.value = T; }, true);
 
-/* ---------- going in and out: just walk ---------- */
-// a soft golden shimmer fills the castle's gate; walking into it takes you inside, and walking to the
-// gallery's door at the south end takes you back out to the fair
+/* ---------- going in and out: the castle's doors swing open as you come up to them ---------- */
+// Two carved oak doors, studded and banded in iron, hang in the castle's arched gateway (sunWorld.js GATE). As you
+// come within a few strides they swing inward, and you see down a short gilded vestibule to a glimpse of the Hall
+// of Mirrors (its painted vault, mirrors and a chandelier's glow), so you know where they lead; walk on through and
+// you are inside. They close again when you have gone.
 {
-  const gate = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 5.6), new THREE.ShaderMaterial({ transparent: true, depthWrite: false, fog: false, uniforms: { uTime: { value: 0 } },
-    vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-    fragmentShader: `uniform float uTime;varying vec2 vUv;void main(){vec2 q=vUv-vec2(.5,.35);float d=length(q*vec2(1.,.8));
-      float a=smoothstep(.62,.0,d)*(.65+.2*sin(uTime*1.6+d*14.));vec3 c=mix(vec3(1.,.9,.7),vec3(1.,.97,.88),vUv.y);gl_FragColor=vec4(c,a*.9);}` }));
-  const y = worlds.sun.floorH(O.x + CASTLE.x, O.z + CASTLE.z + 12);
-  gate.position.set(O.x + CASTLE.x, y + 2.8, O.z + CASTLE.z + 10.6); sunScene.add(gate);
-  addTick(() => { gate.material.uniforms.uTime.value = T; }, true);
+  const cx = O.x + CASTLE.x, cz = O.z + CASTLE.z, y = worlds.sun.floorH(cx, cz + GATE.wallZ + 3), face = GATE.wallZ + GATE.depth / 2;
+  // the vestibule behind the doors: a short gilded passage, lit warm, ending in a glimpse of the hall
+  const v = new THREE.Group(); v.position.set(cx, y, cz); sunScene.add(v);
+  const len = face - GATE.vestZ, mid = (face + GATE.vestZ) / 2, H = GATE.spring + GATE.w / 2;
+  const gold = new THREE.MeshLambertMaterial({ color: '#d9b04a', emissive: '#6a4a14', emissiveIntensity: 0.6 });
+  const marbleV = new THREE.MeshLambertMaterial({ color: '#efe6d2', emissive: '#4a4030', emissiveIntensity: 0.5 });
+  for (const sx of [-1, 1]) { const wl = new THREE.Mesh(new THREE.PlaneGeometry(len, H), marbleV); wl.position.set(sx * (GATE.w / 2 - 0.02), H / 2, mid); wl.rotation.y = -sx * Math.PI / 2; v.add(wl); for (let k = 0; k < 3; k++) { const pl = new THREE.Mesh(new THREE.BoxGeometry(0.2, GATE.spring + 1, 0.3), gold); pl.position.set(sx * (GATE.w / 2 - 0.12), (GATE.spring + 1) / 2, GATE.vestZ + 0.4 + k * (len - 0.8) / 2); v.add(pl); } }
+  const vault = new THREE.Mesh(new THREE.CylinderGeometry(GATE.w / 2, GATE.w / 2, len, 24, 1, true, Math.PI / 2, Math.PI).rotateX(Math.PI / 2), new THREE.MeshLambertMaterial({ color: '#e8cf8a', emissive: '#6a5020', emissiveIntensity: 0.6, side: THREE.DoubleSide }));
+  vault.position.set(0, GATE.spring, mid); v.add(vault);
+  const fl = new THREE.Mesh(new THREE.PlaneGeometry(GATE.w, len).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: '#8a1f24', emissive: '#3a0a0c', emissiveIntensity: 0.5 })); fl.position.set(0, 0.03, mid); v.add(fl);
+  // the glimpse: the hall's painted vault, a row of mirrors, a chandelier's glow (the Le Brun photo once loaded)
+  const draw = real => (g, w, h) => {
+    g.fillStyle = '#d9b04a'; g.fillRect(0, 0, w, h); if (real) cover(g, img.sky, 0, 0, w, h * 0.42); else baroque(g, 0, 0, w, h * 0.42, 404); frame(g, 0, 0, w, h * 0.42, 10);
+    for (let k = 0; k < 3; k++) { const x = 30 + k * 160; g.fillStyle = '#c8d0d0'; g.fillRect(x, h * 0.48, 120, h * 0.32); g.strokeStyle = '#e8c25a'; g.lineWidth = 8; g.strokeRect(x, h * 0.48, 120, h * 0.32); }
+    const gr = g.createLinearGradient(0, h * 0.8, 0, h); gr.addColorStop(0, '#a87a4a'); gr.addColorStop(1, '#6a4a2a'); g.fillStyle = gr; g.fillRect(0, h * 0.8, w, h * 0.2);
+    const cg = g.createRadialGradient(w / 2, h * 0.47, 4, w / 2, h * 0.47, 120); cg.addColorStop(0, 'rgba(255,250,220,1)'); cg.addColorStop(1, 'rgba(255,230,160,0)'); g.fillStyle = cg; g.fillRect(0, 0, w, h);
+  };
+  const peek = artTex(512, 768, draw(false), draw(true));
+  const pk = new THREE.Mesh(new THREE.PlaneGeometry(GATE.w, H), new THREE.MeshBasicMaterial({ map: peek, fog: false })); pk.position.set(0, H / 2, GATE.vestZ + 0.04); v.add(pk);
+  addTick(() => { if (state.world === 'sun' && !hall.visible && Math.hypot(player.pos.x - cx, player.pos.z - (cz + face)) < 30) loadArt(); }, true);
+  // the doors, set in the gateway, opening inward when you are within 9 m in front of them (or in the passage)
+  const dg = new THREE.Group(); dg.position.set(cx, y, cz + face - 0.4); sunScene.add(dg);
+  makeDoors(dg, GATE.w - 0.05, GATE.spring, (x, z) => !hall.visible && Math.abs(x - cx) < 9 && z > cz + GATE.vestZ - 2 && z < cz + face + 9);
+}
+// the door out at the hall's south end: white and gold leaves that open as you come to them onto the fair's daylight
+{
+  const out = canvasTex(256, 384, (g, w, h) => { const sk = g.createLinearGradient(0, 0, 0, h * 0.6); sk.addColorStop(0, '#7ab4ea'); sk.addColorStop(1, '#dcecf6'); g.fillStyle = sk; g.fillRect(0, 0, w, h); g.fillStyle = '#7aa85a'; g.fillRect(0, h * 0.62, w, h); g.fillStyle = '#e8dcc4'; g.beginPath(); g.moveTo(w * 0.4, h); g.lineTo(w * 0.47, h * 0.62); g.lineTo(w * 0.53, h * 0.62); g.lineTo(w * 0.6, h); g.fill(); g.fillStyle = '#5a8a44'; for (let k = 0; k < 9; k++) { g.beginPath(); g.arc(k * 32 + 10, h * 0.6, 18 + (k % 3) * 6, 0, 7); g.fill(); } g.strokeStyle = '#d8322e'; g.lineWidth = 4; g.beginPath(); g.arc(w * 0.25, h * 0.48, 34, 0, 7); g.stroke(); });
+  const pk = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 6.8), new THREE.MeshBasicMaterial({ map: out, fog: false })); pk.position.set(0, 3.4, HALL.hl - 0.37); pk.rotation.y = Math.PI; hall.add(pk);
+  const dg = new THREE.Group(); dg.position.set(0, 0, HALL.hl - 0.5); hall.add(dg);
+  const hx = O.x + HALL.x, hz = O.z + HALL.z;
+  makeDoors(dg, 4.4, 4.6, (x, z) => hall.visible && Math.abs(x - hx) < 8 && z - hz > HALL.hl - 9, '#f2ece0');
 }
 addTick(() => {
   if (state.world !== 'sun' || state.mode !== 'walk') return;
   const lx = player.pos.x - O.x, lz = player.pos.z - O.z;
-  if (!hall.visible) { if (Math.abs(lx - CASTLE.x) < 2.6 && lz < CASTLE.z + 13.2 && lz > CASTLE.z + 8) late.enterHall && late.enterHall(); }
+  // through the doors and down the vestibule; at its end you are inside
+  if (!hall.visible) { if (Math.abs(lx - CASTLE.x) < GATE.w / 2 && lz < CASTLE.z + GATE.vestZ + 1.6 && lz > CASTLE.z + GATE.vestZ - 1) late.enterHall && late.enterHall(); }
   else if (Math.abs(lx - HALL.x) < 3 && lz - HALL.z > HALL.hl - 4) late.leaveHall && late.leaveHall();
 }, true);
 export const hallArrive = { pos: W(0, HALL.hl - 9), yaw: 0 };
-export const castleFront = { pos: O.clone().add(new V3(CASTLE.x, 0, CASTLE.z + 17)), yaw: 0 };
+export const castleFront = { pos: O.clone().add(new V3(CASTLE.x, 0, CASTLE.z + 18)), yaw: 0 };
+// a closed shell round all the halls under the fair (this hall, the library, the Hall of Paintings and their
+// hallways): whatever happens to the camera, nothing outside is ever seen from inside, least of all the world's
+// ground from below, which read as the world upside down. Warm and dark, like the space behind a wall.
+{
+  const shell = new THREE.Mesh(new THREE.BoxGeometry(360, 46, 260), new THREE.MeshBasicMaterial({ color: '#2a1c12', side: THREE.BackSide, fog: false }));
+  shell.position.set(O.x + 475, O.y + HALL.y + 20, O.z - 50); shell.visible = false; sunScene.add(shell);
+  addTick(() => { shell.visible = hall.visible; }, true);
+}
 export function showHall(on) { hall.visible = on; if (on) loadArt(); }
 export const inHall = (x, z) => Math.abs(x - (O.x + HALL.x)) < HALL.hw + 4 && Math.abs(z - (O.z + HALL.z)) < HALL.hl + 4;
 
@@ -638,6 +672,8 @@ addTick(() => {
     if (!inHall(x, z)) {
       const lx = x - O.x, lz = z - O.z;
       if (Math.hypot(lx - TEA.x, lz - TEA.z) < TEA.r + 1.2 || Math.hypot(lx - TOW.x, lz - TOW.z) < 5.2) return true;
+      // the castle's gateway and vestibule are open ground once its doors are open
+      if (Math.abs(lx - CASTLE.x) < GATE.w / 2 - 0.5 && lz > CASTLE.z + GATE.vestZ + 0.3 && lz < CASTLE.z + GATE.wallZ + 6) return lz < CASTLE.z + GATE.wallZ + GATE.depth / 2 + 0.3 && !(swingDoors[0] && swingDoors[0].open > 0.5);
       return b(x, z);
     }
     const lx = x - O.x - HALL.x, lz = z - O.z - HALL.z;

@@ -65,7 +65,7 @@ const KEEP = [
   ['c', 12, -47, 3],                // the fireworks kiosk
   ['e', -56, -66, 15 + 6, 10 + 6],  // the storybook canal and its island
   ['r', -58, -22, -150, -118],      // the Ferris wheel
-  ['r', -26, 26, -190, -138],       // the castle
+  ['r', -30, 30, -192, -138],       // the castle
   ['r', 25, 95, -180, -108],        // the roller coaster
   ['e', 0, -104, 62 + 3, 14 + 3],   // the lagoon
   ['r', 36, 97, -38, 31],           // Splash Cove
@@ -447,50 +447,109 @@ const lit = (k = 0.45) => nightLit(new THREE.MeshLambertMaterial({ vertexColors:
 // the castle has its own, so it can be washed in shifting colour at night
 const body = lit(), castleMat = lit(0.9), ref = [];
 
-// the castle: pink walls, blue conical spires with gold finials, a gate in its front wall
+// the castle: an original fairy-tale castle (pink and cream walls, blue slate spires with gold finials), built
+// with depth: a stone plinth, a curtain wall with a real arched gateway (its doors and the glimpse inside are in
+// castleHall.js), crenellations on carved corbels, string courses, round towers with corbelled galleries and
+// balustrades, bartizans on the corners, a keep with pointed windows in deep reveals, a balcony and a rose
+// window, and a tall central tower. Roofs are slate (a fish-scale texture). About half as big again as before.
+// (Asked after round 63, with photographs of a castle's towers: "more detailing, shades and depth, bigger".)
+export const GATE = { w: 5.6, h: 7.4, spring: 4.6, wallZ: 9, depth: 2.6, vestZ: 5.4 };
 {
-  const m = new Merge(), win = new Merge(), WALL = C('#e6aaa8'), TRIM = C('#f4d6d0'), STONE = C('#c9ae9c'), BLUE = C('#3b78d0'), BLUE2 = C('#5591e2'), GOLD = C('#e4b23a'), DARK = C('#4a3a42');
-  const cx = CASTLE.x, cz = CASTLE.z, base = sunH(cx, cz);
-  const tower = (x, z, r, h, roof, y0 = 0, roofCol = BLUE) => {
-    m.add(new THREE.CylinderGeometry(r, r * 1.05, h, 18), at(cx + x, cz + z, base + y0 + h / 2), new V3(1, 1, 1), WALL);
-    m.add(new THREE.CylinderGeometry(r * 1.12, r * 1.12, 0.5, 18), at(cx + x, cz + z, base + y0 + h - 0.1), new V3(1, 1, 1), TRIM);
-    m.add(new THREE.ConeGeometry(r * 1.2, roof, 18), at(cx + x, cz + z, base + y0 + h + roof / 2), new V3(1, 1, 1), roofCol);
-    m.limb(at(cx + x, cz + z, base + y0 + h + roof - 0.2), at(cx + x, cz + z, base + y0 + h + roof + 1.4), 0.08, 0.05, GOLD);
-    m.add(GEO.sph, at(cx + x, cz + z, base + y0 + h + roof + 0.6), new V3(0.18, 0.18, 0.18), GOLD);
-    // windows round the tower, glowing at night
-    for (let k = 0; k < 4; k++) {
-      const a = k / 4 * Math.PI * 2 + 0.4, wy = base + y0 + h * 0.62;
-      win.add(GEO.box, at(cx + x + Math.sin(a) * r * 0.98, cz + z + Math.cos(a) * r * 0.98, wy), new V3(r * 0.3, h * 0.12, r * 0.3), C('#ffd79a'), new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), a));
-      bulb(at(cx + x + Math.sin(a) * r * 1.02, cz + z + Math.cos(a) * r * 1.02, wy), '#ffd08a');
-    }
+  const m = new Merge(), win = new Merge(), roofs = new Merge();
+  const WALL = C('#ecb8b2'), WALL2 = C('#e2a8a2'), TRIM = C('#f7e4da'), STONE = C('#cdb39e'), STONE2 = C('#a8907c'), SHADE = C('#b88c86'), BLUE = C('#3a72c8'), GOLD = C('#e4b23a'), DARK = C('#3a2c34'), GLASS = C('#ffd79a');
+  const cx = CASTLE.x, cz = CASTLE.z, base = sunH(cx, cz), Y = up => base + up;
+  const P3 = (x, z, y) => at(cx + x, cz + z, Y(y)), qy = a => new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), a);
+  // a slate spire with a gold finial, and four small dormers round its foot
+  const spire = (x, z, r, y, hgt) => {
+    roofs.add(new THREE.ConeGeometry(r, hgt, 24, 4), P3(x, z, y + hgt / 2), new V3(1, 1, 1), C('#ffffff'));
+    m.add(new THREE.CylinderGeometry(r * 1.02, r * 1.02, 0.3, 24), P3(x, z, y + 0.1), new V3(1, 1, 1), GOLD);
+    m.limb(P3(x, z, y + hgt - 0.3), P3(x, z, y + hgt + 2.0), 0.09, 0.04, GOLD);
+    for (const yy of [0.6, 1.3]) m.add(GEO.sph, P3(x, z, y + hgt + yy), new V3(0.2, 0.2, 0.2), GOLD);
+    if (r > 2) for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + Math.PI / 4, dx = Math.sin(a) * r * 0.72, dz = Math.cos(a) * r * 0.72; m.add(GEO.box, P3(x + dx, z + dz, y + hgt * 0.16), new V3(r * 0.32, r * 0.42, r * 0.32), TRIM, qy(a)); roofs.add(new THREE.ConeGeometry(r * 0.24, r * 0.5, 4), P3(x + dx, z + dz, y + hgt * 0.16 + r * 0.46), new V3(1, 1, 1), C('#ffffff'), qy(a + Math.PI / 4)); win.add(GEO.box, P3(x + Math.sin(a) * r * 0.82, z + Math.cos(a) * r * 0.82, y + hgt * 0.16), new V3(r * 0.14, r * 0.22, 0.05), GLASS, qy(a)); }
   };
-  const wall = (x0, z0, x1, z1, h) => {
-    const L = Math.hypot(x1 - x0, z1 - z0), q = new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), Math.atan2(x1 - x0, z1 - z0) + Math.PI / 2);
-    m.add(GEO.box, at(cx + (x0 + x1) / 2, cz + (z0 + z1) / 2, base + h / 2), new V3(L, h, 2.4), WALL, q);
-    for (let t = 0.5; t < L; t += 1.4) m.add(GEO.box, at(cx + x0 + (x1 - x0) * t / L, cz + z0 + (z1 - z0) * t / L, base + h + 0.4), new V3(0.8, 0.8, 2.5), TRIM, q);
+  // a pointed window set in a deep reveal: the dark recess, a cream frame, glass that glows at night
+  const window_ = (x, z, y, a, w, h) => {
+    const n = new V3(Math.sin(a), 0, Math.cos(a)), p = P3(x, z, y);
+    m.add(GEO.box, p, new V3(w + 0.5, h + 0.5, 0.25), TRIM, qy(a));
+    m.add(GEO.box, p.clone().addScaledVector(n, 0.05), new V3(w, h, 0.22), DARK, qy(a));
+    win.add(GEO.box, p.clone().addScaledVector(n, 0.2).add(new V3(0, -h * 0.05, 0)), new V3(w * 0.72, h * 0.78, 0.04), GLASS, qy(a));
+    m.add(new THREE.ConeGeometry((w + 0.5) / 2, 0.9, 4), p.clone().add(new V3(0, h / 2 + 0.5, 0)), new V3(1, 1, 0.3), TRIM, qy(a + Math.PI / 4));
+    bulb(p.clone().addScaledVector(n, 0.3), '#ffd08a');
   };
-  m.add(GEO.box, at(cx, cz - 2, base + 1), new V3(46, 2, 30), STONE);
-  wall(-18, 9, 18, 9, 10); wall(-18, 9, -15, -8, 11); wall(18, 9, 15, -8, 11);
-  // the gate: a deep arch in the front wall
-  m.add(GEO.box, at(cx, cz + 10.25, base + 3), new V3(5, 6, 0.3), DARK);
-  m.add(new THREE.CylinderGeometry(2.5, 2.5, 0.3, 20, 1, false, 0, Math.PI).rotateX(Math.PI / 2).rotateZ(Math.PI / 2), at(cx, cz + 10.25, base + 6), new V3(1, 1, 1), DARK);
-  m.add(new THREE.TorusGeometry(2.8, 0.35, 8, 24, Math.PI), at(cx, cz + 10.35, base + 6), new V3(1, 1, 1), TRIM);
-  // the keep, then towers rising in tiers to the tallest spire
-  m.add(GEO.box, at(cx, cz - 1, base + 9), new V3(16, 18, 13), WALL);
-  for (let t = -7; t <= 7; t += 1.4) m.add(GEO.box, at(cx + t, cz + 5.6, base + 18.4), new V3(0.8, 0.8, 0.8), TRIM);
-  tower(-18, 9, 3.2, 15, 8); tower(18, 9, 3.2, 15, 8);
-  tower(-15, -8, 3.4, 19, 9, 0, BLUE2); tower(15, -8, 3.4, 19, 9, 0, BLUE2);
-  tower(-7, 4.5, 1.8, 6, 6, 18); tower(7, 4.5, 1.8, 6, 6, 18);
-  tower(-5.5, -5, 2.4, 9, 7, 18, BLUE2); tower(5.5, -5, 2.4, 9, 7, 18, BLUE2);
-  tower(0, -1, 4, 16, 13, 18);
-  tower(0, -1, 1.6, 5, 7, 34, BLUE2);
-  // a rose window over the gate, and a line of lights along the front wall
-  m.add(GEO.disc, at(cx, cz + 5.55, base + 13), new V3(2.2, 1, 2.2), C('#e7a0b8'), new THREE.Quaternion().setFromAxisAngle(new V3(1, 0, 0), Math.PI / 2));
-  for (let x = -17; x <= 17; x += 1.7) bulb(at(cx + x, cz + 10.5, base + 10.9), '#ffe2a8');
+  // a round tower: a battered stone foot, banded walls, windows, a corbelled gallery with a balustrade, a spire
+  const tower = (x, z, r, h, roofH, y0 = 0) => {
+    m.add(new THREE.CylinderGeometry(r * 1.08, r * 1.2, 2.2, 28), P3(x, z, y0 + 1.1), new V3(1, 1, 1), STONE);
+    m.add(new THREE.CylinderGeometry(r, r * 1.04, h, 28), P3(x, z, y0 + h / 2), new V3(1, 1, 1), WALL);
+    for (let yy = 4; yy < h - 3; yy += 4.5) m.add(new THREE.CylinderGeometry(r * 1.03, r * 1.03, 0.22, 28), P3(x, z, y0 + yy), new V3(1, 1, 1), TRIM);
+    for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + 0.6; for (const f of [0.38, 0.66]) if (h * f > 5) window_(x + Math.sin(a) * r * 0.99, z + Math.cos(a) * r * 0.99, y0 + h * f, a, Math.min(1.2, r * 0.32), Math.min(2.2, r * 0.6)); }
+    // corbels under the gallery, the gallery's floor and its balustrade of little posts
+    const gy = y0 + h - 0.2, n = Math.round(r * 7);
+    for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2; m.add(GEO.box, P3(x + Math.sin(a) * (r + 0.25), z + Math.cos(a) * (r + 0.25), gy - 0.55), new V3(0.3, 0.9, 0.55), STONE2, qy(a)); }
+    m.add(new THREE.CylinderGeometry(r + 0.75, r + 0.6, 0.35, 28), P3(x, z, gy), new V3(1, 1, 1), TRIM);
+    for (let k = 0; k < n * 2; k++) { const a = k / (n * 2) * Math.PI * 2; m.add(GEO.box, P3(x + Math.sin(a) * (r + 0.62), z + Math.cos(a) * (r + 0.62), gy + 0.5), new V3(0.14, 0.7, 0.14), TRIM, qy(a)); }
+    m.add(new THREE.TorusGeometry(r + 0.62, 0.09, 6, 40).rotateX(Math.PI / 2), P3(x, z, gy + 0.9), new V3(1, 1, 1), TRIM);
+    // a short upper drum inside the gallery, then the spire
+    m.add(new THREE.CylinderGeometry(r * 0.86, r * 0.86, 2.4, 28), P3(x, z, gy + 1.2), new V3(1, 1, 1), WALL2);
+    spire(x, z, r * 1.02, gy + 2.4, roofH);
+  };
+  // crenellations on corbels along a straight wall top (from a to b at height y, facing out along n)
+  const battlement = (x0, z0, x1, z1, y, nx, nz) => {
+    const L = Math.hypot(x1 - x0, z1 - z0), a = Math.atan2(x1 - x0, z1 - z0) + Math.PI / 2;
+    for (let t = 0.4; t < L; t += 1.2) { const x = x0 + (x1 - x0) * t / L, z = z0 + (z1 - z0) * t / L; m.add(GEO.box, P3(x + nx * 0.3, z + nz * 0.3, y - 0.55), new V3(0.4, 0.9, 0.5), STONE2, qy(a)); }
+    for (let t = 0.6; t < L; t += 1.2) { const x = x0 + (x1 - x0) * t / L, z = z0 + (z1 - z0) * t / L; m.add(GEO.box, P3(x + nx * 0.25, z + nz * 0.25, y + 0.7), new V3(0.75, 0.9, 0.7), TRIM, qy(a)); }
+    m.add(GEO.box, P3((x0 + x1) / 2 + nx * 0.25, (z0 + z1) / 2 + nz * 0.25, y + 0.05), new V3(L, 0.4, 0.95), TRIM, qy(a));
+  };
+  // the plinth and terrace the castle stands on, with steps up to the gate
+  m.add(GEO.box, P3(0, -12, 0.15), new V3(52, 0.5, 48), STONE); m.add(GEO.box, P3(0, -12, 0.42), new V3(52.6, 0.06, 48.6), STONE2);
+  // the curtain wall in front, its gate an arched opening cut right through it
+  { const W2 = 22, H = 15, sh = new THREE.Shape(); sh.moveTo(-W2, 0); sh.lineTo(W2, 0); sh.lineTo(W2, H); sh.lineTo(-W2, H); sh.closePath();
+    const hole = new THREE.Path(); hole.moveTo(-GATE.w / 2, 0); hole.lineTo(-GATE.w / 2, GATE.spring); hole.absarc(0, GATE.spring, GATE.w / 2, Math.PI, 0, true); hole.lineTo(GATE.w / 2, 0); hole.closePath(); sh.holes.push(hole);
+    const g = new THREE.ExtrudeGeometry(sh, { depth: GATE.depth, bevelEnabled: false, curveSegments: 24 }); g.translate(0, 0, -GATE.depth / 2);
+    m.add(g, P3(0, GATE.wallZ, 0.4), new V3(1, 1, 1), WALL);
+    for (const yy of [5.5, 10.5]) m.add(GEO.box, P3(0, GATE.wallZ + GATE.depth / 2, 0.4 + yy), new V3(W2 * 2, 0.3, 0.3), TRIM);
+    battlement(-W2, GATE.wallZ + GATE.depth / 2, W2, GATE.wallZ + GATE.depth / 2, 0.4 + H, 0, 1);
+    // the gateway's frame: rings of carved archivolts, columns either side, a carved keystone and a crest above
+    for (let k = 0; k < 3; k++) { const r = GATE.w / 2 + 0.3 + k * 0.45; m.add(new THREE.TorusGeometry(r, 0.22, 8, 32, Math.PI), P3(0, GATE.wallZ + GATE.depth / 2 + 0.15 + k * 0.05, 0.4 + GATE.spring), new V3(1, 1, 1), k === 1 ? GOLD : TRIM); for (const sx of [-1, 1]) m.add(GEO.box, P3(sx * r, GATE.wallZ + GATE.depth / 2 + 0.15, 0.4 + GATE.spring / 2), new V3(0.44, GATE.spring, 0.44), k === 1 ? STONE : TRIM); }
+    for (const sx of [-1, 1]) { const x = sx * (GATE.w / 2 + 2.2); m.add(new THREE.CylinderGeometry(0.42, 0.42, 6.4, 16), P3(x, GATE.wallZ + GATE.depth / 2 + 0.45, 0.4 + 3.2), new V3(1, 1, 1), TRIM); m.add(GEO.box, P3(x, GATE.wallZ + GATE.depth / 2 + 0.45, 0.4 + 6.6), new V3(1.2, 0.5, 1.2), GOLD); m.add(GEO.box, P3(x, GATE.wallZ + GATE.depth / 2 + 0.45, 0.4 + 0.3), new V3(1.1, 0.6, 1.1), STONE); }
+    m.add(GEO.box, P3(0, GATE.wallZ + GATE.depth / 2 + 0.4, 0.4 + GATE.spring + GATE.w / 2 + 1.5), new V3(1.0, 1.3, 0.5), GOLD);
+    { const cy = 0.4 + GATE.h + 2.6, cz2 = GATE.wallZ + GATE.depth / 2 + 0.35; const sh = new THREE.Shape(); sh.moveTo(-1.1, 1); sh.lineTo(1.1, 1); sh.lineTo(1.1, -0.2); sh.quadraticCurveTo(1.0, -1.1, 0, -1.5); sh.quadraticCurveTo(-1.0, -1.1, -1.1, -0.2); sh.closePath(); const sg = new THREE.ExtrudeGeometry(sh, { depth: 0.2, bevelEnabled: false }); m.add(sg, P3(0, cz2, cy), new V3(1, 1, 1), GOLD); m.add(new THREE.ExtrudeGeometry(sh, { depth: 0.08, bevelEnabled: false }), P3(0, cz2 + 0.2, cy + 0.05), new V3(0.75, 0.75, 1), BLUE); for (let k = -1; k <= 1; k++) m.add(GEO.sph, P3(k * 0.7, cz2 + 0.1, cy + 1.25 + (k ? 0 : 0.2)), new V3(0.22, 0.32, 0.22), GOLD); } // a shield with a crown of three points
+    // the reveal of the gateway (its inner faces), in shadow
+    m.add(GEO.box, P3(0, GATE.wallZ - GATE.depth / 2 - 0.01, 0.4 + 0.02), new V3(GATE.w, 0.04, GATE.depth), STONE2);
+    for (let k = 0; k < 6; k++) { const x = -W2 + 4 + k * (2 * W2 - 8) / 5; if (Math.abs(x) < 7) continue; window_(x, GATE.wallZ + GATE.depth / 2 + 0.05, 0.4 + 8, 0, 1.3, 2.4); }
+  }
+  // side walls back to the rear towers
+  for (const sx of [-1, 1]) { m.add(GEO.box, P3(sx * 22, -11, 0.4 + 7), new V3(2.4, 14, 40), WALL); battlement(sx * 23.2, 9, sx * 23.2, -31, 0.4 + 14, sx, 0); }
+  m.add(GEO.box, P3(0, -31, 0.4 + 7), new V3(44, 14, 2.4), WALL);
+  // the keep: three storeys of pointed windows, a balcony over the gate, a rose window, bartizans, a gabled roof
+  { const kx = 22, kz = 18, kh = 30, z0 = GATE.vestZ - kz / 2, y0 = 0.4;
+    m.add(GEO.box, P3(0, z0, y0 + kh / 2), new V3(kx, kh, kz), WALL);
+    for (const yy of [9, 17, 25]) m.add(GEO.box, P3(0, z0, y0 + yy), new V3(kx + 0.4, 0.35, kz + 0.4), TRIM);
+    for (const yy of [13, 21]) for (let k = -3; k <= 3; k++) { if (k === 0 && yy === 21) continue; window_(k * 2.9, GATE.vestZ + 0.05, y0 + yy, 0, 1.2, 2.6); }
+    for (const sx of [-1, 1]) for (const yy of [13, 21]) for (const zz of [-4, 0, 4]) window_(sx * (kx / 2 + 0.05), z0 + zz, y0 + yy, sx * Math.PI / 2, 1.2, 2.6);
+    // the rose window over the gate, in a gilt ring with tracery
+    { const rz = GATE.vestZ + 0.1, ry = y0 + 21.5; m.add(new THREE.CylinderGeometry(2.4, 2.4, 0.3, 32).rotateX(Math.PI / 2), P3(0, rz, ry), new V3(1, 1, 1), TRIM); win.add(new THREE.CylinderGeometry(2.0, 2.0, 0.3, 32).rotateX(Math.PI / 2), P3(0, rz + 0.08, ry), new V3(1, 1, 1), C('#e8a6c4')); for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; m.add(GEO.box, P3(Math.cos(a) * 1, rz + 0.25, ry + Math.sin(a) * 1), new V3(0.12, 0.12, 2.0), GOLD, new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, a))); } m.add(new THREE.TorusGeometry(2.45, 0.18, 8, 40), P3(0, rz + 0.2, ry), new V3(1, 1, 1), GOLD); bulb(P3(0, rz + 0.4, ry), '#ffc0d8'); }
+    // a balcony over the gate on stone brackets, with a balustrade
+    { const bz = GATE.wallZ + GATE.depth / 2, by = 0.4 + 15; m.add(GEO.box, P3(0, bz + 0.8, by + 0.2), new V3(9, 0.35, 1.6), TRIM); for (let k = -4; k <= 4; k++) m.add(GEO.box, P3(k, bz + 0.7, by - 0.4), new V3(0.35, 0.9, 1.2), STONE2); for (let k = -4.2; k <= 4.2; k += 0.45) m.add(GEO.box, P3(k, bz + 1.5, by + 0.85), new V3(0.15, 0.9, 0.15), TRIM); m.add(GEO.box, P3(0, bz + 1.5, by + 1.35), new V3(9, 0.18, 0.25), TRIM); }
+    battlement(-kx / 2, GATE.vestZ, kx / 2, GATE.vestZ, y0 + kh, 0, 1);
+    // bartizans: little corner turrets hung on corbels, with their own spires
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const x = sx * (kx / 2), z = z0 + sz * (kz / 2), y = y0 + kh - 5; m.add(new THREE.ConeGeometry(1.25, 2.4, 20), P3(x, z, y - 1.2), new V3(1, 1, 1), STONE2, new THREE.Quaternion().setFromAxisAngle(new V3(1, 0, 0), Math.PI)); m.add(new THREE.CylinderGeometry(1.2, 1.2, 4.6, 20), P3(x, z, y + 2.3), new V3(1, 1, 1), WALL); window_(x + sx * 0.9, z + sz * 0.9, y + 2.6, Math.atan2(sx, sz), 0.6, 1.3); m.add(new THREE.CylinderGeometry(1.35, 1.35, 0.3, 20), P3(x, z, y + 4.6), new V3(1, 1, 1), TRIM); spire(x, z, 1.4, y + 4.7, 6.5); }
+    // the central tower rising from the keep, and the tallest spire
+    tower(0, z0, 4.6, 14, 17, y0 + kh);
+    // four slender pinnacles round it
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) tower(sx * 6.4, z0 + sz * 5.2, 1.2, 5, 5, y0 + kh);
+  }
+  // the four great towers at the corners of the walls, and smaller ones flanking the gate
+  for (const sx of [-1, 1]) { tower(sx * 22, GATE.wallZ, 4, 22, 13, 0.4); tower(sx * 22, -31, 4.4, 27, 15, 0.4); tower(sx * 7, GATE.wallZ + 0.6, 1.9, 18, 8, 0.4); }
+  // lights along the front wall's parapet
+  for (let x = -21; x <= 21; x += 1.75) bulb(P3(x, GATE.wallZ + GATE.depth / 2 + 0.6, 0.4 + 16.2), '#ffe2a8');
   root.add(new THREE.Mesh(m.build(), castleMat));
+  // the slate: fish-scale tiles in deep and lighter blues, a little bloom of light down each ridge
+  const slate = canvasTex(256, 256, (g, w, h) => { g.fillStyle = '#2c5aa8'; g.fillRect(0, 0, w, h); for (let row = 0; row < 16; row++) for (let k = -1; k < 17; k++) { const x = k * 16 + (row % 2) * 8, y = row * 16; const gr = g.createLinearGradient(0, y, 0, y + 18); gr.addColorStop(0, row % 3 ? '#4a82d6' : '#3f74c8'); gr.addColorStop(1, '#244c94'); g.fillStyle = gr; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 9); g.arc(x + 8, y + 9, 8, Math.PI, 0, true); g.lineTo(x + 16, y); g.fill(); g.strokeStyle = 'rgba(20,30,60,.5)'; g.lineWidth = 1.2; g.stroke(); } }, true);
+  slate.repeat.set(6, 4);
+  const roofMesh = new THREE.Mesh(roofs.build(), nightLit(new THREE.MeshPhongMaterial({ map: slate, vertexColors: true, shininess: 45, specular: '#7aa0e0' }), 0.6)); root.add(roofMesh);
   const wm = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: '#ffb860', emissiveIntensity: 0 }); winMats.push(wm);
   root.add(new THREE.Mesh(win.build(), wm));
-  ref.push([at(cx, cz, base + 36), '#ffd9a0'], [at(cx - 15, cz - 8, base + 24), '#ffd9a0'], [at(cx + 15, cz - 8, base + 24), '#ffd9a0']);
+  ref.push([at(cx, cz, base + 62), '#ffd9a0'], [at(cx - 22, cz - 31, base + 40), '#ffd9a0'], [at(cx + 22, cz - 31, base + 40), '#ffd9a0']);
 }
 
 // the Ferris wheel: a rainbow of spokes, cabins that hang level, a golden sunburst at its hub

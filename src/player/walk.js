@@ -54,6 +54,11 @@ provide({ get toggleRun() { return toggleRun; } });
 // the button shows only while you are walking about
 let wasWalking = null;
 addTick(() => { const w = state.mode === 'walk'; if (w !== wasWalking) { wasWalking = w; document.body.classList.toggle('walking', w); } }, true);
+// the nearest unblocked spot, searching outward in rings
+function nearestFree(x, z) {
+  for (let r = 0.25; r < 6; r += 0.25) for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r; if (!blocked(px, pz) && floorH(px, pz) < -40) return [px, pz]; }
+  return null;
+}
 export function walk(dt) {
   let ix = 0, iz = 0;
   if (keys.has('KeyW') || keys.has('ArrowUp')) iz += 1;
@@ -84,7 +89,10 @@ export function walk(dt) {
   }
   player.alt = clamp(player.alt + player.vy * dt, 0, 40); if (player.alt === 0 && player.vy < 0) player.vy = 0;
   if (kind !== 'bird') player.flying = false;
-  const flying = kind === 'bird' && player.alt > 0.15, high = player.alt > 3.2;
+  // indoors (the halls under the fair) there is a ceiling and no flying over walls: a bird stays below the cornice
+  const indoor = floorH(player.pos.x, player.pos.z) < -40;
+  if (indoor && player.alt > 9) { player.alt = 9; player.cruise = Math.min(player.cruise || 9, 9); player.vy = Math.min(player.vy, 0); }
+  const flying = kind === 'bird' && player.alt > 0.15, high = player.alt > 3.2 && !indoor;
   let sp = kind === 'bird' ? (flying ? (sprint ? 15 : fast ? 9 : 6) : (sprint ? 4.6 : fast ? 3.4 : 2.2)) : kind === 'cat' ? (sprint ? 10.5 : fast ? 6.4 : 3.4) : sprint ? 9 : fast ? 5.2 : 3.0;
   const away = !!worlds[state.world];
   { const dep = away ? 0 : seaDepth(player.pos.x, player.pos.z); if (dep > 0 && !flying) sp *= 1 - Math.min(0.6, dep * 0.7); } // wading is slow
@@ -92,7 +100,9 @@ export function walk(dt) {
   player.vel.lerp(new V3((-sy * iz + cy * ix) * sp, 0, (-cy * iz - sy * ix) * sp), 1 - Math.exp(-dt * 5));
   const nx = player.pos.x + player.vel.x * dt, nz = player.pos.z + player.vel.z * dt;
   const stuck = blocked(player.pos.x, player.pos.z);
-  if (high || stuck || !blocked(nx, nz)) { player.pos.x = nx; player.pos.z = nz; } // above the roofs nothing is in the way
+  // indoors, someone found inside a wall is set back on the nearest free floor, never let walk on through it
+  if (stuck && indoor) { const free = nearestFree(player.pos.x, player.pos.z); if (free) { player.pos.x = free[0]; player.pos.z = free[1]; } player.vel.set(0, 0, 0); }
+  else if (high || stuck || !blocked(nx, nz)) { player.pos.x = nx; player.pos.z = nz; } // above the roofs nothing is in the way
   else if (!blocked(nx, player.pos.z)) player.pos.x = nx;
   else if (!blocked(player.pos.x, nz)) player.pos.z = nz;
   else player.vel.set(0, 0, 0);
