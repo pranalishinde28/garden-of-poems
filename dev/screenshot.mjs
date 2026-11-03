@@ -401,12 +401,12 @@ async function main() {
       await page.evaluate(() => { const g = window.__garden; g.player.alt = 0; g.player.cruise = 0; g.player.flying = false; g.setAvatar({ kind: 'girl' }); }); await sleep(800);
       const cornerOn = await page.evaluate(() => !document.querySelector('#minimap-btn').hidden && getComputedStyle(document.querySelector('#minimap-btn')).display !== 'none'); if (!cornerOn) errors.push('no corner map in the secret world');
       await page.keyboard.press('KeyM'); await sleep(1500); await page.screenshot({ path: join(root, 'dev/shots/sunmap.png') });
-      const n = await page.$$eval('#sm-marks .sm-place', b => b.length); if (n < 10) errors.push('the secret map has too few places: ' + n);
-      await page.evaluate(() => [...document.querySelectorAll('#sm-marks .sm-place')].find(b => /drop tower/i.test(b.textContent)).click());
+      const n = await page.$$eval('#map-marks .map-place', b => b.length); if (n < 10) errors.push('the secret map has too few places: ' + n);
+      await page.evaluate(() => [...document.querySelectorAll('#map-marks .map-place')].find(b => /drop tower/i.test(b.textContent)).click());
       await sleep(3500); await page.screenshot({ path: join(root, 'dev/shots/sunmap-went.png') });
       const cue = await page.$eval('#cue', e => e.textContent.trim()); if (!/drop tower/i.test(cue)) errors.push('the map did not take you to the drop tower: ' + cue);
       await page.keyboard.press('KeyM'); await sleep(1200);
-      await page.evaluate(() => [...document.querySelectorAll('#sm-marks .sm-place')].find(b => /Hall of Mirrors/i.test(b.textContent)).click());
+      await page.evaluate(() => [...document.querySelectorAll('#map-marks .map-place')].find(b => /Hall of Mirrors/i.test(b.textContent)).click());
       await sleep(4500); const inside = await page.evaluate(() => window.__garden.camera.position.y < -50);
       console.log(`  map places: ${n}; at the tower the cue says "${cue}"; Hall of Mirrors from the map: ${inside}`); if (!inside) errors.push('the map did not take you into the hall');
     }
