@@ -205,6 +205,40 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"prompt_answers": {
+                  Row: {
+                    "body": string,"by_name": string,"created_at": string,"day": string,"hidden": boolean,"mood": string,"owner": string,"poem_id": string,"title": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"by_name"?: string,"created_at"?: string,"day": string,"hidden"?: boolean,"mood"?: string,"owner"?: string,"poem_id": string,"title": string
+                  }
+                  Update: {
+                    "body"?: string,"by_name"?: string,"created_at"?: string,"day"?: string,"hidden"?: boolean,"mood"?: string,"owner"?: string,"poem_id"?: string,"title"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"prompt_reports": {
+                  Row: {
+                    "created_at": string,"day": string,"owner": string,"poem_id": string,"reason": string,"reporter": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"day": string,"owner": string,"poem_id": string,"reason"?: string,"reporter"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"day"?: string,"owner"?: string,"poem_id"?: string,"reason"?: string,"reporter"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "prompt_reports_day_owner_poem_id_fkey"
+      columns: ["day","owner","poem_id"]
+isOneToOne: false
+      referencedRelation: "prompt_answers"
+      referencedColumns: ["day","owner","poem_id"]
+    }
+                  ]
                 },"waitlist": {
                   Row: {
                     "created_at": string,"person": string,"wish": string
@@ -293,6 +327,11 @@ isOneToOne: true
                            },
 "poem_visible":
 { Args: { "p_id": string,"p_owner": string }; Returns: boolean
+                           },
+"prompt_days":
+{ Args: { "lim"?: number }; Returns: {
+              "answers": number,"day": string
+            }[]
                            },
 "record_visit":
 { Args: { "p_owner": string,"p_token"?: string,"p_visitor": string }; Returns: undefined

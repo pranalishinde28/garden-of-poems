@@ -270,6 +270,30 @@ delete from public.paintings where owner = '00000000-0000-0000-0000-0000000000a1
 reset role;
 select is((select count(*) from public.paintings where owner = '00000000-0000-0000-0000-0000000000a1'), 2::bigint, 'nobody else takes them down');
 select ok(exists (select 1 from storage.buckets where id = 'paintings' and not public), 'the pictures are kept in a private bucket');
+-- ---------- the daily prompt's grove: answers anyone may walk, planted and taken back only by their poet ----------
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$insert into public.prompt_answers (day, poem_id, title, body, by_name) values ((now() at time zone 'utc')::date, 'g1', 'The Door', 'a door I never opened', 'Ada')$$, 'a poet plants an answer in today''s grove');
+select lives_ok($$insert into public.prompt_answers (day, poem_id, title, body) values ((now() at time zone 'utc')::date, 'g2', 'Two', 'two')$$, 'a second');
+select lives_ok($$insert into public.prompt_answers (day, poem_id, title, body) values ((now() at time zone 'utc')::date, 'g3', 'Three', 'three')$$, 'a third');
+select throws_like($$insert into public.prompt_answers (day, poem_id, title, body) values ((now() at time zone 'utc')::date, 'g4', 'Four', 'four')$$, '%three answers%', 'three a day is the most');
+select throws_like($$insert into public.prompt_answers (day, poem_id, title, body) values ((now() at time zone 'utc')::date - 7, 'old', 'Old', 'old')$$, '%today%', 'answers grow only in today''s grove');
+select throws_ok($$insert into public.prompt_answers (owner, day, poem_id, title, body) values ('00000000-0000-0000-0000-0000000000c3', (now() at time zone 'utc')::date, 'f', 'Forged', 'x')$$, '42501', null, 'nobody plants in someone else''s name');
+select pg_temp.as_anon();
+select is((select count(*) from public.prompt_answers where owner = '00000000-0000-0000-0000-0000000000a1'), 3::bigint, 'visitors without an account walk the grove');
+select is((select answers from public.prompt_days(10) limit 1), 3::bigint, 'the archive counts each day''s answers');
+select throws_ok($$insert into public.prompt_answers (day, poem_id, title, body) values ((now() at time zone 'utc')::date, 'a', 'A', 'a')$$, '42501', null, 'visitors without an account cannot plant');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c3');
+delete from public.prompt_answers where owner = '00000000-0000-0000-0000-0000000000a1';
+select is((select count(*) from public.prompt_answers where owner = '00000000-0000-0000-0000-0000000000a1'), 3::bigint, 'nobody else takes an answer back');
+select lives_ok($$insert into public.prompt_reports (day, owner, poem_id, reason) values ((now() at time zone 'utc')::date, '00000000-0000-0000-0000-0000000000a1', 'g1', 'unkind')$$, 'a reader reports an answer');
+select throws_ok($$insert into public.prompt_reports (day, owner, poem_id) values ((now() at time zone 'utc')::date, '00000000-0000-0000-0000-0000000000a1', 'g1')$$, '23505', null, 'once each');
+reset role;
+insert into public.prompt_reports (day, owner, poem_id, reporter) values ((now() at time zone 'utc')::date, '00000000-0000-0000-0000-0000000000a1', 'g1', '00000000-0000-0000-0000-0000000000b2'), ((now() at time zone 'utc')::date, '00000000-0000-0000-0000-0000000000a1', 'g1', '00000000-0000-0000-0000-0000000000a1');
+select pg_temp.as_anon();
+select is((select count(*) from public.prompt_answers where poem_id = 'g1'), 0::bigint, 'three reports hide an answer');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select is((select count(*) from public.prompt_answers where poem_id = 'g1'), 1::bigint, 'its poet still sees it');
+select lives_ok($$delete from public.prompt_answers where poem_id = 'g2'$$, 'and may take an answer back');
 -- the accounts tests below run as Ada, as the library's block left them
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
 

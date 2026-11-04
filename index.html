@@ -17,6 +17,7 @@
   <h1>THE GARDEN OF POEMS</h1>
   <span class="orn" aria-hidden="true"><i></i><b>✿</b><i></i></span>
   <p class="sub">Every poem you write leaves something growing here.</p>
+  <p class="prompt" id="intro-prompt"><span>Today’s prompt</span> <i></i></p>
   <button class="enter" id="enter">Enter the garden</button>
   <button class="alt" id="enter-sample" hidden>Wander a sample garden</button>
   <button class="alt" id="intro-account">Sign in or create an account</button>
@@ -254,6 +255,9 @@
   <button class="xc x" id="e-close" aria-label="Close">×</button>
   <div class="fields">
     <p class="ask" id="e-ask">What are you carrying today?</p>
+    <div id="e-prompt"><p class="ep-l">Today’s prompt</p><p class="ep-t" id="e-prompt-t"></p>
+      <label class="matters"><input type="checkbox" id="e-answer"> Answer today’s prompt</label>
+      <label class="matters" id="e-share-l" hidden><input type="checkbox" id="e-share" checked> Plant a copy in today’s Prompt Garden, for everyone to read</label></div>
     <label class="f" for="e-title">Title</label>
     <input type="text" id="e-title" maxlength="90" placeholder="Untitled" autocomplete="off">
     <label class="f" for="e-body">Poem</label>
@@ -289,6 +293,13 @@
   <p class="wp-by"><span id="wp-poet"></span> · <span id="wp-year"></span></p>
   <div id="wp-text"></div>
   <div class="wp-nav"><button id="wp-prev">← Earlier</button><span id="wp-count"></span><button id="wp-next">Next →</button></div>
+  <p class="wp-more" id="wp-more" hidden><button class="g-link" id="wp-takeback" hidden>Take this answer back</button><button class="g-link" id="wp-report" hidden>Report this answer</button></p>
+</section>
+<section id="grovedays" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="gd-title" hidden>
+  <button class="xc x" id="gd-close" aria-label="Close">×</button>
+  <h2 id="gd-title">Earlier groves</h2>
+  <p class="gd-sub">Each day’s prompt, and the answers people planted for it. Choose one and the grove grows as it was.</p>
+  <ol id="gd-list"></ol>
 </section>
 <section id="patron" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="pt-title" hidden>
   <button class="xc x" id="pt-close" aria-label="Close">×</button>

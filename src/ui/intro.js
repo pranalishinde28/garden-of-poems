@@ -1,3 +1,4 @@
+import { todaysPrompt } from './prompts.js';
 import { $, V3, isTouch, reduceMotion } from '../core/util.js';
 import { groundH } from '../world/terrain.js';
 import { flag, poems, savePoems } from '../settings/storage.js';
@@ -33,6 +34,8 @@ setNightUI(); setSoundUI(); setMusicMenu(); applyThemeMaterials(); setThemeUI();
 const intro = $('#intro');
 if (!poems.length) $('#enter-sample').hidden = false;
 else { const c = $('#intro-count'); c.hidden = false; c.textContent = poems.length === 1 ? 'One poem is growing here.' : `${poems.length} poems are growing here.`; }
+// today's prompt, under the line on the welcome screen
+$('#intro-prompt i').textContent = todaysPrompt();
 function enterGarden(withSamples) {
   if (state.mode !== 'intro') return;
   Music.init();

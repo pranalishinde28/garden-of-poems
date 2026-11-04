@@ -12,6 +12,7 @@ import { SWING_GARDEN, swings } from '../world/swings.js';
 import { ROSE_GARDEN } from '../plants/flowerGardens.js';
 import { FOUNTAIN } from '../world/fountain.js';
 import { LANDMARKS } from '../world/shrines.js';
+import { MOON_GATE, enterGrove } from '../world/promptGrove.js';
 import { LANTERN_WALL } from '../world/lanterns.js';
 import { LOOKOUT } from '../world/gorge.js';
 import { GATE } from '../settings/customize.js';
@@ -120,6 +121,7 @@ const GLYPHS = {
   jetski: '<path d="M3 15h15l3-3H9l-2-3H5zM4 19c3 1 5 1 8 0s5-1 8 0"/>', wheel: '<circle cx="12" cy="10" r="6"/><path d="M12 4v12M6 10h12M7.8 5.8l8.4 8.4M16.2 5.8l-8.4 8.4M9 21l3-5 3 5"/>',
   coaster: '<path d="M3 17c3-10 6-10 8-2s5 6 10-8M5 21v-4M10 21v-5M15 21v-3M20 21V9"/>', castle: '<path d="M4 20V9l2-2 2 2v3h3V8l1-4 1 4v4h3V9l2-2 2 2v11zM10 20v-4h4v4"/>',
   bowl: '<path d="M3 8c0 5 4 9 9 9s9-4 9-9M3 8c2 1 5 1.5 9 1.5S19 9 21 8M12 17v4M9 13c1-1.5 4-1.5 6 0"/>',
+  grove: '<circle cx="12" cy="11" r="6.5"/><path d="M4 20h16M12 14v6M9.5 11.5c1-2 4-2 5 0"/>',
   book: '<path d="M4 6c3-1 6-1 8 1v13c-2-2-5-2-8-1zM20 6c-3-1-6-1-8 1v13c2-2 5-2 8-1z"/>',
 };
 const glyphFor = name => /lantern/i.test(name) ? 'lantern' : /bench/i.test(name) ? 'bench' : /pond/i.test(name) ? 'pond' : /swing/i.test(name) ? 'swing' : /gate/i.test(name) ? 'gate' : /tulip/i.test(name) ? 'tulip' : /rose/i.test(name) ? 'rose' : /secret/i.test(name) ? 'secret' : /stream|gorge/i.test(name) ? 'stream' : /fountain/i.test(name) ? 'fountain' : /shrine/i.test(name) ? 'torii' : /pagoda/i.test(name) ? 'pagoda' : /bell/i.test(name) ? 'bell' : 'gate';
@@ -175,6 +177,7 @@ function places() {
   // the secret garden: straight through the falls to the Sunflower Garden and its fairground
   if (SETTINGS.view !== 'sea') L.push({ name: 'The secret garden', hint: 'sunflowers and a fairground, beyond the falls', x: LOOKOUT.x - 4, z: LOOKOUT.z - 12, stand: [0, 0], face: [0, 0], side: 'l', go: () => late.enterSunWorld && late.enterSunWorld() });
   if (SETTINGS.view !== 'sea') { const r = Math.hypot(LOOKOUT.x, LOOKOUT.z), k = (r - 3) / r; L.push({ name: 'The gorge lookout', hint: 'Takachiho Gorge and its falls', x: LOOKOUT.x, z: LOOKOUT.z, stand: [LOOKOUT.x * k, LOOKOUT.z * k], face: [LOOKOUT.x * 2, LOOKOUT.z * 2], side: 'l' }); }
+  if (!state.visiting) L.push({ name: 'Prompt Garden', hint: 'today’s prompt, and everyone’s answers', x: MOON_GATE.x, z: MOON_GATE.z, stand: [0, 0], face: [0, 0], side: 'l', glyph: 'grove', go: () => enterGrove() });
   before(LANDMARKS.shrine, 15, 'The shrine', 'ring the bell, make a wish', 'r');
   before(LANDMARKS.pagoda, 9, 'The pagoda', 'step inside: a shrine of bronze lanterns', 'r');
   before(LANDMARKS.bell, 5.5, 'The bell tower', 'strike the temple bell', 'l');
@@ -273,7 +276,7 @@ export function closeMap(restore = true) {
   if (restore && openedFrom && openedFrom.focus) openedFrom.focus({ preventScroll: true });
 }
 // in the secret world the same sheet shows that world's plan (ui/sunMap.js); inside the pagodas there is none
-export const toggleMap = () => (state.world === 'temple' || state.world === 'shrine') ? late.toast && late.toast('Inside there is one way out: the door you came in by.') : view.hidden ? openMap() : closeMap();
+export const toggleMap = () => (state.world === 'temple' || state.world === 'shrine' || state.world === 'grove') ? late.toast && late.toast('Inside there is one way out: the door you came in by.') : view.hidden ? openMap() : closeMap();
 provide({ get toggleMap() { return toggleMap; } });
 
 // ---- gliding to a place: lift, drift, settle ----
@@ -312,7 +315,7 @@ function redrawWorld() { const g = world.getContext('2d'); g.clearRect(0, 0, wor
 const miniFrame = now => {
   requestAnimationFrame(miniFrame);
   // the garden and the secret world each have one; inside the pagodas there is none
-  const inside = state.world === 'temple' || state.world === 'shrine', sun = state.world === 'sun';
+  const inside = state.world === 'temple' || state.world === 'shrine' || state.world === 'grove', sun = state.world === 'sun';
   const show = state.minimap && (state.mode === 'walk' || state.mode === 'swing') && !document.body.classList.contains('sr-open') && !inside;
   if (miniBtn.hidden === show) miniBtn.hidden = !show;
   // a small × hides it; a little map button brings it back (the same choice as in You)
