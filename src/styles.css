@@ -1059,10 +1059,7 @@ body.lib-open #steps{display:none}
 #pv-form .lb-btn.go{background:#5a3417;color:#f8edd4;border-color:#5a3417}
 @media (max-width:800px){#pv-look{flex-direction:column;height:auto}.pv-stage{height:56vh;width:100%}.pv-side{width:100%}}
 
-/* the daily prompt: on the welcome screen, and at the head of the writing page */
-#intro .prompt{margin:.2rem 0 1.1rem;font-size:clamp(1.05rem,1.9vw,1.3rem);color:#fff8ea;text-shadow:0 2px 10px rgba(0,0,0,.55);max-width:min(36rem,90vw);text-align:center}
-#intro .prompt span{display:block;font-size:.78em;letter-spacing:.14em;text-transform:uppercase;opacity:.82;margin-bottom:.15rem}
-#intro .prompt i{font-weight:600}
+/* the daily prompt, at the head of the writing page */
 #e-prompt{margin:.4rem 0 .9rem;padding:.7rem .9rem .5rem;border:1px solid rgba(120,84,40,.28);border-radius:8px;background:rgba(255,248,226,.5)}
 #e-prompt .ep-l{margin:0;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:#7a5a30}
 #e-prompt .ep-t{margin:.15rem 0 .35rem;font-style:italic;font-size:1.2rem;color:#3a2614}
@@ -1076,3 +1073,13 @@ body.lib-open #steps{display:none}
 #gd-list button{display:block;width:100%;text-align:left;padding:.55rem .7rem;margin:.2rem 0;border-radius:8px;border:1px solid rgba(120,84,40,.22);background:rgba(255,248,226,.45);cursor:pointer;font:inherit;color:inherit}
 #gd-list button:hover,#gd-list button:focus-visible{background:rgba(255,240,200,.85)}
 #gd-list b{display:block;font-size:1.05rem}#gd-list i{display:block;color:#5a4630}#gd-list small{color:#7a6a54}
+
+/* since you were last here: a quiet note, top left, that stays until you close it or follow a line */
+#sincelast{position:fixed;left:18px;top:86px;width:min(380px,calc(100vw - 36px));padding:1rem 1.2rem .9rem;z-index:30;opacity:0;transform:translateY(-8px);transition:opacity .5s,transform .5s}
+#sincelast.show{opacity:1;transform:none}
+#sincelast h3{margin:0 2rem .5rem 0;font-family:var(--fell);font-weight:400;font-size:1.35rem}
+#sincelast .sl-line{display:block;width:100%;text-align:left;background:none;border:0;border-top:1px solid rgba(120,84,40,.18);padding:.45rem 0;font:inherit;font-size:1.02rem;color:inherit;cursor:pointer;line-height:1.35}
+#sincelast .sl-line:first-child{border-top:0}
+#sincelast .sl-line:hover,#sincelast .sl-line:focus-visible{color:#7a2e1c;outline:none}
+#sincelast .xc{position:absolute;right:.6rem;top:.6rem}
+body.panel-open #sincelast{display:none}

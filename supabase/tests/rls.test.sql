@@ -294,6 +294,16 @@ select is((select count(*) from public.prompt_answers where poem_id = 'g1'), 0::
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
 select is((select count(*) from public.prompt_answers where poem_id = 'g1'), 1::bigint, 'its poet still sees it');
 select lives_ok($$delete from public.prompt_answers where poem_id = 'g2'$$, 'and may take an answer back');
+-- ---------- since you were last here: only your own garden's news, only for you ----------
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select ok((select (whats_new('-infinity')->'hearts'->0->>'poem_id') = 'open'), 'a poet sees hearts on their poems');
+select ok((select (whats_new('-infinity')->'hearts'->0->'names'->>0) = 'Bo'), 'and who gave them');
+select is((select jsonb_typeof(whats_new('-infinity')->'notes')), 'array', 'and the notes left');
+select is((select jsonb_array_length(whats_new(now() + interval '1 day')->'hearts')), 0, 'nothing is new since the future');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select is((select jsonb_array_length(whats_new('-infinity')->'hearts')), 0, 'one poet never sees another''s news');
+select pg_temp.as_anon();
+select throws_ok($$select whats_new(now())$$, '42501', null, 'visitors without an account have no news to see');
 -- the accounts tests below run as Ada, as the library's block left them
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
 

@@ -455,6 +455,32 @@ async function main() {
       console.log(`  gate cue "${gcue}", first answer "${title}", stele cue "${scue}", answer ticked ${ticked}, tagged ${tagged}, days ${days}`);
       if (!/prompt garden/i.test(gcue) || !title || !/answer/i.test(scue) || !ticked || !tagged || days < 1) errors.push('the Prompt Garden walk failed');
     }
+    else if (FLOW === 'news') { // since you were last here: sign in as a poet with news, come back, read the note, follow a line
+      const shot = async n => { await sleep(500); await page.screenshot({ path: join(root, `dev/shots/news-${n}.png`) }); };
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await page.evaluate(() => document.querySelector('#steps-skip')?.click());
+      const uid = await page.evaluate(async () => { const c = window.__garden.cloud; const r = await c.sb.auth.signInWithPassword({ email: 'mira@grove.test', password: 'grove-test-1' }); return r.data && r.data.user && r.data.user.id; });
+      await page.waitForFunction(() => window.__garden.cloud.user, { timeout: 30000, polling: 300 });
+      await sleep(4000);
+      // pretend the last visit was a week ago, then come back
+      await page.reload({ waitUntil: 'load' }); await page.waitForFunction(() => window.__garden && document.querySelector('#enter'), { timeout: 120000, polling: 300 });
+      // (leaving the page moves "last here" on, so set it to a week ago only now, before coming back in)
+      await page.evaluate(id => localStorage.setItem('garden-of-poems:last-here:' + id, new Date(Date.now() - 7 * 864e5).toISOString()), uid);
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await page.evaluate(() => document.querySelector('#steps-skip')?.click());
+      const shown = await page.waitForFunction(() => document.querySelector('#sincelast.show'), { timeout: 30000, polling: 300 }).then(() => true).catch(() => false);
+      await sleep(1200); await shot('note');
+      const lines = await page.$$eval('#sl-lines .sl-line', b => b.map(x => x.textContent));
+      await page.evaluate(() => document.querySelector('#sl-lines .sl-line').click()); await sleep(2500); await shot('poem');
+      const reading = await page.evaluate(() => window.__garden.state.mode);
+      // a second arrival soon after has nothing new: no note
+      await page.reload({ waitUntil: 'load' }); await page.waitForFunction(() => window.__garden && document.querySelector('#enter'), { timeout: 120000, polling: 300 });
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 }); await sleep(7000);
+      const again = await page.evaluate(() => !!document.querySelector('#sincelast.show'));
+      await page.evaluate(() => window.__garden.cloud.sb.auth.signOut());
+      console.log(`  note shown ${shown}; lines: ${lines.join(' | ')}; after a line: ${reading}; shown again at once: ${again}`);
+      if (!shown || lines.length < 3 || reading !== 'focus' || again) errors.push('since-you-were-last-here failed');
+    }
     else if (FLOW === 'sunmap') { // the secret world's map: open with M, go to the drop tower, then the Hall of Mirrors; and running
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); });

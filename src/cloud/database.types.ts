@@ -405,6 +405,9 @@ isOneToOne: true
                            },
 "valid_settings":
 { Args: { "s": Json }; Returns: boolean
+                           },
+"whats_new":
+{ Args: { "since": string }; Returns: Json
                            }
           }
           Enums: {

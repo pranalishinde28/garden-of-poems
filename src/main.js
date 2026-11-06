@@ -70,6 +70,7 @@ import './ui/sunMap.js';
 import './ui/wallPoems.js';
 import './ui/library.js';
 import './ui/promptGarden.js';
+import './ui/sinceLast.js';
 import './ui/paintings.js';
 import './ui/themes.js';
 import './cloud/cloud.ts';

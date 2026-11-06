@@ -488,3 +488,12 @@ export async function promptDays(lim = 60): Promise<{ day: string; answers: numb
   if (error) throw error;
   return (data || []).map((r: { day: string; answers: number }) => ({ day: r.day, answers: Number(r.answers) }));
 }
+
+// ---------- since you were last here ----------
+export type WhatsNew = { hearts: { poem_id: string; title: string; n: number; names: string[] }[]; notes: { poem_id: string; title: string; name: string; text: string; at: string }[]; visitors: number; grove: number };
+export async function whatsNew(since: string): Promise<WhatsNew | null> {
+  if (!Cloud.sb || !Cloud.user) return null;
+  const { data, error } = await Cloud.sb.rpc('whats_new', { since });
+  if (error || !data) return null;
+  return data as unknown as WhatsNew;
+}
