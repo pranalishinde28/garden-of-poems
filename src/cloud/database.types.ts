@@ -51,6 +51,20 @@ export type Database = {
                   Relationships: [
                     
                   ]
+                },"digest_prefs": {
+                  Row: {
+                    "last_sent": string | null,"token": string,"user_id": string,"weekly": boolean
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "last_sent"?: string | null,"token"?: string,"user_id": string,"weekly"?: boolean
+                  }
+                  Update: {
+                    "last_sent"?: string | null,"token"?: string,"user_id"?: string,"weekly"?: boolean
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"garden_shares": {
                   Row: {
                     "created_at": string,"label": string,"last_opened": string | null,"opened": number,"owner": string,"token": string
@@ -305,6 +319,20 @@ isOneToOne: true
 "delete_my_account":
 { Args: Record<PropertyKey, never>; Returns: undefined
                            },
+"digest_batch":
+{ Args: { "p_lim"?: number,"p_only"?: string }; Returns: {
+              "email": string,"letter": Json,"name": string,"since": string,"token": string,"user_id": string,"username": string
+            }[]
+                           },
+"digest_letter":
+{ Args: { "p_since": string,"p_uid": string }; Returns: Json
+                           },
+"digest_sent":
+{ Args: { "p_ids": (string)[] }; Returns: undefined
+                           },
+"digest_unsubscribe":
+{ Args: { "p_token": string }; Returns: boolean
+                           },
 "list_public_gardens":
 { Args: { "after_owner"?: string,"after_updated"?: string,"lim"?: number,"q"?: string }; Returns: {
               "description": string | null,
@@ -323,6 +351,9 @@ isOneToOne: true
         isOneToOne: false
         isSetofReturn: true
       } },
+"my_digest":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
 "my_tenders":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
@@ -399,6 +430,9 @@ isOneToOne: true
                            },
 "save_poem":
 { Args: { "base"?: string,"p": Json }; Returns: Json
+                           },
+"set_digest":
+{ Args: { "p_on": boolean }; Returns: boolean
                            },
 "shared_garden":
 { Args: { "p_token": string }; Returns: Json
