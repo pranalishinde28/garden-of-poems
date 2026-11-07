@@ -112,7 +112,7 @@
     <div class="sr-opts"><span class="seg" role="group" aria-label="Order"><button data-o="new">Newest first</button><button data-o="near">Near me</button></span><button id="sr-auto" aria-pressed="false">Keep swinging</button></div>
   </div>
 </section>
-<div id="visitbar" hidden><span>Visiting <em id="visit-name"></em></span><button id="visit-home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5L12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5"/></svg>Back to my garden</button></div>
+<div id="visitbar" hidden><span>Visiting <em id="visit-name"></em></span><button id="visit-tend" hidden aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6M10 4v2h4V4M7.5 9h9l-1 2H8.5zM8.5 11v6h7v-6M7 17h10l-1 3H8z"/><path d="M12 12.6c.9.8 1.2 1.6.9 2.3-.3.6-1.5.6-1.8 0-.3-.7 0-1.5.9-2.3z"/></svg><span>Tend this garden</span></button><button id="visit-home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5L12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5"/></svg>Back to my garden</button></div>
 <section id="gardens" class="panel" tabindex="-1" role="dialog" aria-labelledby="g-title" hidden>
   <button class="xc" id="g-close" aria-label="Close">×</button>
   <h2 id="g-title">Gardens</h2>
@@ -138,6 +138,7 @@
     <div id="g-acct"></div>
   </div>
   <div id="g-visit">
+    <div id="g-tend" hidden><h3>Gardens you tend</h3><div id="g-tend-list"></div></div>
     <div id="g-suggest" hidden><h3>Suggested for you</h3><div id="g-suggest-list"></div></div>
     <h3>Visit a garden</h3>
     <input type="search" id="g-search" placeholder="Search by garden or poet" aria-label="Search public gardens" autocomplete="off">

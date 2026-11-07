@@ -1,7 +1,7 @@
 import { $, gardenURL, shareURL, siteURL } from '../core/util.js';
 import { toast } from '../ui/helpers.js';
 import { closePanel, openPanel } from '../ui/reading.js';
-import { Cloud, NEEDS_UPDATE, db, changeUsername, createShare, deleteAccount, deleteShare, exportGarden, listGardens, listShares, myVisits, ownPoems, removedPoems, restoreRemoved, saveGardenSettings, suggestedGardens, syncNow, usernameAvailable, listBlocks, unblockPerson } from './cloud.ts';
+import { Cloud, NEEDS_UPDATE, db, changeUsername, createShare, deleteAccount, deleteShare, exportGarden, listGardens, listShares, myVisits, ownPoems, removedPoems, restoreRemoved, saveGardenSettings, suggestedGardens, syncNow, usernameAvailable, listBlocks, unblockPerson, myTenders } from './cloud.ts';
 import { state } from '../core/state.js';
 import { captchaOn, mountCaptcha, resetCaptcha } from './captcha.js';
 import { late, provide } from '../core/late.js';
@@ -174,6 +174,7 @@ async function renderVisits() {
   const row = el('div', 'g-visits');
   [[v.today, 'today'], [v.week, 'this week'], [v.month, 'this month'], [v.total, 'in all']].forEach(([k, l]) => { const c = el('div', 'g-vc'); c.append(el('b', '', String(k)), el('span', '', l)); row.append(c); });
   box.append(row, el('p', 'g-m', `${n(v.people, 'person has', 'people have')} walked here. Each visitor counts once a day; no names are kept.`));
+  const t = await myTenders(); if (t) box.append(el('p', 'g-m', `${n(t, 'person tends', 'people tend')} your garden, and will see a lantern glow when you plant something new.`));
 }
 
 // ---- private links: share a garden with chosen people, even while it is private ----
@@ -227,7 +228,7 @@ async function loadGardens(more) {
     row.append(t, b); list.appendChild(row);
   });
 }
-// ---- suggested for you: loved, lately tended, and close to your own moods ----
+// ---- suggested for you: loved, growing lately, and close to your own moods ----
 async function loadSuggestions() {
   const box = $('#g-suggest'), list = $('#g-suggest-list');
   if (!Cloud.ready) { box.hidden = true; return; }
@@ -258,7 +259,7 @@ export function offerSuggestion() {
   };
   setTimeout(offer, 45000);
 }
-function openGardens() { late.closePops(); renderAccount(); openPanel(gardensPanel); loadSuggestions(); loadGardens(); }
+function openGardens() { late.closePops(); renderAccount(); openPanel(gardensPanel); late.renderTended && late.renderTended(); loadSuggestions(); loadGardens(); }
 export function closeGardens() { closePanel(gardensPanel); }
 $('#h-gardens').onclick = () => gardensPanel.classList.contains('open') ? closeGardens() : openGardens();
 $('#g-close').onclick = closeGardens;

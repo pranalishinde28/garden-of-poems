@@ -49,6 +49,7 @@ async function visitGarden(g) {
   const vb = $('#visitbar'); vb.hidden = false; requestAnimationFrame(() => vb.classList.add('show')); $('#h-home-garden').hidden = false;
   toast(g.description ? g.description : `Welcome to ${state.visiting.name}. Walk up to any plant to read it.`, 6000);
   if (!(Cloud.user && Cloud.user.id === g.owner)) recordVisit(g.owner, g.token || undefined);
+  late.onVisited && late.onVisited(g);
 }
 function returnHome(quiet) {
   if (!state.visiting) return;
@@ -58,6 +59,7 @@ function returnHome(quiet) {
   swapPlants(own, true); late.applyAllSettings();
   const vb = $('#visitbar'); vb.classList.remove('show'); vb.hidden = true; $('#h-home-garden').hidden = true;
   if (!quiet) toast('Welcome back to your own garden.');
+  late.onHome && late.onHome();
 }
 $('#visit-home').onclick = () => returnHome(false);
 $('#h-home-garden').onclick = () => returnHome(false);

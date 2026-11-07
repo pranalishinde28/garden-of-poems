@@ -233,6 +233,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"tends": {
+                  Row: {
+                    "created_at": string,"garden_owner": string,"last_seen": string,"tender": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"garden_owner": string,"last_seen"?: string,"tender"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"garden_owner"?: string,"last_seen"?: string,"tender"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"waitlist": {
                   Row: {
                     "created_at": string,"person": string,"wish": string
@@ -309,6 +323,9 @@ isOneToOne: true
         isOneToOne: false
         isSetofReturn: true
       } },
+"my_tenders":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "my_visits":
 { Args: Record<PropertyKey, never>; Returns: {
               "month": number,"people": number,"today": number,"total": number,"week": number
@@ -396,6 +413,14 @@ isOneToOne: true
 { Args: { "lim"?: number }; Returns: {
               "description": string,"display_name": string,"name": string,"owner": string,"poem_count": number,"reason": string,"settings": Json,"theme": string,"updated_at": string,"username": string
             }[]
+                           },
+"tended_gardens":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "description": string,"display_name": string,"fresh": number,"is_public": boolean,"last_seen": string,"name": string,"newest": string,"newest_at": string,"owner": string,"settings": Json,"tended_at": string,"theme": string,"username": string
+            }[]
+                           },
+"tended_seen":
+{ Args: { "p_owner": string }; Returns: undefined
                            },
 "username_available":
 { Args: { "name": string }; Returns: boolean

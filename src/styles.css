@@ -1089,3 +1089,10 @@ body.panel-open #sincelast{display:none}
 .sc-shape[aria-pressed="true"]{background:#5a3e24;color:#fbf2dc}
 .sc-prev img{max-width:100%;max-height:min(48vh,560px);border-radius:8px;box-shadow:0 8px 26px rgba(60,40,20,.35)}
 .sc-acts{display:flex;gap:.8rem;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:.8rem}
+
+/* tending: the visit bar's lantern button, and lit rows in "Gardens you tend" */
+#visitbar button{white-space:nowrap;flex:none}
+#visitbar #visit-tend{background:transparent;color:var(--ink);border:1.5px solid rgba(31,90,58,.55)}
+#visitbar #visit-tend.on{background:#f3d9a4;border-color:#b07a2a;color:#4a2e0e}
+#visitbar #visit-tend:disabled{opacity:.6}
+#g-tend .g-row.fresh .g-n::before{content:'';display:inline-block;width:.55rem;height:.55rem;margin-right:.45rem;border-radius:50%;background:#f0a640;box-shadow:0 0 8px 2px rgba(240,166,64,.7);vertical-align:.1rem}

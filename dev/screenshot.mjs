@@ -477,6 +477,36 @@ async function main() {
       console.log(`  block button ${hadBlock}, Leo's note gone ${leoGone}, blocked list ${JSON.stringify(listed)}, unblocked ${unblocked}, queue ${JSON.stringify(items)}, left after deciding ${left}`);
       if (!hadBlock || !leoGone || !listed.length || !unblocked || !items.length || left >= items.length) errors.push('moderation failed');
     }
+    else if (FLOW === 'tend') { // tending gardens: the lantern path by the gate, the Gardens list, tend and stop tending while visiting
+      const shot = async n => { await sleep(600); await page.screenshot({ path: join(root, `dev/shots/tend-${n}.png`) }); };
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await page.evaluate(() => document.querySelector('#steps-skip')?.click());
+      await page.evaluate(async () => { await window.__garden.cloud.sb.auth.signInWithPassword({ email: 'mira@grove.test', password: 'grove-test-1' }); });
+      await page.waitForFunction(() => window.__garden.late.tendedLanterns().length >= 2, { timeout: 60000, polling: 500 }); await sleep(3000);
+      const before = await page.evaluate(() => window.__garden.late.tendedLanterns());
+      await page.evaluate(() => document.querySelector('#sl-close')?.click());
+      const look = async (light, n, pos, at) => { await page.evaluate((light, pos, at) => { const g = window.__garden; g.state.mode = 'cinematic'; if (g.SETTINGS.light !== light) g.setSetting('light', light); g.state.night = light === 'night' ? 1 : 0; g.state.dusk = light === 'sunset' ? 1 : 0; g.camera.position.set(...pos); g.curLook.set(...at); g.camera.lookAt(g.curLook); }, light, pos, at); await sleep(2500); await shot(n); };
+      await page.evaluate(() => { document.querySelector('#steps').hidden = true; document.querySelector('#steps').style.display = 'none'; });
+      await look('day', 'above', [-10, 24, 52], [-10, 0, 43]);
+      await look('day', 'path-day', [0.5, 1.8, 47.5], [-9, 0.9, 42.5]);
+      await look('night', 'path-night', [0.5, 1.8, 47.5], [-9, 0.9, 42.5]);
+      await look('day', 'path-close', [-6.5, 1.7, 46.3], [-8.5, 1.0, 42.3]);
+      await look('day', 'spawn', [0, 1.7, 49], [0, 1.5, 30]);
+      await page.evaluate(() => { const g = window.__garden; g.state.mode = 'walk'; });
+      await page.evaluate(() => window.__garden.late.openGardens()); await sleep(2500); await page.evaluate(() => document.querySelector('#g-tend').scrollIntoView()); await sleep(500); await shot('panel');
+      const rows = await page.$$eval('#g-tend .g-row', r => r.map(x => x.textContent));
+      await page.evaluate(() => document.querySelector('#g-tend .g-row.fresh button').click());
+      await page.waitForFunction(() => window.__garden.state.visiting, { timeout: 30000, polling: 300 }); await sleep(4000); await shot('visiting');
+      const label1 = await page.$eval('#visit-tend', b => b.textContent);
+      await page.click('#visit-tend'); await sleep(2000); const label2 = await page.$eval('#visit-tend', b => b.textContent); await shot('untended');
+      await page.click('#visit-tend'); await sleep(2000); const label3 = await page.$eval('#visit-tend', b => b.textContent);
+      await page.click('#visit-home'); await page.waitForFunction(() => !window.__garden.state.visiting, { timeout: 30000, polling: 300 }); await sleep(3000);
+      const after = await page.evaluate(() => window.__garden.late.tendedLanterns());
+      await page.evaluate(() => window.__garden.cloud.sb.auth.signOut()); await sleep(2500);
+      const out = await page.evaluate(() => window.__garden.late.tendedLanterns().length);
+      console.log(`  lanterns ${JSON.stringify(before.map(b => [b.label, b.fresh]))}; panel ${JSON.stringify(rows)}; button ${label1} → ${label2} → ${label3}; after visiting ${JSON.stringify(after.map(b => b.fresh))}; signed out ${out}`);
+      if (before.length !== 2 || !before.some(b => b.fresh) || label1 !== 'Tending' || label2 !== 'Tend this garden' || label3 !== 'Tending' || after.some(b => b.fresh) || out) errors.push('tending failed');
+    }
     else if (FLOW === 'share') { // share this poem: the card in both shapes, saved to look at
       const fs = await import('node:fs');
       await page.click('#enter-sample').catch(() => page.click('#enter')); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.plants.size > 3, { timeout: 180000, polling: 300 });
