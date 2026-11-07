@@ -353,6 +353,31 @@ select throws_ok($$select tended_gardens()$$, '42501', null, 'visitors without a
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
 update public.gardens set is_public = true where owner = '00000000-0000-0000-0000-0000000000a1';
 
+-- ---------- the weekly letter: on by default, off by a switch or the letter's link; letters only for the service ----------
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select is(my_digest(), true, 'the weekly letter is on unless turned off');
+select is(set_digest(false), false, 'a poet turns it off');
+select is(my_digest(), false, 'and it stays off');
+select lives_ok($$select set_digest(true)$$, 'and on again');
+select throws_ok($$select * from digest_batch(10)$$, '42501', null, 'poets cannot read the letters or addresses');
+select throws_ok($$select digest_letter('00000000-0000-0000-0000-0000000000b2', '-infinity')$$, '42501', null, 'nor anyone else''s letter');
+select pg_temp.as_anon();
+select throws_ok($$select set_digest(true)$$, '42501', null, 'visitors without an account have no letter to change');
+select is(digest_unsubscribe(gen_random_uuid()), false, 'a wrong link stops nothing');
+reset role;
+update auth.users set email_confirmed_at = now() where email_confirmed_at is null;
+select ok((select (letter->>'hearts')::int from digest_batch(50) where user_id = '00000000-0000-0000-0000-0000000000a1') >= 1, 'Ada''s letter counts the hearts on her poems');
+select is((select (digest_letter('00000000-0000-0000-0000-0000000000a1', now() + interval '1 day')->>'hearts')::int), 0, 'nothing is new since tomorrow');
+select lives_ok($$select digest_sent(array['00000000-0000-0000-0000-0000000000a1'::uuid])$$, 'a letter is marked sent');
+select is((select count(*) from digest_batch(50) where user_id = '00000000-0000-0000-0000-0000000000a1'), 0::bigint, 'and none is due for six days');
+select is((select count(*) from digest_batch(5, 'ada@example.test')), 1::bigint, 'a test send to one address still finds it');
+select pg_temp.as_anon();
+select is(digest_unsubscribe((select token from public.digest_prefs where user_id = '00000000-0000-0000-0000-0000000000a1')), false, 'visitors cannot read the tokens');
+reset role;
+select is(digest_unsubscribe((select token from public.digest_prefs where user_id = '00000000-0000-0000-0000-0000000000a1')), true, 'the letter''s own link turns it off');
+select is((select weekly from public.digest_prefs where user_id = '00000000-0000-0000-0000-0000000000a1'), false, 'without signing in');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+
 -- the accounts tests below run as Ada, as the library's block left them
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
 

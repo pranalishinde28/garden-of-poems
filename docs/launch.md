@@ -23,19 +23,10 @@ account all need this. Nothing in the garden is lost.
    eight migrations it will add and asks you to confirm.
 3. Sign out and back in on the site. The page notices the update by itself; no redeploy is needed.
 
-## 2. A real email sender (SMTP)
+## 2. A real email sender (SMTP), and the weekly letter
 
-Supabase's own sender manages only a few emails an hour, so sign-up and password-reset emails stall.
-
-- **No domain of your own: Brevo** (free, 300 emails a day). Sign up at brevo.com, verify your sender
-  address, then Settings → SMTP & API → generate an SMTP key.
-  Host `smtp-relay.brevo.com`, port `587`, user = your Brevo SMTP login, password = the SMTP key.
-- **With a domain: Resend** (free, 3,000 a month). Add and verify your domain, create an API key.
-  Host `smtp.resend.com`, port `465`, user `resend`, password = the API key. (Without a verified domain,
-  Resend only sends to your own address.)
-
-Then Supabase → Authentication → Emails → SMTP Settings → enable custom SMTP, paste the values, sender
-name "The Garden of Poems", and a sender address on that service. Send yourself a password reset to test.
+Supabase's own sender manages only a few emails an hour, so sign-up and password-reset emails stall. **docs/email.md**
+has every step: a free Brevo account, Supabase's SMTP settings, and the weekly letter's function and daily schedule.
 
 ## 3. A CAPTCHA on sign-in and sign-up (hCaptcha)
 

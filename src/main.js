@@ -78,6 +78,7 @@ import './cloud/visiting.js';
 import './cloud/notes.js';
 import './cloud/review.js';
 import './cloud/tending.js';
+import './cloud/digest.js';
 import './settings/customize.js';
 import './world/linkBoards.js';
 import './ui/hud.js';

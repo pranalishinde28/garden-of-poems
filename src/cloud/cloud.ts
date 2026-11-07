@@ -503,6 +503,25 @@ export async function reviewNote(id: string, hide: boolean) {
   return !error;
 }
 
+// ---------- the weekly letter ----------
+// null before the database update
+export async function myDigest(): Promise<boolean | null> {
+  if (!Cloud.sb || !Cloud.user) return null;
+  const { data, error } = await Cloud.sb.rpc('my_digest');
+  return error ? null : !!data;
+}
+export async function setDigest(on: boolean) {
+  if (!Cloud.sb || !Cloud.user) return false;
+  const { error } = await Cloud.sb.rpc('set_digest', { p_on: on });
+  return !error;
+}
+// the link at the foot of every letter; works without signing in
+export async function unsubscribeDigest(token: string) {
+  if (!Cloud.sb) return false;
+  const { data, error } = await Cloud.sb.rpc('digest_unsubscribe', { p_token: token });
+  return !error && !!data;
+}
+
 // ---------- tending gardens: following without a feed ----------
 export type Tended = { owner: string; username: string | null; name: string; description: string; display_name: string | null; theme: string; settings: Record<string, unknown>; is_public: boolean; fresh: number; newest: string | null; newest_at: string | null; last_seen: string; tended_at: string };
 export async function tendGarden(owner: string) {

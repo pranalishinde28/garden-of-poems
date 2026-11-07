@@ -1,7 +1,7 @@
 import { $, gardenURL, shareURL, siteURL } from '../core/util.js';
 import { toast } from '../ui/helpers.js';
 import { closePanel, openPanel } from '../ui/reading.js';
-import { Cloud, NEEDS_UPDATE, db, changeUsername, createShare, deleteAccount, deleteShare, exportGarden, listGardens, listShares, myVisits, ownPoems, removedPoems, restoreRemoved, saveGardenSettings, suggestedGardens, syncNow, usernameAvailable, listBlocks, unblockPerson, myTenders } from './cloud.ts';
+import { Cloud, NEEDS_UPDATE, db, changeUsername, createShare, deleteAccount, deleteShare, exportGarden, listGardens, listShares, myVisits, ownPoems, removedPoems, restoreRemoved, saveGardenSettings, suggestedGardens, syncNow, usernameAvailable, listBlocks, unblockPerson, myTenders, myDigest, setDigest } from './cloud.ts';
 import { state } from '../core/state.js';
 import { captchaOn, mountCaptcha, resetCaptcha } from './captcha.js';
 import { late, provide } from '../core/late.js';
@@ -144,7 +144,12 @@ function renderAcct() {
     go.onclick = async () => { go.disabled = true; try { await deleteAccount(); closeGardens(); toast('Your account and garden are gone. Thank you for the poems.', 6000); } catch (e) { toast(e.message || 'That did not work. Try again.'); go.disabled = false; } };
     c.append(ci, go); del.replaceWith(c); ci.focus();
   };
-  const bl = el('div', 'g-blocks'); box.append(l, i, msg, save, ex, bl, del);
+  // the weekly letter: one switch, shown once the database has it
+  const dg = el('label', 'matters g-digest'), dc = el('input'); dc.type = 'checkbox'; dg.hidden = true;
+  dg.append(dc, document.createTextNode(' A short letter each week, only when something has happened: hearts, notes, visitors, and new poems in gardens I tend.'));
+  myDigest().then(on => { if (on === null) return; dc.checked = on; dg.hidden = false; });
+  dc.onchange = async () => { const on = dc.checked; if (await setDigest(on)) toast(on ? 'A letter will come each week when something has happened.' : 'No more weekly letters.'); else { dc.checked = !on; toast('That did not work just now. Try again.'); } };
+  const bl = el('div', 'g-blocks'); box.append(dg, l, i, msg, save, ex, bl, del);
   listBlocks().then(list => {
     if (!list || !list.length) return;
     bl.append(el('h4', '', 'People you have blocked'));

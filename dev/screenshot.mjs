@@ -507,6 +507,38 @@ async function main() {
       console.log(`  lanterns ${JSON.stringify(before.map(b => [b.label, b.fresh]))}; panel ${JSON.stringify(rows)}; button ${label1} → ${label2} → ${label3}; after visiting ${JSON.stringify(after.map(b => b.fresh))}; signed out ${out}`);
       if (before.length !== 2 || !before.some(b => b.fresh) || label1 !== 'Tending' || label2 !== 'Tend this garden' || label3 !== 'Tending' || after.some(b => b.fresh) || out) errors.push('tending failed');
     }
+    else if (FLOW === 'digest') { // the weekly letter: the switch in your account; a letter sent to the local mail catcher; its stop link
+      // needs: npx supabase functions serve --env-file <digest.env> (DIGEST_SECRET=local-digest-secret, MAILPIT_URL, SITE_URL=http://localhost:8081/)
+      const shot = async n => { await sleep(600); await page.screenshot({ path: join(root, `dev/shots/digest-${n}.png`) }); };
+      const API = 'http://127.0.0.1:55321', MAIL = 'http://127.0.0.1:55324';
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await page.evaluate(() => document.querySelector('#steps-skip')?.click());
+      await page.evaluate(async () => { await window.__garden.cloud.sb.auth.signInWithPassword({ email: 'mira@grove.test', password: 'grove-test-1' }); });
+      await page.waitForFunction(() => window.__garden.cloud.user, { timeout: 30000, polling: 300 }); await sleep(2500);
+      await page.evaluate(() => window.__garden.late.openGardens()); await sleep(2500);
+      await page.waitForFunction(() => !document.querySelector('.g-digest').hidden, { timeout: 15000, polling: 300 });
+      await page.evaluate(() => document.querySelector('.g-digest').scrollIntoView({ block: 'center' })); await shot('switch');
+      const on0 = await page.$eval('.g-digest input', i => i.checked);
+      await page.click('.g-digest input'); await sleep(1500);
+      const off = await page.evaluate(() => window.__garden.cloud.sb.rpc('my_digest').then(r => r.data));
+      await page.click('.g-digest input'); await sleep(1500);
+      const on1 = await page.evaluate(() => window.__garden.cloud.sb.rpc('my_digest').then(r => r.data));
+      await page.keyboard.press('Escape');
+      // a letter, then its stop link, signed out
+      await fetch(MAIL + '/api/v1/messages', { method: 'DELETE' });
+      const res = await (await fetch(API + '/functions/v1/weekly-digest?only=mira@grove.test', { method: 'POST', headers: { authorization: 'Bearer local-digest-secret' } })).json();
+      const list = await (await fetch(MAIL + '/api/v1/messages')).json(), msg = list.messages[0];
+      const full = msg ? await (await fetch(MAIL + '/api/v1/message/' + msg.ID)).json() : null;
+      const stop = full && (full.HTML.match(/href="([^"]*unsubscribe=[^"]+)"/) || [])[1];
+      await page.evaluate(() => window.__garden.cloud.sb.auth.signOut()); await sleep(1500);
+      await page.goto(stop.replace(/&amp;/g, '&') + '&debug', { waitUntil: 'load' });
+      await page.waitForFunction(() => document.querySelector('#toast.show'), { timeout: 60000, polling: 300 }); await shot('stopped');
+      const said = await page.$eval('#toast', t => t.textContent); const addr = await page.evaluate(() => location.search);
+      await page.waitForFunction(() => window.__garden && window.__garden.cloud.sb, { timeout: 60000, polling: 300 });
+      const after = await page.evaluate(async () => { const c = window.__garden.cloud; await c.sb.auth.signInWithPassword({ email: 'mira@grove.test', password: 'grove-test-1' }); const r = await c.sb.rpc('my_digest'); await c.sb.rpc('set_digest', { p_on: true }); await c.sb.auth.signOut(); return r.data; });
+      console.log(`  switch on ${on0} → off ${off} → on ${on1}; sent ${JSON.stringify(res)}; subject “${msg && msg.Subject}”; stop link ${!!stop}; said “${said}”; address now “${addr}”; letters on after the link: ${after}`);
+      if (!on0 || off !== false || on1 !== true || res.sent !== 1 || !stop || after !== false || /unsubscribe/.test(addr)) errors.push('weekly letter failed');
+    }
     else if (FLOW === 'share') { // share this poem: the card in both shapes, saved to look at
       const fs = await import('node:fs');
       await page.click('#enter-sample').catch(() => page.click('#enter')); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.plants.size > 3, { timeout: 180000, polling: 300 });
