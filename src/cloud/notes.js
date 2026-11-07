@@ -2,7 +2,7 @@ import { $ } from '../core/util.js';
 import { poems } from '../settings/storage.js';
 import { state } from '../core/state.js';
 import { toast } from '../ui/helpers.js';
-import { Cloud, db, heartsFor, setHeart } from './cloud.ts';
+import { Cloud, db, heartsFor, setHeart, blockPerson } from './cloud.ts';
 import { el } from './gardensPanel.js';
 import { provide } from '../core/late.js';
 
@@ -105,6 +105,11 @@ function noteRow(n, c) {
     const rep = el('button', 'g-link', 'Report');
     rep.onclick = async () => { rep.disabled = true; const { error } = await Cloud.sb.from('note_reports').insert({ note_id: n.id }); rep.textContent = error ? (error.code === '23505' ? 'Reported' : 'Could not report') : 'Reported. Thank you.'; };
     acts.append(rep);
+  }
+  if (me && n.author !== me && 'hidden' in n) { // block its writer: their notes go, and they can leave none here
+    const who = (n.profiles && n.profiles.display_name) || 'this visitor', blk = el('button', 'g-link', 'Block');
+    blk.onclick = async () => { if (!confirm(`Block ${who}? They will not be able to leave notes or hearts on your poems, and you will not see their notes.`)) return; try { await blockPerson(n.author); toast(`${who} is blocked. You can unblock them from your account.`); loadNotes(); } catch (e) { toast(e.message); } };
+    acts.append(blk);
   }
   if (acts.children.length) row.append(acts);
   return row;

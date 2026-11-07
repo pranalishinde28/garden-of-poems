@@ -92,6 +92,7 @@
   <button id="m-book"><span class="t">Make a book of my poems</span><small>every poem with its tree, ready to print</small></button>
   <button id="m-patron"><span class="t">Become a patron of the garden</span><small>help it grow; be first to hear</small></button>
   <p class="mh" id="m-acct-h" hidden>Your account</p>
+  <button id="m-review" hidden><span class="t">Review reports</span><small>notes people have reported</small></button>
   <button id="m-signout" hidden><span class="t">Sign out</span><small id="m-signout-who">your poems stay safe in your account</small></button>
 </div></div>
 
@@ -111,7 +112,7 @@
     <div class="sr-opts"><span class="seg" role="group" aria-label="Order"><button data-o="new">Newest first</button><button data-o="near">Near me</button></span><button id="sr-auto" aria-pressed="false">Keep swinging</button></div>
   </div>
 </section>
-<div id="visitbar" hidden><span>Visiting <em id="visit-name"></em></span><button id="visit-home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5L12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5"/></svg>Back to my garden</button></div>
+<div id="visitbar" hidden><span>Visiting <em id="visit-name"></em></span><button id="visit-tend" hidden aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6M10 4v2h4V4M7.5 9h9l-1 2H8.5zM8.5 11v6h7v-6M7 17h10l-1 3H8z"/><path d="M12 12.6c.9.8 1.2 1.6.9 2.3-.3.6-1.5.6-1.8 0-.3-.7 0-1.5.9-2.3z"/></svg><span>Tend this garden</span></button><button id="visit-home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5L12 5l8 6.5M6.5 10v9h11v-9M10 19v-5h4v5"/></svg>Back to my garden</button></div>
 <section id="gardens" class="panel" tabindex="-1" role="dialog" aria-labelledby="g-title" hidden>
   <button class="xc" id="g-close" aria-label="Close">×</button>
   <h2 id="g-title">Gardens</h2>
@@ -137,6 +138,7 @@
     <div id="g-acct"></div>
   </div>
   <div id="g-visit">
+    <div id="g-tend" hidden><h3>Gardens you tend</h3><div id="g-tend-list"></div></div>
     <div id="g-suggest" hidden><h3>Suggested for you</h3><div id="g-suggest-list"></div></div>
     <h3>Visit a garden</h3>
     <input type="search" id="g-search" placeholder="Search by garden or poet" aria-label="Search public gardens" autocomplete="off">
@@ -206,6 +208,7 @@
   <button id="s-edit" class="g-link">Edit the sign</button>
 </section>
 <div id="toast" role="status" aria-live="polite"></div>
+<aside id="sincelast" class="panel" aria-labelledby="sl-title" hidden><button class="xc x" id="sl-close" aria-label="Close">×</button><h3 id="sl-title">Since you were last here</h3><div id="sl-lines"></div></aside>
 <div id="region" role="complementary" aria-label="Where you are"><div class="n"></div><div class="s"></div></div>
 <div id="hint"></div>
 <button id="cue" aria-hidden="true" tabindex="-1"><span id="cue-t"></span><kbd>E</kbd></button>
@@ -230,6 +233,7 @@
   <div class="card-acts">
     <button id="r-heart" class="act" aria-pressed="false" aria-label="Love this poem (J)" hidden><svg viewBox="0 0 24 24"><path d="M12 20.3s-7.6-4.5-7.6-10.2A4.4 4.4 0 0 1 12 7.2a4.4 4.4 0 0 1 7.6 2.9c0 5.7-7.6 10.2-7.6 10.2z"/></svg></button>
     <button id="r-talk" class="act" aria-label="Notes (K)" aria-expanded="false" hidden><svg viewBox="0 0 24 24"><path d="M20 11.3c0 4-3.6 7.1-8 7.1-1.2 0-2.3-.2-3.3-.6L4.3 19.2l1.3-3.6C4.6 14.4 4 12.9 4 11.3 4 7.3 7.6 4.2 12 4.2s8 3.1 8 7.1z"/></svg></button>
+    <button id="r-share" class="act" aria-label="Share this poem as a picture"><svg viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M6 12v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-7"/></svg></button>
     <span class="spacer"></span>
     <span class="card-date" id="r-date"></span>
   </div>
@@ -283,6 +287,27 @@
 <button class="xc" id="minimap-hide" aria-label="Hide the small map" title="Hide the small map" hidden>×</button>
 <button id="minimap-show" aria-label="Show the small map" title="Show the small map" hidden><svg viewBox="0 0 24 24"><path d="M3.5 6.5l5.5-2 6 2 5.5-2v13l-5.5 2-6-2-5.5 2z"/><path d="M9 4.5v13M15 6.5v13"/></svg></button>
 <button id="minimap-btn" aria-label="Open the map" hidden><canvas id="minimap" width="264" height="264"></canvas></button>
+<section id="sharecard" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="sc-title" hidden>
+  <button class="xc x" id="sc-close" aria-label="Close">×</button>
+  <h2 id="sc-title">Share this poem</h2>
+  <div class="sc-body">
+    <div class="sc-prev"><img id="sc-img" alt="The card to share"></div>
+    <div class="sc-side">
+      <p class="sc-sub">A picture of the poem and its tree, with your garden’s address, ready for Instagram or anywhere.</p>
+      <div class="sc-shapes" role="group" aria-label="Shape"><button class="sc-shape" data-s="story" aria-pressed="true">Story</button><button class="sc-shape" data-s="square" aria-pressed="false">Square post</button></div>
+      <p class="sc-to">Share it to</p>
+      <div class="sc-apps" id="sc-apps"></div>
+      <p class="sc-hint" id="sc-hint"></p>
+      <div class="sc-acts"><button class="g-btn" id="sc-save">Save the picture</button><button class="g-link" id="sc-copy">Copy my garden’s link</button></div>
+    </div>
+  </div>
+</section>
+<section id="review" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="rv-title" hidden>
+  <button class="xc x" id="rv-close" aria-label="Close">×</button>
+  <h2 id="rv-title">Reports to review</h2>
+  <p class="rv-sub">Notes people have reported, most-reported first. A note reported three times is already hidden until you decide.</p>
+  <div id="rv-list"></div>
+</section>
 <section id="wallpoem" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="wp-title" hidden>
   <button class="xc x" id="wp-close" aria-label="Close">×</button>
   <h2 id="wp-title"></h2>

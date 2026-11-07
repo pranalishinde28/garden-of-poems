@@ -270,6 +270,89 @@ delete from public.paintings where owner = '00000000-0000-0000-0000-0000000000a1
 reset role;
 select is((select count(*) from public.paintings where owner = '00000000-0000-0000-0000-0000000000a1'), 2::bigint, 'nobody else takes them down');
 select ok(exists (select 1 from storage.buckets where id = 'paintings' and not public), 'the pictures are kept in a private bucket');
+-- ---------- blocking: a blocked person leaves no notes or hearts, and their notes in the garden are hidden ----------
+reset role;
+update public.gardens set is_public = true where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c3');
+insert into public.notes (garden_owner, poem_id, text) values ('00000000-0000-0000-0000-0000000000a1', 'open', 'Cy again, before the block');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$insert into public.blocks (blocked) values ('00000000-0000-0000-0000-0000000000c3')$$, 'a poet blocks someone');
+select throws_ok($$insert into public.blocks (blocked) values ('00000000-0000-0000-0000-0000000000a1')$$, '23514', null, 'not themselves');
+select is((select count(*) from public.notes where author = '00000000-0000-0000-0000-0000000000c3'), 0::bigint, 'the poet no longer sees their notes');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c3');
+select throws_ok($$insert into public.notes (garden_owner, poem_id, text) values ('00000000-0000-0000-0000-0000000000a1', 'open', 'after')$$, '42501', null, 'the blocked person cannot leave notes');
+select throws_ok($$insert into public.poem_likes (garden_owner, poem_id, liker) values ('00000000-0000-0000-0000-0000000000a1', 'open', '00000000-0000-0000-0000-0000000000c3')$$, '42501', null, 'nor hearts');
+select ok((select count(*) from public.notes where author = '00000000-0000-0000-0000-0000000000c3') > 0, 'they still see their own notes');
+select is((select count(*) from public.blocks), 0::bigint, 'and cannot see that they are blocked');
+select pg_temp.as_anon();
+select is((select count(*) from public.notes where author = '00000000-0000-0000-0000-0000000000c3' and garden_owner = '00000000-0000-0000-0000-0000000000a1'), 0::bigint, 'others no longer see their notes in that garden');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$delete from public.blocks where blocked = '00000000-0000-0000-0000-0000000000c3'$$, 'and the poet can unblock');
+
+-- ---------- reports: three hide a note; only moderators see the queue and decide ----------
+reset role;
+alter table public.notes disable trigger notes_rate_limit;
+insert into public.notes (garden_owner, poem_id, text, author) values ('00000000-0000-0000-0000-0000000000a1', 'open', 'an unkind note', '00000000-0000-0000-0000-0000000000b2');
+alter table public.notes enable trigger notes_rate_limit;
+insert into public.note_reports (note_id, reporter, reason) select id, r, 'unkind' from public.notes, unnest(array['00000000-0000-0000-0000-0000000000a1','00000000-0000-0000-0000-0000000000c3']::uuid[]) r where text = 'an unkind note';
+select is((select hidden from public.notes where text = 'an unkind note'), false, 'two reports do not hide a note');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select is((select count(*) from review_queue()), 0::bigint, 'the queue is empty for someone who is not a moderator');
+select throws_ok($$select review_note(gen_random_uuid(), true)$$, '42501', null, 'and they cannot decide');
+reset role;
+insert into auth.users (id, email, raw_user_meta_data) values ('00000000-0000-0000-0000-0000000000e5', 'mod@example.test', '{"username":"modo","display_name":"Mo"}');
+insert into public.note_reports (note_id, reporter) select id, '00000000-0000-0000-0000-0000000000e5' from public.notes where text = 'an unkind note';
+select is((select hidden from public.notes where text = 'an unkind note'), true, 'the third report hides it');
+insert into public.moderators (user_id) values ('00000000-0000-0000-0000-0000000000e5');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000e5');
+select is((select reports from review_queue() where text = 'an unkind note'), 3::bigint, 'a moderator sees it in the queue with its reports');
+select lives_ok($$select review_note((select note_id from review_queue() where text = 'an unkind note'), false)$$, 'and may restore it');
+select is((select count(*) from review_queue() where text = 'an unkind note'), 0::bigint, 'reviewed reports leave the queue');
+reset role;
+select is((select hidden from public.notes where text = 'an unkind note'), false, 'the restored note shows again');
+
+-- ---------- since you were last here: only your own garden's news, only for you ----------
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select ok((select (whats_new('-infinity')->'hearts'->0->>'poem_id') = 'open'), 'a poet sees hearts on their poems');
+select ok((select (whats_new('-infinity')->'hearts'->0->'names'->>0) = 'Bo'), 'and who gave them');
+select is((select jsonb_typeof(whats_new('-infinity')->'notes')), 'array', 'and the notes left');
+select is((select jsonb_array_length(whats_new(now() + interval '1 day')->'hearts')), 0, 'nothing is new since the future');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select is((select jsonb_array_length(whats_new('-infinity')->'hearts')), 0, 'one poet never sees another''s news');
+select pg_temp.as_anon();
+select throws_ok($$select whats_new(now())$$, '42501', null, 'visitors without an account have no news to see');
+-- ---------- tending: follow a public garden, privately; its lantern lights when something new grows ----------
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c3');
+select lives_ok($$insert into public.tends (garden_owner) values ('00000000-0000-0000-0000-0000000000a1')$$, 'Cy tends Ada''s public garden');
+select throws_ok($$insert into public.tends (garden_owner) values ('00000000-0000-0000-0000-0000000000b2')$$, '42501', null, 'but not a private garden');
+select throws_ok($$insert into public.tends (garden_owner) values ('00000000-0000-0000-0000-0000000000c3')$$, '42501', null, 'nor their own');
+select is((select count(*) from tended_gardens()), 1::bigint, 'the garden is in Cy''s list');
+select is((select fresh from tended_gardens()), 0::bigint, 'with nothing new at first');
+reset role;
+update public.tends set last_seen = now() - interval '1 hour' where tender = '00000000-0000-0000-0000-0000000000c3';
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c3');
+select ok((select fresh from tended_gardens()) > 0, 'poems grown since Cy last walked it light its lantern');
+select lives_ok($$select tended_seen('00000000-0000-0000-0000-0000000000a1')$$, 'walking it again');
+select is((select fresh from tended_gardens()), 0::bigint, 'dims the lantern');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select is(my_tenders(), 1::bigint, 'Ada learns how many tend her garden');
+select is((select count(*) from public.tends), 0::bigint, 'but not who');
+select is((whats_new('-infinity')->>'tenders')::int, 1, 'and it is news since she was last here');
+select lives_ok($$insert into public.blocks (blocked) values ('00000000-0000-0000-0000-0000000000b2')$$, 'Ada blocks Bo');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
+select throws_ok($$insert into public.tends (garden_owner) values ('00000000-0000-0000-0000-0000000000a1')$$, '42501', null, 'someone blocked cannot tend the garden');
+select is((select count(*) from tended_gardens()), 0::bigint, 'and other people''s tending is not theirs to see');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+delete from public.blocks where blocked = '00000000-0000-0000-0000-0000000000b2';
+update public.gardens set is_public = false where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c3');
+select is((select count(*) from tended_gardens()), 0::bigint, 'a garden gone private leaves the list');
+select lives_ok($$delete from public.tends where garden_owner = '00000000-0000-0000-0000-0000000000a1'$$, 'and Cy may stop tending');
+select pg_temp.as_anon();
+select throws_ok($$select tended_gardens()$$, '42501', null, 'visitors without an account tend nothing');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+update public.gardens set is_public = true where owner = '00000000-0000-0000-0000-0000000000a1';
+
 -- the accounts tests below run as Ada, as the library's block left them
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
 

@@ -144,7 +144,7 @@ function enterTemple(door) {
     place(w.arrive.pos, w.arrive.yaw);
   }, () => showRegion({ name: w.name, sub: w.sub }));
 }
-function leaveTemple() {
+function leaveTemple(then) {
   if (!indoors() || state.mode !== 'walk') return;
   cross('Back out under the sky…', () => {
     worlds[state.world].leave(); view.scene = scene; state.world = 'garden'; document.body.classList.remove('otherworld');
@@ -152,5 +152,5 @@ function leaveTemple() {
     const o = templeFrom ? templeFrom.out : { pos: new V3(41, 0, -25), yaw: 0 };
     place(o.pos, o.yaw);
     if (templeFrom && templeFrom.far && getAvatar().kind === 'bird') { player.alt = 3; player.cruise = 3; player.flying = true; }
-  });
+  }, typeof then === 'function' ? then : undefined);
 }

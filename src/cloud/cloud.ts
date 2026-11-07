@@ -282,7 +282,8 @@ export async function suggestedGardens(): Promise<Suggestion[]> {
   if (!Cloud.sb) return [];
   if (!db.legacy) {
     const { data, error } = await Cloud.sb.rpc('suggested_gardens', { lim: 3 });
-    if (!missing(error)) { if (error) throw error; return (data || []) as Suggestion[]; }
+    // the database still says "Newly tended" for a garden written in this week; "tending" now means following
+    if (!missing(error)) { if (error) throw error; return ((data || []) as Suggestion[]).map(g => g.reason === 'Newly tended' ? { ...g, reason: 'Growing this week' } : g); }
   }
   // before the update: the freshest, fullest public gardens, scored here
   const r = await Cloud.sb.from('public_gardens').select('*').order('updated_at', { ascending: false }).limit(24);
@@ -292,7 +293,7 @@ export async function suggestedGardens(): Promise<Suggestion[]> {
     .filter(g => (g.poem_count || 0) > 0 && (!Cloud.user || g.owner !== Cloud.user.id))
     .map(g => ({ g, score: Math.log(1 + (g.poem_count || 0)) + 2 * Math.exp(-days(g) / 14) }))
     .sort((a, b) => b.score - a.score).slice(0, 3)
-    .map(({ g }) => ({ ...g, reason: days(g) < 7 ? 'Newly tended' : 'A garden worth a walk' }));
+    .map(({ g }) => ({ ...g, reason: days(g) < 7 ? 'Growing this week' : 'A garden worth a walk' }));
 }
 
 // ---------- your account ----------
@@ -453,4 +454,80 @@ export async function removePainting(id: string) {
   const { error } = await Cloud.sb.from('paintings').delete().eq('owner', Cloud.user.id).eq('id', id);
   if (!error) await Cloud.sb.storage.from('paintings').remove([path]);
   return !error;
+}
+
+// ---------- since you were last here ----------
+export type WhatsNew = { hearts: { poem_id: string; title: string; n: number; names: string[] }[]; notes: { poem_id: string; title: string; name: string; text: string; at: string }[]; visitors: number; tenders?: number };
+export async function whatsNew(since: string): Promise<WhatsNew | null> {
+  if (!Cloud.sb || !Cloud.user) return null;
+  const { data, error } = await Cloud.sb.rpc('whats_new', { since });
+  if (error || !data) return null;
+  return data as unknown as WhatsNew;
+}
+
+// ---------- blocking, and the review queue for moderators ----------
+export async function blockPerson(id: string) {
+  if (!Cloud.sb || !Cloud.user) throw new Error('Sign in to block someone.');
+  const { error } = await Cloud.sb.from('blocks').insert({ blocked: id });
+  if (error && error.code !== '23505') throw new Error(missing(error) ? NEEDS_UPDATE : error.message);
+}
+export async function unblockPerson(id: string) {
+  if (!Cloud.sb || !Cloud.user) return false;
+  const { error } = await Cloud.sb.from('blocks').delete().eq('blocker', Cloud.user.id).eq('blocked', id);
+  return !error;
+}
+// the people you have blocked, with the names they show
+export async function listBlocks(): Promise<{ id: string; name: string }[] | null> {
+  if (!Cloud.sb || !Cloud.user) return null;
+  const { data, error } = await Cloud.sb.from('blocks').select('blocked, created_at').eq('blocker', Cloud.user.id).order('created_at', { ascending: false });
+  if (error) return missing(error) ? null : [];
+  const ids = (data || []).map(r => r.blocked); if (!ids.length) return [];
+  const { data: ps } = await Cloud.sb.from('profiles').select('id, username, display_name').in('id', ids);
+  return ids.map(id => { const p = (ps || []).find(q => q.id === id); return { id, name: (p && (p.display_name || p.username)) || 'someone' }; });
+}
+export async function isModerator() {
+  if (!Cloud.sb || !Cloud.user) return false;
+  const { data, error } = await Cloud.sb.from('moderators').select('user_id').eq('user_id', Cloud.user.id).maybeSingle();
+  return !error && !!data;
+}
+export type ReportItem = { note_id: string; text: string; author_name: string; poet_name: string; poem_title: string; reports: number; reasons: string[]; hidden: boolean; first_reported: string };
+export async function reviewQueue(): Promise<ReportItem[]> {
+  if (!Cloud.sb || !Cloud.user) return [];
+  const { data, error } = await Cloud.sb.rpc('review_queue');
+  if (error) throw error;
+  return (data || []) as unknown as ReportItem[];
+}
+export async function reviewNote(id: string, hide: boolean) {
+  if (!Cloud.sb) return false;
+  const { error } = await Cloud.sb.rpc('review_note', { p_note: id, p_hide: hide });
+  return !error;
+}
+
+// ---------- tending gardens: following without a feed ----------
+export type Tended = { owner: string; username: string | null; name: string; description: string; display_name: string | null; theme: string; settings: Record<string, unknown>; is_public: boolean; fresh: number; newest: string | null; newest_at: string | null; last_seen: string; tended_at: string };
+export async function tendGarden(owner: string) {
+  if (!Cloud.sb || !Cloud.user) throw new Error('Sign in to tend a garden.');
+  const { error } = await Cloud.sb.from('tends').insert({ garden_owner: owner });
+  if (error && error.code !== '23505') throw new Error(missing(error) ? NEEDS_UPDATE : error.code === '42501' ? 'This garden cannot be tended just now.' : error.message);
+}
+export async function untendGarden(owner: string) {
+  if (!Cloud.sb || !Cloud.user) return false;
+  const { error } = await Cloud.sb.from('tends').delete().eq('tender', Cloud.user.id).eq('garden_owner', owner);
+  return !error;
+}
+// the public gardens you tend, those with new poems first; null before the database update
+export async function tendedGardens(): Promise<Tended[] | null> {
+  if (!Cloud.sb || !Cloud.user) return [];
+  const { data, error } = await Cloud.sb.rpc('tended_gardens');
+  if (error) return missing(error) ? null : [];
+  return (data || []) as unknown as Tended[];
+}
+export async function tendedSeen(owner: string) {
+  if (!Cloud.sb || !Cloud.user) return;
+  await Cloud.sb.rpc('tended_seen', { p_owner: owner });
+}
+export async function myTenders(): Promise<number | null> {
+  if (!Cloud.sb || !Cloud.user) return null;
+  const { data, error } = await Cloud.sb.rpc('my_tenders');
+  return error ? null : Number(data) || 0;
 }

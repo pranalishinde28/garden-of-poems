@@ -23,7 +23,21 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "books": {
+            "blocks": {
+                  Row: {
+                    "blocked": string,"blocker": string,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "blocked": string,"blocker"?: string,"created_at"?: string
+                  }
+                  Update: {
+                    "blocked"?: string,"blocker"?: string,"created_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"books": {
                   Row: {
                     "author": string,"body": string,"created_at": string,"id": string,"owner": string,"private": boolean,"title": string,"updated_at": string
                   }
@@ -85,16 +99,30 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
-                },"note_reports": {
+                },"moderators": {
                   Row: {
-                    "created_at": string,"id": string,"note_id": string,"reason": string | null,"reporter": string
+                    "user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"note_id": string,"reason"?: string | null,"reporter"?: string
+                    "user_id": string
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"note_id"?: string,"reason"?: string | null,"reporter"?: string
+                    "user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"note_reports": {
+                  Row: {
+                    "created_at": string,"id": string,"note_id": string,"reason": string | null,"reporter": string,"reviewed": boolean
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"note_id": string,"reason"?: string | null,"reporter"?: string,"reviewed"?: boolean
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"note_id"?: string,"reason"?: string | null,"reporter"?: string,"reviewed"?: boolean
                   }
                   Relationships: [
                     {
@@ -205,6 +233,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"tends": {
+                  Row: {
+                    "created_at": string,"garden_owner": string,"last_seen": string,"tender": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"garden_owner": string,"last_seen"?: string,"tender"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"garden_owner"?: string,"last_seen"?: string,"tender"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"waitlist": {
                   Row: {
                     "created_at": string,"person": string,"wish": string
@@ -239,7 +281,10 @@ isOneToOne: true
                 }
           }
           Functions: {
-            "change_username":
+            "blocked_by":
+{ Args: { "a": string,"b": string }; Returns: boolean
+                           },
+"change_username":
 { Args: { "new_name": string }; Returns: string
                            },
 "create_share":
@@ -278,6 +323,9 @@ isOneToOne: true
         isOneToOne: false
         isSetofReturn: true
       } },
+"my_tenders":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "my_visits":
 { Args: Record<PropertyKey, never>; Returns: {
               "month": number,"people": number,"today": number,"total": number,"week": number
@@ -341,6 +389,14 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"review_note":
+{ Args: { "p_hide": boolean,"p_note": string }; Returns: undefined
+                           },
+"review_queue":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "author_name": string,"first_reported": string,"hidden": boolean,"note_id": string,"poem_title": string,"poet_name": string,"reasons": (string)[],"reports": number,"text": string
+            }[]
+                           },
 "save_poem":
 { Args: { "base"?: string,"p": Json }; Returns: Json
                            },
@@ -358,6 +414,14 @@ isOneToOne: true
               "description": string,"display_name": string,"name": string,"owner": string,"poem_count": number,"reason": string,"settings": Json,"theme": string,"updated_at": string,"username": string
             }[]
                            },
+"tended_gardens":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "description": string,"display_name": string,"fresh": number,"is_public": boolean,"last_seen": string,"name": string,"newest": string,"newest_at": string,"owner": string,"settings": Json,"tended_at": string,"theme": string,"username": string
+            }[]
+                           },
+"tended_seen":
+{ Args: { "p_owner": string }; Returns: undefined
+                           },
 "username_available":
 { Args: { "name": string }; Returns: boolean
                            },
@@ -366,6 +430,9 @@ isOneToOne: true
                            },
 "valid_settings":
 { Args: { "s": Json }; Returns: boolean
+                           },
+"whats_new":
+{ Args: { "since": string }; Returns: Json
                            }
           }
           Enums: {
