@@ -455,42 +455,8 @@ export async function removePainting(id: string) {
   return !error;
 }
 
-// ---------- the daily prompt's grove: answers planted for everyone to walk among ----------
-export type PromptAnswer = Database['public']['Tables']['prompt_answers']['Row'];
-// one day's answers, oldest first (null: the database doesn't have the grove yet)
-export async function listAnswers(day: string): Promise<PromptAnswer[] | null> {
-  if (!Cloud.sb) return null;
-  const { data, error } = await Cloud.sb.from('prompt_answers').select('*').eq('day', day).order('created_at').limit(300);
-  if (missing(error)) return null;
-  if (error) throw error;
-  return data || [];
-}
-export async function plantAnswer(a: { day: string; poem_id: string; title: string; body: string; mood: string; by_name: string }) {
-  if (!Cloud.sb || !Cloud.user) throw new Error('Sign in to plant in the shared grove.');
-  const { error } = await Cloud.sb.from('prompt_answers').insert({ owner: Cloud.user.id, ...a });
-  if (error) throw new Error(missing(error) ? NEEDS_UPDATE : /three answers/.test(error.message) ? 'Three answers a day is plenty; this one grows in your own garden.' : error.message);
-}
-export async function takeBackAnswer(day: string, poemId: string) {
-  if (!Cloud.sb || !Cloud.user) return false;
-  const { error } = await Cloud.sb.from('prompt_answers').delete().eq('day', day).eq('owner', Cloud.user.id).eq('poem_id', poemId);
-  return !error;
-}
-export async function reportAnswer(day: string, owner: string, poemId: string, reason = '') {
-  if (!Cloud.sb || !Cloud.user) throw new Error('Sign in to report.');
-  const { error } = await Cloud.sb.from('prompt_reports').insert({ day, owner, poem_id: poemId, reason });
-  if (error && !/duplicate/.test(error.message)) throw new Error(missing(error) ? NEEDS_UPDATE : error.message);
-}
-// the days that have answers, newest first, with how many
-export async function promptDays(lim = 60): Promise<{ day: string; answers: number }[] | null> {
-  if (!Cloud.sb) return null;
-  const { data, error } = await Cloud.sb.rpc('prompt_days', { lim });
-  if (missing(error)) return null;
-  if (error) throw error;
-  return (data || []).map((r: { day: string; answers: number }) => ({ day: r.day, answers: Number(r.answers) }));
-}
-
 // ---------- since you were last here ----------
-export type WhatsNew = { hearts: { poem_id: string; title: string; n: number; names: string[] }[]; notes: { poem_id: string; title: string; name: string; text: string; at: string }[]; visitors: number; grove: number };
+export type WhatsNew = { hearts: { poem_id: string; title: string; n: number; names: string[] }[]; notes: { poem_id: string; title: string; name: string; text: string; at: string }[]; visitors: number };
 export async function whatsNew(since: string): Promise<WhatsNew | null> {
   if (!Cloud.sb || !Cloud.user) return null;
   const { data, error } = await Cloud.sb.rpc('whats_new', { since });

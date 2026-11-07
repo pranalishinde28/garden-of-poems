@@ -7,12 +7,12 @@ import { provide } from '../core/late.js';
 /* ================= reading a poem from the walls of the Hall of Mirrors ================= */
 // Walk up to a framed poem (or click it) and it opens here, large and easy to read. ← → go along the wall.
 const panel = $('#wallpoem');
-// the list being read: the hall's poems, or another (the Prompt Garden's answers, ui/promptGarden.js), with an
+// the list being read: the hall's poems, or another , with an
 // optional hook to show or hide that list's own buttons for the poem on show
 let at = 0, list = P, onShow = null;
 function show(k) {
   at = (k + list.length) % list.length; const [title, poet, year, text] = list[at];
-  $('#wp-more').hidden = !onShow; if (onShow) onShow(at);
+  if (onShow) onShow(at);
   $('#wp-title').textContent = title; $('#wp-poet').textContent = poet; $('#wp-year').textContent = year;
   $('#wp-text').textContent = text; $('#wp-count').textContent = `${at + 1} of ${list.length}`;
 }

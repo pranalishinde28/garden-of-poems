@@ -138,7 +138,7 @@ let templeFrom = null;
 function enterTemple(door) {
   if (state.mode !== 'walk' || indoors()) return;
   templeFrom = door; const w = worlds[door.world || 'temple'];
-  cross(door.world === 'grove' ? 'Through the moon gate…' : 'Through the pagoda’s doors…', () => {
+  cross('Through the pagoda’s doors…', () => {
     w.enter(); view.scene = w.scene; state.world = door.world || 'temple'; document.body.classList.add('otherworld');
     moveFigureTo(w.scene); renderer.setClearColor(w.scene.background);
     place(w.arrive.pos, w.arrive.yaw);
@@ -146,7 +146,7 @@ function enterTemple(door) {
 }
 function leaveTemple(then) {
   if (!indoors() || state.mode !== 'walk') return;
-  cross(state.world === 'grove' ? 'Back to your garden…' : 'Back out under the sky…', () => {
+  cross('Back out under the sky…', () => {
     worlds[state.world].leave(); view.scene = scene; state.world = 'garden'; document.body.classList.remove('otherworld');
     moveFigureTo(scene); renderer.setClearColor(scene.fog.color);
     const o = templeFrom ? templeFrom.out : { pos: new V3(41, 0, -25), yaw: 0 };

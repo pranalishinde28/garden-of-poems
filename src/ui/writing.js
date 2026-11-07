@@ -1,4 +1,3 @@
-import { todayKey, todaysPrompt } from './prompts.js';
 import { $, V3, clamp, ease, reduceMotion, uid } from '../core/util.js';
 import { groundH } from '../world/terrain.js';
 import { poems, savePoems } from '../settings/storage.js';
@@ -75,7 +74,7 @@ $('#e-fresh').onclick = () => { clearDraft(); eTitle.value = eBody.value = eThem
 export function openEditor(p) {
   if (state.visiting) { toast('You are visiting someone else\'s garden. Return home to write.'); return; }
   if (state.world === 'sun') { toast('Poems grow in your own garden. The white door leads home.'); return; }
-  if (state.world === 'temple' || state.world === 'shrine' || state.world === 'grove') { toast('Poems grow out in the garden. The door behind you leads back.'); return; }
+  if (state.world === 'temple' || state.world === 'shrine') { toast('Poems grow out in the garden. The door behind you leads back.'); return; }
   // writing from a swing: get off it first, and put its poems away, so no other page stays open behind this one
   if (state.swing) { late.closeSwingReader(); document.body.classList.remove('on-swing'); state.swing = null; }
   late.hideSwingUI();
@@ -89,9 +88,6 @@ export function openEditor(p) {
   if (dr) { eTitle.value = dr.title || ''; eBody.value = dr.body || ''; eTheme.value = dr.theme || ''; eMood = dr.mood || null; }
   $('#e-suggest').hidden = true; suggested = null; setTimeout(countWords);
   moodWrap.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.k === eMood ? 'true' : 'false'));
-  // today's prompt at the head of a new poem's page; ticked already when you came to answer it
-  $('#e-prompt').hidden = !!p; $('#e-prompt-t').textContent = todaysPrompt();
-  $('#e-answer').checked = !p && !!state.answering; state.answering = false; $('#e-share-l').hidden = !$('#e-answer').checked;
   $('#e-ask').textContent = p ? `Tending “${p.title}”` : 'What are you carrying today?';
   eGo.textContent = p ? 'Save changes' : 'Plant this poem'; eGo.disabled = !eBody.value.trim();
   editor.classList.remove('sowing');
@@ -113,7 +109,6 @@ function closeEditor() {
   state.mode = 'walk'; Music.ducked = false; syncPlayerFromCamera();
 }
 $('#e-cancel').onclick = closeEditor;
-$('#e-answer').onchange = () => { $('#e-share-l').hidden = !$('#e-answer').checked; };
 $('#e-close').onclick = closeEditor;
 eGo.onclick = () => {
   const content = eBody.value.replace(/\s+$/, ''); if (!content.trim()) return;
@@ -137,8 +132,6 @@ eGo.onclick = () => {
   }
   const p = { id: uid(), title, content, createdAt: new Date().toISOString(), mood: eMood || undefined, theme, important: eMatters.checked || undefined, private: $('#e-private').checked || undefined };
   preparePoem(p); poems.push(p); savePoems();
-  // an answer to today's prompt is marked so (it grows in your garden as ever); a copy may go to the shared grove
-  if ($('#e-answer').checked) { p.prompt = todayKey(); savePoems(); if ($('#e-share').checked && !p.private) late.shareAnswer && late.shareAnswer(p); }
   editor.classList.add('sowing');
   setTimeout(() => { closePanel(editor); state.editing = null; startSeed(p); }, 1150);
 };

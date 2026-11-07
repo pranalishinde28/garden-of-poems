@@ -422,39 +422,6 @@ async function main() {
       await page.evaluate(() => { const g = window.__garden, p = g.player.pos; p.z -= 66; g.player.pitch = 0.5; }); await sleep(1500); await shot('chandelier');
       await page.evaluate(() => { const g = window.__garden, p = g.player.pos; p.z -= 6; g.player.pitch = -0.2; }); await sleep(1500); await shot('floor');
     }
-    else if (FLOW === 'grove') { // the daily prompt: on the welcome screen, through the moon gate, the grove, answering, reading, the archive
-      const shot = async n => { await sleep(500); await page.screenshot({ path: join(root, `dev/shots/grove-${n}.png`) }); };
-      await sleep(1500); await shot('welcome');
-      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
-      await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); });
-      await page.evaluate(() => { const g = window.__garden; g.player.pos.set(-11.6, 0, 47.4); g.player.yaw = 0.8; g.player.pitch = 0.12; }); await sleep(2000); await shot('gate');
-      const gcue = await page.$eval('#cue', e => e.textContent.trim()); await page.keyboard.press('KeyE');
-      await page.waitForFunction(() => window.__garden.state.world === 'grove' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 }); await sleep(3500); await shot('arrive');
-      const at = async (n, x, z, yaw, pitch) => { await page.evaluate((x, z, yaw, pitch) => { const g = window.__garden, A = g.worlds.grove.arrive.pos; g.player.pos.set(A.x + x, 0, A.z - 30 + z); g.player.yaw = yaw; g.player.pitch = pitch; }, x, z, yaw, pitch); await sleep(1800); await shot(n); };
-      await at('stele', 0, 6, 0, 0.12); await at('wide', 18, 22, 0.75, -0.05);
-      // read the first tree
-      const trees = await page.evaluate(() => window.__garden.worlds.grove.blocked ? 1 : 0);
-      await page.evaluate(() => { const g = window.__garden; const t = g.late && g.late.readGrove; t && t(0); }); await sleep(1200); await shot('read');
-      const title = await page.$eval('#wp-title', e => e.textContent).catch(() => '');
-      await page.keyboard.press('Escape'); await sleep(700);
-      // answer the prompt from the stele: home to the bench with the page open on it
-      await page.evaluate(() => { const g = window.__garden, A = g.worlds.grove.arrive.pos; g.player.pos.set(A.x, 0, A.z - 30 + 2.6); g.player.yaw = 0; }); await sleep(1200);
-      const scue = await page.$eval('#cue', e => e.textContent.trim()); await page.keyboard.press('KeyE');
-      await page.waitForFunction(() => window.__garden.state.mode === 'writing' && !document.querySelector('#editor').hidden, { timeout: 40000, polling: 300 }).catch(() => {});
-      await sleep(1200); await shot('editor');
-      const ticked = await page.$eval('#e-answer', e => e.checked).catch(() => false);
-      await page.type('#e-title', 'The Door I Kept'); await page.type('#e-body', 'I never opened it,\nso it stayed\nfull of everything.');
-      await page.click('#e-go'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 40000, polling: 300 }); await sleep(2500);
-      const tagged = await page.evaluate(() => window.__garden.poems.some(p => p.title === 'The Door I Kept' && p.prompt));
-      await page.evaluate(() => window.__garden.late.enterTemple && window.__garden.state && document.querySelector('#h-map') && 0);
-      await page.evaluate(() => { const g = window.__garden; g.player.pos.set(-11.6, 0, 47.4); g.player.yaw = 0.8; }); await sleep(1000); await page.keyboard.press('KeyE');
-      await page.waitForFunction(() => window.__garden.state.world === 'grove' && window.__garden.state.mode === 'walk', { timeout: 30000, polling: 300 }); await sleep(3500);
-      await at('with-mine', -14, 20, -0.7, 0.05);
-      await page.evaluate(() => window.__garden.late.openGroveDays()); await sleep(1500); await shot('days');
-      const days = await page.$$eval('#gd-list button', b => b.length);
-      console.log(`  gate cue "${gcue}", first answer "${title}", stele cue "${scue}", answer ticked ${ticked}, tagged ${tagged}, days ${days}`);
-      if (!/prompt garden/i.test(gcue) || !title || !/answer/i.test(scue) || !ticked || !tagged || days < 1) errors.push('the Prompt Garden walk failed');
-    }
     else if (FLOW === 'news') { // since you were last here: sign in as a poet with news, come back, read the note, follow a line
       const shot = async n => { await sleep(500); await page.screenshot({ path: join(root, `dev/shots/news-${n}.png`) }); };
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });

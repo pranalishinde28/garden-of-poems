@@ -1059,20 +1059,6 @@ body.lib-open #steps{display:none}
 #pv-form .lb-btn.go{background:#5a3417;color:#f8edd4;border-color:#5a3417}
 @media (max-width:800px){#pv-look{flex-direction:column;height:auto}.pv-stage{height:56vh;width:100%}.pv-side{width:100%}}
 
-/* the daily prompt, at the head of the writing page */
-#e-prompt{margin:.4rem 0 .9rem;padding:.7rem .9rem .5rem;border:1px solid rgba(120,84,40,.28);border-radius:8px;background:rgba(255,248,226,.5)}
-#e-prompt .ep-l{margin:0;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:#7a5a30}
-#e-prompt .ep-t{margin:.15rem 0 .35rem;font-style:italic;font-size:1.2rem;color:#3a2614}
-#e-prompt .matters{margin:.25rem 0}
-#e-prompt[hidden]{display:none}
-#wallpoem .wp-more{margin:.6rem 0 0;text-align:center;display:flex;gap:1.2rem;justify-content:center}
-#grovedays{left:50%;top:50%;width:min(560px,92vw);max-height:84vh;overflow:auto;transform:translate(-50%,-47%);padding:1.4rem 1.6rem}
-#grovedays.open{transform:translate(-50%,-50%)}
-#grovedays .gd-sub{font-style:italic;color:var(--ink-soft);margin:.2rem 0 .8rem}
-#gd-list{list-style:none;margin:0;padding:0}
-#gd-list button{display:block;width:100%;text-align:left;padding:.55rem .7rem;margin:.2rem 0;border-radius:8px;border:1px solid rgba(120,84,40,.22);background:rgba(255,248,226,.45);cursor:pointer;font:inherit;color:inherit}
-#gd-list button:hover,#gd-list button:focus-visible{background:rgba(255,240,200,.85)}
-#gd-list b{display:block;font-size:1.05rem}#gd-list i{display:block;color:#5a4630}#gd-list small{color:#7a6a54}
 
 /* since you were last here: a quiet note, top left, that stays until you close it or follow a line */
 #sincelast{position:fixed;left:18px;top:86px;width:min(380px,calc(100vw - 36px));padding:1rem 1.2rem .9rem;z-index:30;opacity:0;transform:translateY(-8px);transition:opacity .5s,transform .5s}

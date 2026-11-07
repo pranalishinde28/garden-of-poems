@@ -3,13 +3,11 @@ import { state } from '../core/state.js';
 import { Cloud, whatsNew } from '../cloud/cloud.ts';
 import { plants } from '../plants/registry.js';
 import { openPoem } from './reading.js';
-import { enterGrove } from '../world/promptGrove.js';
 import { late } from '../core/late.js';
 
 /* ================= since you were last here ================= */
 // On arriving in your own garden (signed in), a quiet note says what has happened since you were last here:
-// hearts on your poems and who gave them, notes left, how many people walked your garden, answers in today's
-// Prompt Garden. Each line takes you there. Nothing new, no note. "Last here" is remembered per person on this
+// hearts on your poems and who gave them, notes left, and how many people walked your garden. Each line takes you there. Nothing new, no note. "Last here" is remembered per person on this
 // device, moved on when you leave the page and after the note is read; the first visit on a device just starts it.
 const note = $('#sincelast'), KEY = id => 'garden-of-poems:last-here:' + id;
 const store = { get(id) { try { return localStorage.getItem(KEY(id)); } catch (e) { return null; } }, set(id) { try { localStorage.setItem(KEY(id), new Date().toISOString()); } catch (e) { /* no storage */ } } };
@@ -32,7 +30,6 @@ async function check() {
   n.notes.slice(0, 4).forEach(t => list.append(line(`<b>${esc(t.name)}</b> left a note on <i>${esc(t.title)}</i>: “${esc(t.text.length > 70 ? t.text.slice(0, 68) + '…' : t.text)}”`, toPoem(t.poem_id))));
   if (n.notes.length > 4) list.append(line(`and ${n.notes.length - 4} more notes.`, toPoem(n.notes[4].poem_id)));
   if (n.visitors) list.append(line(n.visitors === 1 ? 'One person walked your garden.' : `<b>${n.visitors} people</b> walked your garden.`, () => late.openGardens && late.openGardens()));
-  if (n.grove) list.append(line(n.grove === 1 ? 'One answer grew in today’s Prompt Garden.' : `<b>${n.grove} answers</b> grew in today’s Prompt Garden.`, () => enterGrove()));
   if (!list.children.length) return;
   note.hidden = false; requestAnimationFrame(() => note.classList.add('show'));
 }
