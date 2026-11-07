@@ -1069,3 +1069,13 @@ body.lib-open #steps{display:none}
 #sincelast .sl-line:hover,#sincelast .sl-line:focus-visible{color:#7a2e1c;outline:none}
 #sincelast .xc{position:absolute;right:.6rem;top:.6rem}
 body.panel-open #sincelast{display:none}
+
+/* the review box for moderators, and the blocked list in your account */
+#review{left:50%;top:50%;width:min(640px,94vw);max-height:86vh;overflow:auto;transform:translate(-50%,-47%);padding:1.4rem 1.6rem}
+#review.open{transform:translate(-50%,-50%)}
+#review .rv-sub{font-style:italic;color:var(--ink-soft);margin:.2rem 0 .8rem}
+.rv-item{border-top:1px solid rgba(120,84,40,.2);padding:.7rem 0}
+.rv-item blockquote{margin:.3rem 0;padding:.4rem .7rem;border-left:3px solid #c9a040;background:rgba(255,248,226,.5);font-size:1.05rem}
+.rv-item .rv-m{font-size:.92rem;color:#6a5a44}
+.rv-item .rv-acts{display:flex;gap:1rem;margin-top:.35rem}
+.g-blocks h4{margin:.9rem 0 .2rem;font-size:1rem}

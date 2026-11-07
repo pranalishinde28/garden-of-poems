@@ -270,6 +270,47 @@ delete from public.paintings where owner = '00000000-0000-0000-0000-0000000000a1
 reset role;
 select is((select count(*) from public.paintings where owner = '00000000-0000-0000-0000-0000000000a1'), 2::bigint, 'nobody else takes them down');
 select ok(exists (select 1 from storage.buckets where id = 'paintings' and not public), 'the pictures are kept in a private bucket');
+-- ---------- blocking: a blocked person leaves no notes or hearts, and their notes in the garden are hidden ----------
+reset role;
+update public.gardens set is_public = true where owner = '00000000-0000-0000-0000-0000000000a1';
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c3');
+insert into public.notes (garden_owner, poem_id, text) values ('00000000-0000-0000-0000-0000000000a1', 'open', 'Cy again, before the block');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$insert into public.blocks (blocked) values ('00000000-0000-0000-0000-0000000000c3')$$, 'a poet blocks someone');
+select throws_ok($$insert into public.blocks (blocked) values ('00000000-0000-0000-0000-0000000000a1')$$, '23514', null, 'not themselves');
+select is((select count(*) from public.notes where author = '00000000-0000-0000-0000-0000000000c3'), 0::bigint, 'the poet no longer sees their notes');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c3');
+select throws_ok($$insert into public.notes (garden_owner, poem_id, text) values ('00000000-0000-0000-0000-0000000000a1', 'open', 'after')$$, '42501', null, 'the blocked person cannot leave notes');
+select throws_ok($$insert into public.poem_likes (garden_owner, poem_id, liker) values ('00000000-0000-0000-0000-0000000000a1', 'open', '00000000-0000-0000-0000-0000000000c3')$$, '42501', null, 'nor hearts');
+select ok((select count(*) from public.notes where author = '00000000-0000-0000-0000-0000000000c3') > 0, 'they still see their own notes');
+select is((select count(*) from public.blocks), 0::bigint, 'and cannot see that they are blocked');
+select pg_temp.as_anon();
+select is((select count(*) from public.notes where author = '00000000-0000-0000-0000-0000000000c3' and garden_owner = '00000000-0000-0000-0000-0000000000a1'), 0::bigint, 'others no longer see their notes in that garden');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select lives_ok($$delete from public.blocks where blocked = '00000000-0000-0000-0000-0000000000c3'$$, 'and the poet can unblock');
+
+-- ---------- reports: three hide a note; only moderators see the queue and decide ----------
+reset role;
+alter table public.notes disable trigger notes_rate_limit;
+insert into public.notes (garden_owner, poem_id, text, author) values ('00000000-0000-0000-0000-0000000000a1', 'open', 'an unkind note', '00000000-0000-0000-0000-0000000000b2');
+alter table public.notes enable trigger notes_rate_limit;
+insert into public.note_reports (note_id, reporter, reason) select id, r, 'unkind' from public.notes, unnest(array['00000000-0000-0000-0000-0000000000a1','00000000-0000-0000-0000-0000000000c3']::uuid[]) r where text = 'an unkind note';
+select is((select hidden from public.notes where text = 'an unkind note'), false, 'two reports do not hide a note');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+select is((select count(*) from review_queue()), 0::bigint, 'the queue is empty for someone who is not a moderator');
+select throws_ok($$select review_note(gen_random_uuid(), true)$$, '42501', null, 'and they cannot decide');
+reset role;
+insert into auth.users (id, email, raw_user_meta_data) values ('00000000-0000-0000-0000-0000000000e5', 'mod@example.test', '{"username":"modo","display_name":"Mo"}');
+insert into public.note_reports (note_id, reporter) select id, '00000000-0000-0000-0000-0000000000e5' from public.notes where text = 'an unkind note';
+select is((select hidden from public.notes where text = 'an unkind note'), true, 'the third report hides it');
+insert into public.moderators (user_id) values ('00000000-0000-0000-0000-0000000000e5');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000e5');
+select is((select reports from review_queue() where text = 'an unkind note'), 3::bigint, 'a moderator sees it in the queue with its reports');
+select lives_ok($$select review_note((select note_id from review_queue() where text = 'an unkind note'), false)$$, 'and may restore it');
+select is((select count(*) from review_queue() where text = 'an unkind note'), 0::bigint, 'reviewed reports leave the queue');
+reset role;
+select is((select hidden from public.notes where text = 'an unkind note'), false, 'the restored note shows again');
+
 -- ---------- since you were last here: only your own garden's news, only for you ----------
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
 select ok((select (whats_new('-infinity')->'hearts'->0->>'poem_id') = 'open'), 'a poet sees hearts on their poems');

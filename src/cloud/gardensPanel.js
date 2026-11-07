@@ -1,7 +1,7 @@
 import { $, gardenURL, shareURL, siteURL } from '../core/util.js';
 import { toast } from '../ui/helpers.js';
 import { closePanel, openPanel } from '../ui/reading.js';
-import { Cloud, NEEDS_UPDATE, db, changeUsername, createShare, deleteAccount, deleteShare, exportGarden, listGardens, listShares, myVisits, ownPoems, removedPoems, restoreRemoved, saveGardenSettings, suggestedGardens, syncNow, usernameAvailable } from './cloud.ts';
+import { Cloud, NEEDS_UPDATE, db, changeUsername, createShare, deleteAccount, deleteShare, exportGarden, listGardens, listShares, myVisits, ownPoems, removedPoems, restoreRemoved, saveGardenSettings, suggestedGardens, syncNow, usernameAvailable, listBlocks, unblockPerson } from './cloud.ts';
 import { state } from '../core/state.js';
 import { captchaOn, mountCaptcha, resetCaptcha } from './captcha.js';
 import { late, provide } from '../core/late.js';
@@ -144,7 +144,12 @@ function renderAcct() {
     go.onclick = async () => { go.disabled = true; try { await deleteAccount(); closeGardens(); toast('Your account and garden are gone. Thank you for the poems.', 6000); } catch (e) { toast(e.message || 'That did not work. Try again.'); go.disabled = false; } };
     c.append(ci, go); del.replaceWith(c); ci.focus();
   };
-  box.append(l, i, msg, save, ex, del);
+  const bl = el('div', 'g-blocks'); box.append(l, i, msg, save, ex, bl, del);
+  listBlocks().then(list => {
+    if (!list || !list.length) return;
+    bl.append(el('h4', '', 'People you have blocked'));
+    list.forEach(p => { const row = el('div', 'g-row'), b = el('button', 'g-link', 'Unblock'); row.append(el('div', 'g-n', p.name), b); b.onclick = async () => { if (await unblockPerson(p.id)) { row.remove(); toast(`${p.name} is unblocked.`); } }; bl.append(row); });
+  });
 }
 $('#g-custom').onclick = () => { closeGardens(); late.openCustomize(); };
 $('#g-toggle').onclick = async () => {

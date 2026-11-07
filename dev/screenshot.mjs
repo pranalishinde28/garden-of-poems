@@ -448,6 +448,35 @@ async function main() {
       console.log(`  note shown ${shown}; lines: ${lines.join(' | ')}; after a line: ${reading}; shown again at once: ${again}`);
       if (!shown || lines.length < 3 || reading !== 'focus' || again) errors.push('since-you-were-last-here failed');
     }
+    else if (FLOW === 'moderation') { // blocking from a note, unblocking from your account, the review queue for a moderator
+      const shot = async n => { await sleep(500); await page.screenshot({ path: join(root, `dev/shots/mod-${n}.png`) }); };
+      page.on('dialog', d => d.accept());
+      await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
+      await page.evaluate(() => document.querySelector('#steps-skip')?.click());
+      await page.evaluate(async () => { await window.__garden.cloud.sb.auth.signInWithPassword({ email: 'mira@grove.test', password: 'grove-test-1' }); });
+      await page.waitForFunction(() => window.__garden.cloud.user && window.__garden.plants.get('m1'), { timeout: 60000, polling: 500 }); await sleep(2500);
+      await page.evaluate(() => { const g = window.__garden; g.openPoem(g.plants.get('m1')); }); await sleep(2500);
+      await page.evaluate(() => document.querySelector('#r-talk')?.click()); await sleep(2500); await shot('notes');
+      const blockBtn = await page.evaluateHandle(() => [...document.querySelectorAll('#r-notes .g-link')].find(b => b.textContent === 'Block'));
+      const hadBlock = !!(await blockBtn.evaluate(b => !!b));
+      if (hadBlock) { await blockBtn.evaluate(b => b.click()); await sleep(2500); }
+      await shot('blocked');
+      const leoGone = await page.evaluate(() => ![...document.querySelectorAll('#r-notes .n-row')].some(r => /Leo/.test(r.textContent)));
+      await page.keyboard.press('Escape'); await sleep(800);
+      await page.evaluate(() => window.__garden.late.openGardens()); await sleep(2500); await page.evaluate(() => document.querySelector('.g-blocks')?.scrollIntoView()); await sleep(600); await shot('account');
+      const listed = await page.evaluate(() => [...document.querySelectorAll('.g-blocks .g-n')].map(e => e.textContent));
+      await page.evaluate(() => [...document.querySelectorAll('.g-blocks .g-link')].find(b => b.textContent === 'Unblock')?.click()); await sleep(1500);
+      const unblocked = await page.evaluate(() => !document.querySelector('.g-blocks .g-n'));
+      await page.keyboard.press('Escape'); await sleep(800);
+      await page.waitForFunction(() => !document.querySelector('#m-review').hidden, { timeout: 15000, polling: 500 }).catch(() => {});
+      await page.evaluate(() => document.querySelector('#m-review').click()); await sleep(2500); await shot('review');
+      const items = await page.$$eval('.rv-item', d => d.map(x => x.querySelector('blockquote').textContent));
+      await page.evaluate(() => document.querySelector('.rv-item .g-link')?.click()); await sleep(1500);
+      const left = await page.$$eval('.rv-item', d => d.length);
+      await page.evaluate(() => window.__garden.cloud.sb.auth.signOut());
+      console.log(`  block button ${hadBlock}, Leo's note gone ${leoGone}, blocked list ${JSON.stringify(listed)}, unblocked ${unblocked}, queue ${JSON.stringify(items)}, left after deciding ${left}`);
+      if (!hadBlock || !leoGone || !listed.length || !unblocked || !items.length || left >= items.length) errors.push('moderation failed');
+    }
     else if (FLOW === 'sunmap') { // the secret world's map: open with M, go to the drop tower, then the Hall of Mirrors; and running
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); });

@@ -75,6 +75,7 @@ import './cloud/cloud.ts';
 import './cloud/gardensPanel.js';
 import './cloud/visiting.js';
 import './cloud/notes.js';
+import './cloud/review.js';
 import './settings/customize.js';
 import './world/linkBoards.js';
 import './ui/hud.js';

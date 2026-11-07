@@ -463,3 +463,41 @@ export async function whatsNew(since: string): Promise<WhatsNew | null> {
   if (error || !data) return null;
   return data as unknown as WhatsNew;
 }
+
+// ---------- blocking, and the review queue for moderators ----------
+export async function blockPerson(id: string) {
+  if (!Cloud.sb || !Cloud.user) throw new Error('Sign in to block someone.');
+  const { error } = await Cloud.sb.from('blocks').insert({ blocked: id });
+  if (error && error.code !== '23505') throw new Error(missing(error) ? NEEDS_UPDATE : error.message);
+}
+export async function unblockPerson(id: string) {
+  if (!Cloud.sb || !Cloud.user) return false;
+  const { error } = await Cloud.sb.from('blocks').delete().eq('blocker', Cloud.user.id).eq('blocked', id);
+  return !error;
+}
+// the people you have blocked, with the names they show
+export async function listBlocks(): Promise<{ id: string; name: string }[] | null> {
+  if (!Cloud.sb || !Cloud.user) return null;
+  const { data, error } = await Cloud.sb.from('blocks').select('blocked, created_at').eq('blocker', Cloud.user.id).order('created_at', { ascending: false });
+  if (error) return missing(error) ? null : [];
+  const ids = (data || []).map(r => r.blocked); if (!ids.length) return [];
+  const { data: ps } = await Cloud.sb.from('profiles').select('id, username, display_name').in('id', ids);
+  return ids.map(id => { const p = (ps || []).find(q => q.id === id); return { id, name: (p && (p.display_name || p.username)) || 'someone' }; });
+}
+export async function isModerator() {
+  if (!Cloud.sb || !Cloud.user) return false;
+  const { data, error } = await Cloud.sb.from('moderators').select('user_id').eq('user_id', Cloud.user.id).maybeSingle();
+  return !error && !!data;
+}
+export type ReportItem = { note_id: string; text: string; author_name: string; poet_name: string; poem_title: string; reports: number; reasons: string[]; hidden: boolean; first_reported: string };
+export async function reviewQueue(): Promise<ReportItem[]> {
+  if (!Cloud.sb || !Cloud.user) return [];
+  const { data, error } = await Cloud.sb.rpc('review_queue');
+  if (error) throw error;
+  return (data || []) as unknown as ReportItem[];
+}
+export async function reviewNote(id: string, hide: boolean) {
+  if (!Cloud.sb) return false;
+  const { error } = await Cloud.sb.rpc('review_note', { p_note: id, p_hide: hide });
+  return !error;
+}

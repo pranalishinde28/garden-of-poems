@@ -23,7 +23,21 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "books": {
+            "blocks": {
+                  Row: {
+                    "blocked": string,"blocker": string,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "blocked": string,"blocker"?: string,"created_at"?: string
+                  }
+                  Update: {
+                    "blocked"?: string,"blocker"?: string,"created_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"books": {
                   Row: {
                     "author": string,"body": string,"created_at": string,"id": string,"owner": string,"private": boolean,"title": string,"updated_at": string
                   }
@@ -85,16 +99,30 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
-                },"note_reports": {
+                },"moderators": {
                   Row: {
-                    "created_at": string,"id": string,"note_id": string,"reason": string | null,"reporter": string
+                    "user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"note_id": string,"reason"?: string | null,"reporter"?: string
+                    "user_id": string
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"note_id"?: string,"reason"?: string | null,"reporter"?: string
+                    "user_id"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"note_reports": {
+                  Row: {
+                    "created_at": string,"id": string,"note_id": string,"reason": string | null,"reporter": string,"reviewed": boolean
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"note_id": string,"reason"?: string | null,"reporter"?: string,"reviewed"?: boolean
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"note_id"?: string,"reason"?: string | null,"reporter"?: string,"reviewed"?: boolean
                   }
                   Relationships: [
                     {
@@ -239,7 +267,10 @@ isOneToOne: true
                 }
           }
           Functions: {
-            "change_username":
+            "blocked_by":
+{ Args: { "a": string,"b": string }; Returns: boolean
+                           },
+"change_username":
 { Args: { "new_name": string }; Returns: string
                            },
 "create_share":
@@ -341,6 +372,14 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"review_note":
+{ Args: { "p_hide": boolean,"p_note": string }; Returns: undefined
+                           },
+"review_queue":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "author_name": string,"first_reported": string,"hidden": boolean,"note_id": string,"poem_title": string,"poet_name": string,"reasons": (string)[],"reports": number,"text": string
+            }[]
+                           },
 "save_poem":
 { Args: { "base"?: string,"p": Json }; Returns: Json
                            },
