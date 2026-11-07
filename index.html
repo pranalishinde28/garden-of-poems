@@ -290,10 +290,17 @@
 <section id="sharecard" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="sc-title" hidden>
   <button class="xc x" id="sc-close" aria-label="Close">×</button>
   <h2 id="sc-title">Share this poem</h2>
-  <p class="sc-sub">A picture of the poem and its tree, with your garden’s address, ready for Instagram or anywhere.</p>
-  <div class="sc-shapes" role="group" aria-label="Shape"><button class="sc-shape" data-s="story" aria-pressed="true">Story</button><button class="sc-shape" data-s="square" aria-pressed="false">Square post</button></div>
-  <div class="sc-prev"><img id="sc-img" alt="The card to share"></div>
-  <div class="sc-acts"><button class="g-btn" id="sc-save">Save the picture</button><button class="g-btn" id="sc-share" hidden>Share…</button><button class="g-link" id="sc-copy">Copy my garden’s link</button></div>
+  <div class="sc-body">
+    <div class="sc-prev"><img id="sc-img" alt="The card to share"></div>
+    <div class="sc-side">
+      <p class="sc-sub">A picture of the poem and its tree, with your garden’s address, ready for Instagram or anywhere.</p>
+      <div class="sc-shapes" role="group" aria-label="Shape"><button class="sc-shape" data-s="story" aria-pressed="true">Story</button><button class="sc-shape" data-s="square" aria-pressed="false">Square post</button></div>
+      <p class="sc-to">Share it to</p>
+      <div class="sc-apps" id="sc-apps"></div>
+      <p class="sc-hint" id="sc-hint"></p>
+      <div class="sc-acts"><button class="g-btn" id="sc-save">Save the picture</button><button class="g-link" id="sc-copy">Copy my garden’s link</button></div>
+    </div>
+  </div>
 </section>
 <section id="review" class="panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="rv-title" hidden>
   <button class="xc x" id="rv-close" aria-label="Close">×</button>

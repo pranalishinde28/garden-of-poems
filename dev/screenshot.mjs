@@ -518,6 +518,10 @@ async function main() {
       const save = async n => { const d = await page.$eval('#sc-img', i => i.src); fs.writeFileSync(join(root, `dev/shots/share-${n}.png`), Buffer.from(d.split(',')[1], 'base64')); };
       await save('story');
       await page.evaluate(() => document.querySelector('.sc-shape[data-s="square"]').click()); await sleep(1500); await save('square');
+      // the panel at phone width: the card, then the app buttons below it
+      await page.setViewport({ width: 390, height: 844 }); await sleep(1200); await page.screenshot({ path: join(root, 'dev/shots/share-phone.png') });
+      await page.evaluate(() => document.querySelector('#sc-apps').scrollIntoView({ block: 'center' })); await sleep(600); await page.screenshot({ path: join(root, 'dev/shots/share-phone-apps.png') });
+      await page.setViewport({ width: 1400, height: 820 });
       const size = await page.$eval('#sc-img', i => [i.naturalWidth, i.naturalHeight]);
       console.log('  card', size.join('×')); if (size[0] !== 1080) errors.push('no share card');
     }
