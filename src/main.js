@@ -93,6 +93,7 @@ import './core/power.js';
 import './settings/quality.js';
 import './core/loop.js';
 import './ui/book.js';
+import './ui/shareCard.js';
 import './ui/patron.js';
 import './debug.js';
 import './styles.css';

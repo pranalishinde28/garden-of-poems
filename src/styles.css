@@ -1079,3 +1079,13 @@ body.panel-open #sincelast{display:none}
 .rv-item .rv-m{font-size:.92rem;color:#6a5a44}
 .rv-item .rv-acts{display:flex;gap:1rem;margin-top:.35rem}
 .g-blocks h4{margin:.9rem 0 .2rem;font-size:1rem}
+
+/* share this poem */
+#sharecard{left:50%;top:50%;width:min(560px,94vw);max-height:92vh;overflow:auto;transform:translate(-50%,-47%);padding:1.3rem 1.5rem 1.2rem;text-align:center;z-index:62}
+#sharecard.open{transform:translate(-50%,-50%)}
+#sharecard .sc-sub{font-style:italic;color:var(--ink-soft);margin:.2rem 0 .7rem}
+.sc-shapes{display:inline-flex;border:1px solid rgba(120,84,40,.35);border-radius:999px;overflow:hidden;margin-bottom:.7rem}
+.sc-shape{padding:.35rem 1rem;border:0;background:transparent;font:inherit;font-weight:600;cursor:pointer;color:inherit}
+.sc-shape[aria-pressed="true"]{background:#5a3e24;color:#fbf2dc}
+.sc-prev img{max-width:100%;max-height:min(48vh,560px);border-radius:8px;box-shadow:0 8px 26px rgba(60,40,20,.35)}
+.sc-acts{display:flex;gap:.8rem;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:.8rem}

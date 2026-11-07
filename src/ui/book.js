@@ -26,7 +26,7 @@ const nextFrame = () => new Promise(r => requestAnimationFrame(() => r()));
 
 // a portrait picture of one tree, from the side where its neighbours least get in the way, drawn with the
 // garden's own film look; the main camera is borrowed for one frame and put back
-function photograph(pl) {
+export function photograph(pl) {
   const pos = pl.root.position, h = pl.h || 6, r = pl.radius || 3;
   const tgt = new V3(pos.x, groundH(pos.x, pos.z) + h * 0.47, pos.z), dist = Math.max(h * 1.45, r * 2.6) + 2;
   let best = 0, bc = Infinity;

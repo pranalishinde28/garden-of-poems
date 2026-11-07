@@ -477,6 +477,20 @@ async function main() {
       console.log(`  block button ${hadBlock}, Leo's note gone ${leoGone}, blocked list ${JSON.stringify(listed)}, unblocked ${unblocked}, queue ${JSON.stringify(items)}, left after deciding ${left}`);
       if (!hadBlock || !leoGone || !listed.length || !unblocked || !items.length || left >= items.length) errors.push('moderation failed');
     }
+    else if (FLOW === 'share') { // share this poem: the card in both shapes, saved to look at
+      const fs = await import('node:fs');
+      await page.click('#enter-sample').catch(() => page.click('#enter')); await page.waitForFunction(() => window.__garden.state.mode === 'walk' && window.__garden.plants.size > 3, { timeout: 180000, polling: 300 });
+      await page.evaluate(() => document.querySelector('#steps-skip')?.click()); await sleep(6000);
+      await page.evaluate(() => { const g = window.__garden, pl = [...g.plants.values()].find(p => p.poem.content.split('\n').length > 6) || [...g.plants.values()][0]; g.openPoem(pl); }); await sleep(3000);
+      await page.evaluate(() => document.querySelector('#r-share').click());
+      await page.waitForFunction(() => document.querySelector('#sharecard.open') && document.querySelector('#sc-img').src.startsWith('data:'), { timeout: 30000, polling: 300 }); await sleep(1000);
+      await page.screenshot({ path: join(root, 'dev/shots/share-panel.png') });
+      const save = async n => { const d = await page.$eval('#sc-img', i => i.src); fs.writeFileSync(join(root, `dev/shots/share-${n}.png`), Buffer.from(d.split(',')[1], 'base64')); };
+      await save('story');
+      await page.evaluate(() => document.querySelector('.sc-shape[data-s="square"]').click()); await sleep(1500); await save('square');
+      const size = await page.$eval('#sc-img', i => [i.naturalWidth, i.naturalHeight]);
+      console.log('  card', size.join('×')); if (size[0] !== 1080) errors.push('no share card');
+    }
     else if (FLOW === 'sunmap') { // the secret world's map: open with M, go to the drop tower, then the Hall of Mirrors; and running
       await page.click('#enter'); await page.waitForFunction(() => window.__garden.state.mode === 'walk', { timeout: 180000, polling: 300 });
       await sleep(900); await page.evaluate(() => { document.querySelector('#steps-skip')?.click(); });
