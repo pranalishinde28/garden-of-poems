@@ -25,9 +25,11 @@ import { worlds } from './core/worlds.js';
 import { rides, SUN_PLAN } from './world/sunWorld.js';
 import { POEM_SPOTS } from './world/castleHall.js';
 import { slideState } from './world/waterPark.js';
+import { BENCH } from './world/paths.js';
+import { SWING_GARDEN } from './world/swings.js';
 
 if (new URLSearchParams(location.search).has('debug')) {
-  window.__garden = { GAL, drawBoard: () => late.drawLinkBoards && late.drawLinkBoards(), animals, state, camera, curLook, plants, openPoem, setSetting, get SETTINGS() { return SETTINGS; }, get poems() { return poems; }, get cloudReady() { return Cloud.ready; }, cloud: Cloud, swings, sit: i => late.sitSwing(swings[i]), player, setAvatar, setThirdPerson, chooseQuality, quality, renderer, reflRT, get framesDrawn() { return power.framesDrawn; }, myBoat, gorgeWorld, worlds, late, rides, POEM_SPOTS, slideState, SUN_PLAN,
+  window.__garden = { GAL, drawBoard: () => late.drawLinkBoards && late.drawLinkBoards(), animals, state, camera, curLook, plants, openPoem, setSetting, get SETTINGS() { return SETTINGS; }, get poems() { return poems; }, get cloudReady() { return Cloud.ready; }, cloud: Cloud, swings, sit: i => late.sitSwing(swings[i]), player, setAvatar, setThirdPerson, chooseQuality, quality, renderer, reflRT, get framesDrawn() { return power.framesDrawn; }, myBoat, gorgeWorld, worlds, late, rides, POEM_SPOTS, slideState, SUN_PLAN, BENCH, SWING_GARDEN,
     // stand a row of figures (posed) at x0..; for judging the avatar's look
     lineup(cfgs, x0, z, pose = 'idle') { cfgs.forEach((c, i) => { const f = buildAvatar(c), x = x0 + i * 0.45; f.root.position.set(x, groundH(x, z), z); f.root.rotation.y = Math.PI; for (let k = 0; k < 60; k++) animateAvatar(f, pose, 1 / 30, k / 30, { speed: 2.5, omega: 0 }); scene.add(f.root); }); } };
 }
